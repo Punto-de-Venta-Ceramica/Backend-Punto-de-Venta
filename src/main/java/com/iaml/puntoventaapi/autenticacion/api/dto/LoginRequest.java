@@ -6,8 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record LoginRequest(
-        @NotBlank @Email @Size(max = 254) String correo,
-        @NotBlank @Size(max = 128) String password) {
+        @NotBlank(message = "El correo electrónico es obligatorio.")
+        @Email(message = "El correo electrónico no tiene un formato válido.")
+        @Size(max = 254, message = "El correo electrónico no debe superar 254 caracteres.") String correo,
+        @NotBlank(message = "La contraseña es obligatoria.")
+        @Size(max = 128, message = "La contraseña no debe superar 128 caracteres.") String password) {
 
     public IniciarSesionCommand toCommand() {
         return new IniciarSesionCommand(correo, password);

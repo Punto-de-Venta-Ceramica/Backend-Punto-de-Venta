@@ -7,6 +7,9 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
+import com.iaml.puntoventaapi.usuarios.domain.exception.CorreoYaRegistradoException;
 
 @Component
 public class UsuarioPersistenceAdapter implements UsuarioRepositorioPort {
@@ -29,6 +32,16 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositorioPort {
     @Transactional
     public Usuario guardar(Usuario usuario) {
         RolEntity rol = entityManager.getReference(RolEntity.class, usuario.getRolId());
-        return UsuarioMapper.toDomain(usuarioJpaRepository.save(UsuarioMapper.toEntity(usuario, rol)));
+        try {
+            return UsuarioMapper.toDomain(usuarioJpaRepository.saveAndFlush(UsuarioMapper.toEntity(usuario, rol)));
+        } catch (DataIntegrityViolationException ex) {
+            for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+                if (cause instanceof ConstraintViolationException violation
+                        && "uq_usuario_correo".equals(violation.getConstraintName())) {
+                    throw new CorreoYaRegistradoException(ex);
+                }
+            }
+            throw ex;
+        }
     }
 }

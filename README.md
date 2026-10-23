@@ -1,5 +1,38 @@
 # BarroControl: base de datos con Hibernate
 
+Las reglas de validación, mensajes HTTP 400/409, anotaciones y pruebas se
+documentan en [VALIDACIONES.md](VALIDACIONES.md).
+
+## Arranque local y conexión con Flutter
+
+El archivo `.env` local se importa mediante `spring.config.import` y está ignorado
+por Git. Configura `DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRETO`
+y `JWT_EXPIRACION_MINUTOS` allí. `DB_NAME` debe coincidir con tu instancia de Render;
+los nombres que aparecen en los ejemplos de este README son referencias.
+No copies credenciales al frontend ni a archivos versionados.
+
+Desde esta carpeta ejecuta `.\scripts\run.ps1`; utiliza el JDK 21 local del proyecto
+si está disponible y arranca Maven con esta carpeta como directorio de trabajo,
+para que Spring encuentre `.env`.
+
+- `POST /api/usuarios/registro`: crea un propietario y devuelve HTTP 201; correo repetido devuelve 409.
+- `POST /api/auth/login`: devuelve token Bearer, `expiraEn`, `usuarioId` y `rol`; credenciales incorrectas devuelven 401.
+- Los datos inválidos devuelven HTTP 400 con un mapa `errores`, sin publicar contraseñas rechazadas.
+- CORS permite `http://localhost:5173` y `http://127.0.0.1:5173`. Cambia
+  `APP_CORS_ALLOWED_ORIGINS` para otros orígenes, separados por comas.
+- La duración del token se configura en minutos; el frontend respeta la expiración recibida.
+
+Para probar el ciclo real de registro/login con rollback automático de las
+inserciones de prueba (requiere PostgreSQL configurado):
+
+```powershell
+$env:RUN_AUTH_DB_TESTS = 'true'
+.\mvnw.cmd -Dtest=AuthDatabaseIntegrationTest test
+```
+
+La prueba queda deshabilitada por defecto. Arrancar el contexto sí ejecuta la
+inicialización habitual de Hibernate/SQL, igual que al iniciar la API.
+
 Backend con Java 21, Spring Boot, Jakarta Persistence/Hibernate y PostgreSQL.
 Las entidades reproducen el script original: 19 entidades y cuatro tablas de
 unión, para un total de 23 tablas. No hace falta ejecutar manualmente ese script.
@@ -60,9 +93,10 @@ definir `DB_USERNAME` y `DB_PASSWORD`. Copia la contraseña del campo
 Password de Render, sin codificación URL.
 
 No necesitas compartir la contraseña en el chat ni guardarla en Git.
-`.env.example` es una referencia: Spring Boot no carga automáticamente
-archivos `.env`. Configura las variables en la terminal, tu IDE o el
-entorno del servicio donde ejecutarás el backend.
+`.env.example` es una referencia sin secretos. Este proyecto importa `.env`
+explícitamente mediante `spring.config.import`; ejecútalo desde la carpeta del
+backend para encontrarlo. Las variables del entorno también se admiten y tienen
+prioridad sobre ese archivo.
 
 ## Arranque desde PowerShell
 

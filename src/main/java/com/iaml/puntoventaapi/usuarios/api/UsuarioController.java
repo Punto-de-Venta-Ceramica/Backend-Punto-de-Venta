@@ -32,6 +32,8 @@ public class UsuarioController {
 
     @ExceptionHandler(CorreoYaRegistradoException.class)
     public ProblemDetail correoYaRegistrado(CorreoYaRegistradoException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("errores", java.util.Map.of("correo", ex.getMessage()));
+        return problem;
     }
 }

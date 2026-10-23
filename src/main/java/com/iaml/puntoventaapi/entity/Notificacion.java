@@ -3,21 +3,21 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CurrentTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "notificacion", indexes = {
+@Table(name = "notificacion", check = {
+    @CheckConstraint(name = "ck_notificacion_1", constraint = "btrim(titulo) <> ''"),
+    @CheckConstraint(name = "ck_notificacion_2", constraint = "(id_venta IS NOT NULL AND id_pedido IS NULL) OR (id_venta IS NULL AND id_pedido IS NOT NULL)")
+}, indexes = {
     @Index(name = "ix_notificacion_usuario_fecha", columnList = "id_usuario, fecha"),
     @Index(name = "ix_notificacion_venta", columnList = "id_venta"),
     @Index(name = "ix_notificacion_pedido", columnList = "id_pedido")
 })
 @Getter
 @Setter
-@Check(name = "ck_notificacion_1", constraints = "btrim(titulo) <> ''")
-@Check(name = "ck_notificacion_2", constraints = "(id_venta IS NOT NULL AND id_pedido IS NULL) OR (id_venta IS NULL AND id_pedido IS NOT NULL)")
 public class Notificacion extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

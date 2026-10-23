@@ -3,17 +3,17 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "sucursal", indexes = {
+@Table(name = "sucursal", check = {
+    @CheckConstraint(name = "ck_sucursal_1", constraint = "btrim(nombre) <> ''")
+}, indexes = {
     @Index(name = "ix_sucursal_negocio", columnList = "id_negocio")
 })
 @Getter
 @Setter
-@Check(name = "ck_sucursal_1", constraints = "btrim(nombre) <> ''")
 public class Sucursal extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

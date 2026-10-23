@@ -3,13 +3,13 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 
 @Entity
-@Table(name = "area")
+@Table(name = "area", check = {
+    @CheckConstraint(name = "ck_area_1", constraint = "btrim(nombre) <> ''")
+})
 @Getter
 @Setter
-@Check(name = "ck_area_1", constraints = "btrim(nombre) <> ''")
 public class Area extends EntidadConId {
 
     @NotBlank

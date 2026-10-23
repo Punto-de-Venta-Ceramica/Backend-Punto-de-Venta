@@ -3,15 +3,15 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 
 @Entity
-@Table(name = "producto", indexes = {
+@Table(name = "producto", check = {
+    @CheckConstraint(name = "ck_producto_1", constraint = "btrim(nombre) <> ''")
+}, indexes = {
     @Index(name = "ix_producto_categoria", columnList = "id_categoria")
 })
 @Getter
 @Setter
-@Check(name = "ck_producto_1", constraints = "btrim(nombre) <> ''")
 public class Producto extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

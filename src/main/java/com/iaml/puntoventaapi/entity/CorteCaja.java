@@ -3,7 +3,6 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CurrentTimestamp;
 import org.hibernate.annotations.Generated;
@@ -12,16 +11,17 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "corte_caja", uniqueConstraints = {@UniqueConstraint(name = "uq_corte_caja_id_caja", columnNames = {"id", "id_caja"})}, indexes = {
+@Table(name = "corte_caja", check = {
+    @CheckConstraint(name = "ck_corte_caja_1", constraint = "monto_inicial >= 0 AND total_efectivo >= 0 AND total_tarjeta >= 0 AND total_estimado >= 0"),
+    @CheckConstraint(name = "ck_corte_caja_2", constraint = "total_real IS NULL OR total_real >= 0"),
+    @CheckConstraint(name = "ck_corte_caja_3", constraint = "fecha_hora_cierre IS NULL OR fecha_hora_cierre >= fecha_hora_apertura"),
+    @CheckConstraint(name = "ck_corte_caja_4", constraint = "fecha_hora_cierre IS NULL OR total_real IS NOT NULL")
+}, uniqueConstraints = {@UniqueConstraint(name = "uq_corte_caja_id_caja", columnNames = {"id", "id_caja"})}, indexes = {
     @Index(name = "ix_corte_caja_caja_fecha", columnList = "id_caja, fecha_hora_apertura"),
     @Index(name = "ix_corte_caja_usuario", columnList = "id_usuario")
 })
 @Getter
 @Setter
-@Check(name = "ck_corte_caja_1", constraints = "monto_inicial >= 0 AND total_efectivo >= 0 AND total_tarjeta >= 0 AND total_estimado >= 0")
-@Check(name = "ck_corte_caja_2", constraints = "total_real IS NULL OR total_real >= 0")
-@Check(name = "ck_corte_caja_3", constraints = "fecha_hora_cierre IS NULL OR fecha_hora_cierre >= fecha_hora_apertura")
-@Check(name = "ck_corte_caja_4", constraints = "fecha_hora_cierre IS NULL OR total_real IS NOT NULL")
 public class CorteCaja extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

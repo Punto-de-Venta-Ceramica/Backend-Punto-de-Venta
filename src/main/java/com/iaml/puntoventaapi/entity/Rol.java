@@ -3,15 +3,15 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "rol", uniqueConstraints = {@UniqueConstraint(name = "uq_rol_nombre", columnNames = "nombre")})
+@Table(name = "rol", check = {
+    @CheckConstraint(name = "ck_rol_1", constraint = "btrim(nombre) <> ''")
+}, uniqueConstraints = {@UniqueConstraint(name = "uq_rol_nombre", columnNames = "nombre")})
 @Getter
 @Setter
-@Check(name = "ck_rol_1", constraints = "btrim(nombre) <> ''")
 public class Rol extends EntidadConId {
 
     @NotBlank

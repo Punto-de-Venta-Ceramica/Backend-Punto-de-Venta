@@ -3,15 +3,15 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "negocio")
+@Table(name = "negocio", check = {
+    @CheckConstraint(name = "ck_negocio_1", constraint = "btrim(nombre) <> ''")
+})
 @Getter
 @Setter
-@Check(name = "ck_negocio_1", constraints = "btrim(nombre) <> ''")
 public class Negocio extends EntidadConId {
 
     @NotBlank

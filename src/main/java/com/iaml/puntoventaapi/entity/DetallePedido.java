@@ -3,19 +3,19 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "detalle_pedido", indexes = @Index(name = "ix_detalle_pedido_producto", columnList = "id_producto"))
+@Table(name = "detalle_pedido", check = {
+    @CheckConstraint(name = "ck_detalle_pedido_cantidad", constraint = "cantidad > 0"),
+    @CheckConstraint(name = "ck_detalle_pedido_precio", constraint = "precio_unitario >= 0"),
+    @CheckConstraint(name = "ck_detalle_pedido_descuento", constraint = "desc_aplicado BETWEEN 0 AND 100")
+}, indexes = @Index(name = "ix_detalle_pedido_producto", columnList = "id_producto"))
 @Getter
 @Setter
-@Check(name = "ck_detalle_pedido_cantidad", constraints = "cantidad > 0")
-@Check(name = "ck_detalle_pedido_precio", constraints = "precio_unitario >= 0")
-@Check(name = "ck_detalle_pedido_descuento", constraints = "desc_aplicado BETWEEN 0 AND 100")
 public class DetallePedido {
 
     @EmbeddedId

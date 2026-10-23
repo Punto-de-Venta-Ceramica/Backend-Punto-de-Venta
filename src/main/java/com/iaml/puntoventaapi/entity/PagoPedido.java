@@ -3,22 +3,22 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CurrentTimestamp;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "pago_pedido", indexes = {
+@Table(name = "pago_pedido", check = {
+    @CheckConstraint(name = "ck_pago_pedido_1", constraint = "btrim(metodo_pago) <> ''"),
+    @CheckConstraint(name = "ck_pago_pedido_2", constraint = "btrim(tipo_pago) <> ''"),
+    @CheckConstraint(name = "ck_pago_pedido_3", constraint = "monto > 0")
+}, indexes = {
     @Index(name = "ix_pago_pedido_pedido", columnList = "id_pedido"),
     @Index(name = "ix_pago_pedido_corte", columnList = "id_corte_caja")
 })
 @Getter
 @Setter
-@Check(name = "ck_pago_pedido_1", constraints = "btrim(metodo_pago) <> ''")
-@Check(name = "ck_pago_pedido_2", constraints = "btrim(tipo_pago) <> ''")
-@Check(name = "ck_pago_pedido_3", constraints = "monto > 0")
 public class PagoPedido extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

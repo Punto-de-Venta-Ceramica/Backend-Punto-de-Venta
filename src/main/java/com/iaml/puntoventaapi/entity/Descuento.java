@@ -3,22 +3,22 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "descuento", indexes = {
+@Table(name = "descuento", check = {
+    @CheckConstraint(name = "ck_descuento_1", constraint = "btrim(nombre) <> ''"),
+    @CheckConstraint(name = "ck_descuento_2", constraint = "cantidad_minima > 0"),
+    @CheckConstraint(name = "ck_descuento_3", constraint = "cantidad_maxima IS NULL OR cantidad_maxima >= cantidad_minima"),
+    @CheckConstraint(name = "ck_descuento_4", constraint = "descuento BETWEEN 0 AND 100")
+}, indexes = {
     @Index(name = "ix_descuento_negocio", columnList = "id_negocio")
 })
 @Getter
 @Setter
-@Check(name = "ck_descuento_1", constraints = "btrim(nombre) <> ''")
-@Check(name = "ck_descuento_2", constraints = "cantidad_minima > 0")
-@Check(name = "ck_descuento_3", constraints = "cantidad_maxima IS NULL OR cantidad_maxima >= cantidad_minima")
-@Check(name = "ck_descuento_4", constraints = "descuento BETWEEN 0 AND 100")
 public class Descuento extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

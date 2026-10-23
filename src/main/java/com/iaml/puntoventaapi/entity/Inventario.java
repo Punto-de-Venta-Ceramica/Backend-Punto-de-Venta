@@ -3,16 +3,16 @@ package com.iaml.puntoventaapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
 
 @Entity
-@Table(name = "inventario", uniqueConstraints = {@UniqueConstraint(name = "uq_inventario_sucursal_producto", columnNames = {"id_sucursal", "id_producto"})}, indexes = {
+@Table(name = "inventario", check = {
+    @CheckConstraint(name = "ck_inventario_1", constraint = "existencia >= 0")
+}, uniqueConstraints = {@UniqueConstraint(name = "uq_inventario_sucursal_producto", columnNames = {"id_sucursal", "id_producto"})}, indexes = {
     @Index(name = "ix_inventario_producto", columnList = "id_producto")
 })
 @Getter
 @Setter
-@Check(name = "ck_inventario_1", constraints = "existencia >= 0")
 public class Inventario extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -1,0 +1,27 @@
+package com.iaml.puntoventaapi.catalogo.domain;
+
+import com.iaml.puntoventaapi.shared.domain.EntidadConId;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+@Entity
+@Table(name = "producto", check = {
+    @CheckConstraint(name = "ck_producto_1", constraint = "btrim(nombre) <> ''")
+}, indexes = {
+    @Index(name = "ix_producto_categoria", columnList = "id_categoria")
+})
+@Getter
+@Setter
+public class Producto extends EntidadConId {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_categoria", nullable = false)
+    private Categoria categoria;
+
+    @NotBlank
+    @Size(max = 150)
+    @Column(name = "nombre", nullable = false, length = 150)
+    private String nombre;
+}
+

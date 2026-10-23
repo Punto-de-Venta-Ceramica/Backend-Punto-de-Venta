@@ -136,3 +136,119 @@ Evita `create` y `create-drop` sobre la base del negocio: eliminan datos.
 Referencias: [Inicialización en Spring Boot](https://docs.spring.io/spring-boot/how-to/data-initialization.html),
 [Conexión a Render Postgres](https://render.com/docs/postgresql-creating-connecting),
 [URL JDBC de PostgreSQL](https://jdbc.postgresql.org/documentation/use/).
+
+
+---
+
+# Arquitectura
+
+Monolito modular organizado por **negocio** (screaming architecture). Todos
+los módulos comparten el **mismo esqueleto**; lo que cambia es el **nivel**:
+ligero o robusto (hexagonal completa).
+
+## Esqueleto común
+
+```text
+com/iaml/puntoventaapi/<modulo>/
+├── api/                 Puerta HTTP: controllers y dto/ (Request/Response)
+├── application/         Services: orquestan casos de uso y transacciones
+├── domain/              Modelo y reglas del negocio
+├── infrastructure/      BD, correo, archivos, JWT, adaptadores a otros módulos
+└── <Modulo>Contrato     Única interfaz pública del módulo hacia los demás
+```
+
+| Módulo | HU | Nivel |
+| --- | --- | --- |
+| `autenticacion` | 05, 06 | Ligero (login, JWT, recuperar contraseña, `Rol`, `Permiso`) |
+| `usuarios` | 01, 04 | Ligero |
+| `negocios` | 02, 03 | Ligero (negocio, sucursal, logo) |
+| `catalogo` | 07, 08 | Ligero (área, categoría, producto, descuento) |
+| `clientes` | 10, 06 | Ligero |
+| `inventario` | 11 | Ligero |
+| `caja` | 13 | Ligero (`CalculadoraCorte` concentra el cálculo) |
+| `notificaciones` | 04, 05, 10 | Ligero (correo, push) |
+| `reportes` | 14 | Solo lectura (consultas directas y Excel), sin contrato |
+| `ventas` | 09, 12 | **Robusto** |
+| `pedidos` | 10 | **Robusto + slices** |
+| `shared` | — | `EntidadConId`, manejo global de errores, usuario actual |
+
+**Regla para elegir el nivel:** si no puedes nombrar una regla de negocio que
+se probaría sin base de datos, el módulo es ligero. Si un módulo ligero
+crece, se “sube” a robusto sin cambiar sus carpetas.
+
+## Contenido según el nivel
+
+| Carpeta | Ligero | Robusto |
+| --- | --- | --- |
+| `api/` | Controllers + `dto/` | Igual |
+| `application/` | Services; pueden recibir el Request | Services + `Command`; **nunca** reciben DTOs HTTP |
+| `domain/` | La entidad JPA es el modelo | Clases Java puras (sin JPA ni Spring) + `port/` |
+| `infrastructure/` | `persistence/` con repositorios Spring Data | Entidades JPA, `Mapper`, adaptador de persistencia, `adapters/` hacia otros módulos |
+
+En módulos robustos solo hay **puertos de salida** (`domain/port`). No se
+crean interfaces `UseCase` de entrada: un service con una implementación no
+necesita interfaz.
+
+### Slices en `pedidos`
+
+Cada caso de uso tiene su subpaquete, con el mismo nombre en `api/` y en
+`application/`: `registrar`, `cambiarestado`, `abonar`, `cancelar`,
+`consultar`. En los slices el Request vive junto a su controller. El
+`domain/`, los puertos y la `infrastructure/` se comparten entre slices.
+`consultar` puede leer directo del repositorio porque no modifica nada.
+
+## Reglas entre módulos
+
+1. Un módulo **nunca** usa el repository, service o clase interna de otro:
+   solo su `<Modulo>Contrato`.
+2. Un módulo ligero llama al contrato ajeno directamente.
+3. Un módulo robusto define su puerto (`ventas.domain.port.CatalogoPort`) y
+   lo implementa un adaptador en `infrastructure/adapters/` que llama al
+   contrato (`CatalogoContrato`).
+4. Las relaciones JPA `@ManyToOne` que cruzan módulos se permiten en el MVP,
+   salvo hacia las entidades internas de `ventas` y `pedidos` (ver pendientes).
+5. Se recomienda agregar Spring Modulith o ArchUnit para que un test falle si
+   se rompen estas reglas.
+
+## DTOs
+
+- Viven en `api/dto/` (o junto al controller en los slices de `pedidos`).
+- Se escriben como `record`. Nombres: `<Acción><Recurso>Request` para la
+  entrada y `<Recurso>Response` para la salida.
+- Nunca se devuelve una entidad JPA en un endpoint (expone `password_hash`,
+  provoca ciclos de serialización y `LazyInitializationException`).
+- La validación (`@NotBlank`, `@Positive`...) va en el Request.
+- La conversión se hace con un método estático `from(...)` en el Response;
+  no se usa MapStruct por ahora.
+
+## Pendientes en las entidades actuales
+
+Las 22 clases del antiguo paquete `entity` se movieron a su módulo sin
+cambiar su contenido (solo `package` e `imports`). Para cumplir por
+completo la arquitectura falta:
+
+1. **Renombrar las entidades JPA de los módulos robustos** para que no
+   choquen con las clases puras del dominio: `Venta` → `VentaEntity`,
+   `DetalleVenta` → `DetalleVentaEntity`, `DetalleVentaId` →
+   `DetalleVentaEntityId`, y lo mismo para `Pedido`, `DetallePedido`,
+   `DetallePedidoId` y `PagoPedido`. El nombre de la tabla no cambia, porque
+   lo fija `@Table`.
+2. **Desacoplar `notificaciones.domain.Notificacion`** de `Venta` y `Pedido`.
+   Hoy tiene `@ManyToOne` hacia entidades internas de módulos robustos;
+   deben pasar a `Long ventaId` / `Long pedidoId` sobre las mismas columnas
+   `id_venta` / `id_pedido`. La FK en BD puede mantenerse.
+3. **Pasar a enums los textos con valores cerrados**, mapeados en el
+   `Mapper`: `Venta.metodoPago` y `PagoPedido.metodoPago` → `MetodoPago`;
+   `Pedido.estado` → `EstadoPedido`; `Pedido.tipoEntrega` → `TipoEntrega`.
+   Si se usa `@Enumerated(EnumType.STRING)`, hay que alinear los `CHECK` de
+   la BD con los valores del enum.
+4. **Crear la persistencia de `CodigoRecuperacion`** (HU-05): el script
+   original no tiene una tabla para el código de 6 caracteres ni para su
+   expiración.
+5. **El dominio puro de `ventas` y `pedidos`** (`domain/Venta`,
+   `domain/Pedido`, ...) no debe importar nada de `jakarta.persistence` ni
+   entidades de otros módulos: guarda IDs (`productoId`, `clienteId`) y los
+   datos que obtiene por sus puertos.
+6. `autenticacion.domain.Rol` lo usa `usuarios.domain.Usuario` mediante
+   `@ManyToOne`. Se acepta en el MVP; fuera de JPA, `usuarios` consulta los
+   roles solo a través de `AutenticacionContrato`.

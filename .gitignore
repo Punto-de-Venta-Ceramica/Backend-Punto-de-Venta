@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Tests
+/src/test/
+
+# Local database credentials
+.env
+.env.*
+!.env.example
+application-local.properties
+*.local.ps1

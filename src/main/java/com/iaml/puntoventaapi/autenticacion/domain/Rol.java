@@ -1,29 +1,38 @@
 package com.iaml.puntoventaapi.autenticacion.domain;
 
-import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
-import java.util.HashSet;
 import java.util.Set;
 
-@Entity
-@Table(name = "rol", check = {
-    @CheckConstraint(name = "ck_rol_1", constraint = "btrim(nombre) <> ''")
-}, uniqueConstraints = {@UniqueConstraint(name = "uq_rol_nombre", columnNames = "nombre")})
-@Getter
-@Setter
-public class Rol extends EntidadConId {
+public final class Rol {
 
-    @NotBlank
-    @Size(max = 80)
-    @Column(name = "nombre", nullable = false, length = 80)
-    private String nombre;
+    public static final String PROPIETARIO = "PROPIETARIO";
+    public static final String EMPLEADO = "EMPLEADO";
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "rol_permiso", joinColumns = @JoinColumn(name = "id_rol"),
-        inverseJoinColumns = @JoinColumn(name = "id_permiso"),
-        indexes = @Index(name = "ix_rol_permiso_permiso", columnList = "id_permiso"))
-    private Set<Permiso> permisos = new HashSet<>();
+    private final Long id;
+    private final String nombre;
+    private final Set<Permiso> permisos;
+
+    public Rol(Long id, String nombre, Set<Permiso> permisos) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException("El rol debe tener nombre");
+        }
+        this.id = id;
+        this.nombre = nombre.trim().toUpperCase();
+        this.permisos = permisos == null ? Set.of() : Set.copyOf(permisos);
+    }
+
+    public boolean esPropietario() {
+        return PROPIETARIO.equals(nombre);
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public Set<Permiso> getPermisos() {
+        return permisos;
+    }
 }
-

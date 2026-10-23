@@ -3,7 +3,7 @@ package com.iaml.puntoventaapi.pedidos.infrastructure.persistence;
 import com.iaml.puntoventaapi.clientes.domain.Cliente;
 import com.iaml.puntoventaapi.negocios.domain.Sucursal;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import com.iaml.puntoventaapi.usuarios.domain.Usuario;
+import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -32,7 +32,7 @@ public class Pedido extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
-    private Usuario usuario;
+    private UsuarioEntity usuario;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_cliente", nullable = false)

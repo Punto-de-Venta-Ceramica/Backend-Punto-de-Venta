@@ -8,4 +8,6 @@ public interface RolJpaRepository extends JpaRepository<RolEntity, Long> {
 
     @EntityGraph(attributePaths = "permisos")
     Optional<RolEntity> findWithPermisosById(Long id);
+
+    Optional<RolEntity> findByNombre(String nombre);
 }

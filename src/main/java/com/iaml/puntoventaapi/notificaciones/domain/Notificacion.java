@@ -2,7 +2,7 @@ package com.iaml.puntoventaapi.notificaciones.domain;
 
 import com.iaml.puntoventaapi.pedidos.infrastructure.persistence.Pedido;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import com.iaml.puntoventaapi.usuarios.domain.Usuario;
+import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import com.iaml.puntoventaapi.ventas.infrastructure.persistence.Venta;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -26,7 +26,7 @@ public class Notificacion extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
-    private Usuario usuario;
+    private UsuarioEntity usuario;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "id_venta", nullable = true)

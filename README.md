@@ -77,6 +77,7 @@ $taskCredential = Get-Credential -UserName $env:DB_USERNAME -Message 'Contraseñ
 $env:DB_PASSWORD = $taskCredential.GetNetworkCredential().Password
 $env:DB_SSLMODE = 'require'
 $env:DDL_AUTO = 'update'
+$env:JWT_SECRETO = 'UNA_CADENA_ALEATORIA_DE_AL_MENOS_32_CARACTERES'
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -159,8 +160,8 @@ com/iaml/puntoventaapi/<modulo>/
 
 | Módulo | HU | Nivel |
 | --- | --- | --- |
-| `autenticacion` | 05, 06 | Ligero (login, JWT, recuperar contraseña, `Rol`, `Permiso`) |
-| `usuarios` | 01, 04 | Ligero |
+| `autenticacion` | 05, 06 | **Robusto** (login con JWT ya implementado; recuperar contraseña pendiente) |
+| `usuarios` | 01, 04 | Dominio puro + puerto (por ahora solo lo que usa el login) |
 | `negocios` | 02, 03 | Ligero (negocio, sucursal, logo) |
 | `catalogo` | 07, 08 | Ligero (área, categoría, producto, descuento) |
 | `clientes` | 10, 06 | Ligero |
@@ -249,6 +250,45 @@ completo la arquitectura falta:
    `domain/Pedido`, ...) no debe importar nada de `jakarta.persistence` ni
    entidades de otros módulos: guarda IDs (`productoId`, `clienteId`) y los
    datos que obtiene por sus puertos.
-6. `autenticacion.domain.Rol` lo usa `usuarios.domain.Usuario` mediante
-   `@ManyToOne`. Se acepta en el MVP; fuera de JPA, `usuarios` consulta los
-   roles solo a través de `AutenticacionContrato`.
+6. `usuarios.infrastructure.persistence.UsuarioEntity` tiene `@ManyToOne`
+   hacia `autenticacion.infrastructure.persistence.RolEntity`. Se acepta en
+   el MVP porque es solo un mapeo JPA; el dominio `usuarios.domain.Usuario`
+   ya guarda solo `rolId`. Las entidades de otros módulos (`Venta`, `Pedido`,
+   `CorteCaja`, `Negocio`, `Notificacion`) apuntan a `UsuarioEntity` por el
+   mismo motivo.
+
+## Login (`autenticacion`, módulo robusto de referencia)
+
+`POST /api/auth/login` con `{"correo": "...", "password": "..."}` devuelve
+`{token, tipo: "Bearer", expiraEn, usuarioId, rol}`. Con credenciales
+incorrectas responde `401`, con el mismo mensaje exista o no el correo.
+Las demás rutas, salvo `/api/auth/**`, exigen
+`Authorization: Bearer <token>`.
+
+```text
+api/            AuthController, LoginRequest → IniciarSesionCommand, LoginResponse
+application/    IniciarSesionService (solo habla con puertos)
+domain/         Credencial, Rol, Permiso, Sesion  (Java puro)
+  port/         CredencialRepositorioPort, PasswordHasherPort, TokenPort
+  exception/    CredencialesInvalidasException
+infrastructure/
+  persistence/  RolEntity, PermisoEntity, RolJpaRepository, RolMapper
+  adapters/     CredencialAdapter → UsuariosContrato + RolJpaRepository
+  security/     SecurityConfig, BCryptPasswordHasher, JwtTokenAdapter
+```
+
+El JWT lo firma y valida Spring Security (HS256). El token lleva en `sub`
+el id del usuario, además de `correo`, `rol` y `autoridades`
+(`ROLE_<ROL>` + permisos), que se pueden usar con
+`@PreAuthorize("hasRole('PROPIETARIO')")`. Las contraseñas se comparan con
+BCrypt, así que `password_hash` debe guardarse con BCrypt.
+
+Variables nuevas:
+
+| Variable | Valor |
+| --- | --- |
+| `JWT_SECRETO` | Obligatoria, mínimo 32 caracteres aleatorios |
+| `JWT_EXPIRACION_MINUTOS` | Opcional, por defecto `480` |
+
+`IniciarSesionServiceTest` muestra la ventaja de los puertos: prueba el caso
+de uso sin base de datos ni Spring.

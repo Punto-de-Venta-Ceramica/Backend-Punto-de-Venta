@@ -1,51 +1,73 @@
 package com.iaml.puntoventaapi.usuarios.domain;
 
-import com.iaml.puntoventaapi.autenticacion.domain.Rol;
-import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
+/**
+ * Usuario del sistema (propietario o empleado). El rol se referencia por id
+ * porque pertenece al módulo de autenticación.
+ */
+public final class Usuario {
 
-@Entity
-@Table(name = "usuario", check = {
-    @CheckConstraint(name = "ck_usuario_1", constraint = "btrim(nombre) <> ''"),
-    @CheckConstraint(name = "ck_usuario_2", constraint = "btrim(correo) <> ''"),
-    @CheckConstraint(name = "ck_usuario_3", constraint = "btrim(password_hash) <> ''")
-}, indexes = {
-    @Index(name = "ix_usuario_rol", columnList = "id_rol")
-})
-@Getter
-@Setter
-public class Usuario extends EntidadConId {
+    private final Long id;
+    private final Long rolId;
+    private final String nombre;
+    private final String apellidoPaterno;
+    private final String apellidoMaterno;
+    private final String correo;
+    private final String telefono;
+    private final String passwordHash;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_rol", nullable = false)
-    private Rol rol;
+    public Usuario(Long id, Long rolId, String nombre, String apellidoPaterno, String apellidoMaterno,
+                   String correo, String telefono, String passwordHash) {
+        if (rolId == null) {
+            throw new IllegalArgumentException("El usuario debe tener rol");
+        }
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException("El usuario debe tener nombre");
+        }
+        if (correo == null || correo.isBlank()) {
+            throw new IllegalArgumentException("El usuario debe tener correo");
+        }
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("El usuario debe tener contraseña");
+        }
+        this.id = id;
+        this.rolId = rolId;
+        this.nombre = nombre;
+        this.apellidoPaterno = apellidoPaterno;
+        this.apellidoMaterno = apellidoMaterno;
+        this.correo = correo;
+        this.telefono = telefono;
+        this.passwordHash = passwordHash;
+    }
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "nombre", nullable = false, length = 100)
-    private String nombre;
+    public Long getId() {
+        return id;
+    }
 
-    @Size(max = 100)
-    @Column(name = "apellido_paterno", length = 100)
-    private String apellidoPaterno;
+    public Long getRolId() {
+        return rolId;
+    }
 
-    @Size(max = 100)
-    @Column(name = "apellido_materno", length = 100)
-    private String apellidoMaterno;
+    public String getNombre() {
+        return nombre;
+    }
 
-    @NotBlank
-    @Size(max = 254)
-    @Column(name = "correo", nullable = false, length = 254)
-    private String correo;
+    public String getApellidoPaterno() {
+        return apellidoPaterno;
+    }
 
-    @Size(max = 30)
-    @Column(name = "telefono", length = 30)
-    private String telefono;
+    public String getApellidoMaterno() {
+        return apellidoMaterno;
+    }
 
-    @NotBlank
-    @Column(name = "password_hash", nullable = false, columnDefinition = "text")
-    private String passwordHash;
+    public String getCorreo() {
+        return correo;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 }
-

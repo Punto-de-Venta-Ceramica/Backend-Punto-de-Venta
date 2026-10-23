@@ -3,7 +3,7 @@ package com.iaml.puntoventaapi.ventas.infrastructure.persistence;
 import com.iaml.puntoventaapi.caja.domain.Caja;
 import com.iaml.puntoventaapi.caja.domain.CorteCaja;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import com.iaml.puntoventaapi.usuarios.domain.Usuario;
+import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -25,7 +25,7 @@ public class Venta extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
-    private Usuario usuario;
+    private UsuarioEntity usuario;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_caja", nullable = false)

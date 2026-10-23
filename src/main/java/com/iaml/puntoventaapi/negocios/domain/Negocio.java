@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.negocios.domain;
 
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import com.iaml.puntoventaapi.usuarios.domain.Usuario;
+import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -28,6 +28,6 @@ public class Negocio extends EntidadConId {
     @JoinTable(name = "negocio_usuario", joinColumns = @JoinColumn(name = "id_negocio"),
         inverseJoinColumns = @JoinColumn(name = "id_usuario"),
         indexes = @Index(name = "ix_negocio_usuario_usuario", columnList = "id_usuario"))
-    private Set<Usuario> usuarios = new HashSet<>();
+    private Set<UsuarioEntity> usuarios = new HashSet<>();
 }
 

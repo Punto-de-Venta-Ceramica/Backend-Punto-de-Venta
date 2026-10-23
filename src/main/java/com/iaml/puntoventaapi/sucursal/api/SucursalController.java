@@ -47,6 +47,12 @@ public class SucursalController {
             .map(SucursalResponse::from).toList();
     }
 
+    // Los navegadores no admiten de forma compatible un body en GET.
+    @PostMapping("/consultar")
+    public List<SucursalResponse> consultarDesdeNavegador(@Valid @RequestBody ConsultarSucursalesRequest request) {
+        return consultar(request);
+    }
+
     @PatchMapping
     public SucursalResponse editar(@Valid @RequestBody EditarSucursalRequest request) {
         return SucursalResponse.from(sucursalService.editar(request.toCommand()));

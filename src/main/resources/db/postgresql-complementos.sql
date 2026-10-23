@@ -60,3 +60,9 @@ LEFT JOIN (
     GROUP BY id_pedido
 ) a ON a.id_pedido = p.id;
 ^^^
+
+-- Roles base requeridos por el registro de propietarios y empleados (idempotente).
+INSERT INTO barrocontrol.rol (nombre)
+VALUES ('PROPIETARIO'), ('EMPLEADO')
+ON CONFLICT (nombre) DO NOTHING;
+^^^

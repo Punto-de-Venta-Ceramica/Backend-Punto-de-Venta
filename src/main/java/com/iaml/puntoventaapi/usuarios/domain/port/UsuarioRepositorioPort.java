@@ -6,4 +6,6 @@ import java.util.Optional;
 public interface UsuarioRepositorioPort {
 
     Optional<Usuario> buscarPorCorreo(String correo);
+
+    Usuario guardar(Usuario usuario);
 }

@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
+# Local tests and documentation
+/src/test/
+/docs/
+
 # Local database credentials
 .env
 .env.*

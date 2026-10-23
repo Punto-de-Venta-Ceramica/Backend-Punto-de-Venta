@@ -3,7 +3,6 @@ package com.iaml.puntoventaapi.caja.domain;
 import com.iaml.puntoventaapi.negocios.domain.Sucursal;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 @Entity

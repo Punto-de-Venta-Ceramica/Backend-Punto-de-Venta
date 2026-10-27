@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.pedidos.infrastructure.persistence;
 
 import com.iaml.puntoventaapi.clientes.domain.Cliente;
-import com.iaml.puntoventaapi.negocios.domain.Sucursal;
+import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import jakarta.persistence.*;
@@ -28,7 +28,7 @@ public class Pedido extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_sucursal", nullable = false)
-    private Sucursal sucursal;
+    private SucursalEntity sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)

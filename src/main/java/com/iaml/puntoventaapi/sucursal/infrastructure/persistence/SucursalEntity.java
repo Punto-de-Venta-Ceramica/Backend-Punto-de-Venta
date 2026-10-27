@@ -1,6 +1,7 @@
-package com.iaml.puntoventaapi.negocios.domain;
+package com.iaml.puntoventaapi.sucursal.infrastructure.persistence;
 
 import com.iaml.puntoventaapi.catalogo.domain.Area;
+import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -8,7 +9,7 @@ import lombok.*;
 import java.util.HashSet;
 import java.util.Set;
 
-@Entity
+@Entity(name = "Sucursal")
 @Table(name = "sucursal", check = {
     @CheckConstraint(name = "ck_sucursal_1", constraint = "btrim(nombre) <> ''")
 }, indexes = {
@@ -16,11 +17,11 @@ import java.util.Set;
 })
 @Getter
 @Setter
-public class Sucursal extends EntidadConId {
+public class SucursalEntity extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_negocio", nullable = false)
-    private Negocio negocio;
+    private NegocioEntity negocio;
 
     @NotBlank
     @Size(max = 150)

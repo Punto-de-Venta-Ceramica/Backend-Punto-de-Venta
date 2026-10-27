@@ -1,5 +1,7 @@
 package com.iaml.puntoventaapi.negocios.api.dto;
 
+import com.iaml.puntoventaapi.negocios.application.EditarNegocioCommand;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -15,4 +17,8 @@ public class EditarNegocioRequest {
     private MultipartFile logo;
 
     private boolean eliminarLogo;
+
+    public EditarNegocioCommand toCommand() {
+        return new EditarNegocioCommand(nombre, LogoRequestMapper.toDomain(logo), eliminarLogo);
+    }
 }

@@ -1,5 +1,7 @@
 package com.iaml.puntoventaapi.negocios.api.dto;
 
+import com.iaml.puntoventaapi.negocios.application.CrearNegocioCommand;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -13,4 +15,8 @@ public class CrearNegocioRequest {
     private String nombre;
 
     private MultipartFile logo;
+
+    public CrearNegocioCommand toCommand() {
+        return new CrearNegocioCommand(nombre, LogoRequestMapper.toDomain(logo));
+    }
 }

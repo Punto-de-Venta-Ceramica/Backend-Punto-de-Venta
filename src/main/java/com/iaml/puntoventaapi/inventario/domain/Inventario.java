@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.inventario.domain;
 
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
-import com.iaml.puntoventaapi.negocios.domain.Sucursal;
+import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -20,7 +20,7 @@ public class Inventario extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_sucursal", nullable = false)
-    private Sucursal sucursal;
+    private SucursalEntity sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_producto", nullable = false)

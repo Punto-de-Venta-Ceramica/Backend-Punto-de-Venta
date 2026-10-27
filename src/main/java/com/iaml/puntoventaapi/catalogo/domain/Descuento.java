@@ -1,6 +1,6 @@
 package com.iaml.puntoventaapi.catalogo.domain;
 
-import com.iaml.puntoventaapi.negocios.domain.Negocio;
+import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -25,7 +25,7 @@ public class Descuento extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_negocio", nullable = false)
-    private Negocio negocio;
+    private NegocioEntity negocio;
 
     @NotBlank
     @Size(max = 120)

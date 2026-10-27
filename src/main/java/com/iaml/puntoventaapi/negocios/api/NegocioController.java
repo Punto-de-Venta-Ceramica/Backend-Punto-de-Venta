@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +31,7 @@ public class NegocioController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<NegocioResponse> crear(@Valid @ModelAttribute CrearNegocioRequest request) {
-        NegocioResponse negocio = NegocioResponse.from(negocios.crear(request, usuarioActual.id()));
+        NegocioResponse negocio = NegocioResponse.from(negocios.crear(request.toCommand(), usuarioActual.id()));
         return ResponseEntity.created(URI.create("/api/negocios/" + negocio.getId())).body(negocio);
     }
 
@@ -46,6 +47,12 @@ public class NegocioController {
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public NegocioResponse editar(@PathVariable Long id, @Valid @ModelAttribute EditarNegocioRequest request) {
-        return NegocioResponse.from(negocios.editar(id, request, usuarioActual.id()));
+        return NegocioResponse.from(negocios.editar(id, request.toCommand(), usuarioActual.id()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        negocios.eliminar(id, usuarioActual.id());
+        return ResponseEntity.noContent().build();
     }
 }

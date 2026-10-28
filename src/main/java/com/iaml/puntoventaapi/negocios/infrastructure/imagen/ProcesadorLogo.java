@@ -1,8 +1,9 @@
 package com.iaml.puntoventaapi.negocios.infrastructure.imagen;
 
 import com.iaml.puntoventaapi.negocios.domain.exception.LogoInvalidoException;
+import com.iaml.puntoventaapi.negocios.domain.LogoArchivo;
+import com.iaml.puntoventaapi.negocios.domain.port.ProcesadorLogoPort;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -13,29 +14,18 @@ import java.util.Base64;
 import java.util.Iterator;
 
 @Component
-public class ProcesadorLogo {
+public class ProcesadorLogo implements ProcesadorLogoPort {
 
-    private static final int MAX_BYTES = 2 * 1024 * 1024;
     private static final long MAX_PIXELES = 16_000_000;
 
-    public String procesar(MultipartFile logo) {
-        if (logo == null || logo.isEmpty()) {
+    @Override
+    public String procesar(LogoArchivo logo) {
+        if (logo == null) {
             return null;
         }
-        if (logo.getSize() > MAX_BYTES) {
-            throw new LogoInvalidoException("El logo no debe superar 2 MB");
-        }
-        byte[] contenido = leerArchivo(logo);
+        byte[] contenido = logo.getContenido();
         String tipoImagen = validarImagen(contenido);
         return "data:" + tipoImagen + ";base64," + Base64.getEncoder().encodeToString(contenido);
-    }
-
-    private byte[] leerArchivo(MultipartFile logo) {
-        try {
-            return logo.getBytes();
-        } catch (IOException ex) {
-            throw new LogoInvalidoException("No se pudo leer el archivo del logo");
-        }
     }
 
     private String validarImagen(byte[] contenido) {

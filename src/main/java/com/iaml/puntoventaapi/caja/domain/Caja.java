@@ -1,6 +1,6 @@
 package com.iaml.puntoventaapi.caja.domain;
 
-import com.iaml.puntoventaapi.negocios.domain.Sucursal;
+import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,6 +13,6 @@ public class Caja extends EntidadConId {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_sucursal", nullable = false, unique = true)
-    private Sucursal sucursal;
+    private SucursalEntity sucursal;
 }
 

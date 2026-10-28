@@ -1,6 +1,6 @@
 package com.iaml.puntoventaapi.sucursal.infrastructure.persistence;
 
-import com.iaml.puntoventaapi.negocios.domain.Negocio;
+import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
 import com.iaml.puntoventaapi.sucursal.domain.Sucursal;
 import com.iaml.puntoventaapi.sucursal.domain.exception.SucursalConDependenciasException;
 import com.iaml.puntoventaapi.sucursal.domain.exception.SucursalNoEncontradaException;
@@ -27,12 +27,12 @@ public class SucursalPersistenceAdapter implements SucursalRepositorioPort {
     @Override
     @Transactional
     public Sucursal guardar(Sucursal sucursal, Long usuarioId) {
-        com.iaml.puntoventaapi.negocios.domain.Sucursal entity;
+        SucursalEntity entity;
         if (sucursal.getId() == null) {
-            Negocio negocio = entityManager.getReference(Negocio.class, sucursal.getNegocioId());
+            NegocioEntity negocio = entityManager.getReference(NegocioEntity.class, sucursal.getNegocioId());
             entity = SucursalMapper.toEntity(sucursal, negocio);
         } else {
-            entity = sucursales.findByIdAndNegocio_Usuarios_Id(sucursal.getId(), usuarioId)
+            entity = sucursales.findByIdAndNegocio_Usuarios_IdAndNegocio_ActivoTrue(sucursal.getId(), usuarioId)
                 .orElseThrow(() -> new SucursalNoEncontradaException(sucursal.getId()));
             // PATCH: únicamente se modifican nombre y descripción.
             entity.setNombre(sucursal.getNombre());
@@ -44,13 +44,13 @@ public class SucursalPersistenceAdapter implements SucursalRepositorioPort {
     @Override
     @Transactional(readOnly = true)
     public Optional<Sucursal> buscarPorId(Long id, Long usuarioId) {
-        return sucursales.findByIdAndNegocio_Usuarios_Id(id, usuarioId).map(SucursalMapper::toDomain);
+        return sucursales.findByIdAndNegocio_Usuarios_IdAndNegocio_ActivoTrue(id, usuarioId).map(SucursalMapper::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Sucursal> buscarPorNegocioId(Long negocioId, Long usuarioId) {
-        return sucursales.findByNegocio_IdAndNegocio_Usuarios_IdOrderByIdAsc(negocioId, usuarioId).stream()
+        return sucursales.findByNegocio_IdAndNegocio_Usuarios_IdAndNegocio_ActivoTrueOrderByIdAsc(negocioId, usuarioId).stream()
             .map(SucursalMapper::toDomain).toList();
     }
 
@@ -58,7 +58,7 @@ public class SucursalPersistenceAdapter implements SucursalRepositorioPort {
     @Transactional
     public void eliminar(Long id, Long usuarioId) {
         try {
-            var entity = sucursales.findByIdAndNegocio_Usuarios_Id(id, usuarioId)
+            var entity = sucursales.findByIdAndNegocio_Usuarios_IdAndNegocio_ActivoTrue(id, usuarioId)
                 .orElseThrow(() -> new SucursalNoEncontradaException(id));
             sucursales.delete(entity);
             sucursales.flush();

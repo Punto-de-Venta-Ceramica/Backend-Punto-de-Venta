@@ -1,4 +1,11 @@
 package com.iaml.puntoventaapi.inventario.api.dto;
 
-public class ExistenciaResponse {
+import com.iaml.puntoventaapi.inventario.domain.Inventario;
+
+public record ExistenciaResponse(Long id, Long sucursalId, Long productoId, int existencia) {
+
+    public static ExistenciaResponse from(Inventario inventario) {
+        return new ExistenciaResponse(inventario.getId(), inventario.getSucursalId(),
+            inventario.getProductoId(), inventario.getExistencia());
+    }
 }

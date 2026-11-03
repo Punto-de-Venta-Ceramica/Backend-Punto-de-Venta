@@ -15,8 +15,9 @@ public class JsonConfig {
     @Bean
     public JsonMapperBuilderCustomizer tiposJsonEstrictos() {
         return builder -> builder
-            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-                DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            // Los campos que no existen en el DTO se ignoran (no producen 400); solo se leen los declarados.
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
             .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
             .withCoercionConfig(LogicalType.Textual, config -> config

@@ -1,6 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.infrastructure.persistence;
 
-import com.iaml.puntoventaapi.catalogo.domain.Producto;
+import com.iaml.puntoventaapi.catalogo.infrastructure.persistence.ProductoEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -30,7 +30,7 @@ public class DetallePedido {
     @MapsId("productoId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_producto", nullable = false)
-    private Producto producto;
+    private ProductoEntity producto;
 
     @NotNull
     @Min(1)

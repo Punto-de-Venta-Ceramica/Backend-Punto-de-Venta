@@ -9,5 +9,6 @@ public interface SucursalJpaRepository extends JpaRepository<SucursalEntity, Lon
     Optional<SucursalEntity> findByIdAndNegocio_Usuarios_IdAndNegocio_ActivoTrue(Long id, Long usuarioId);
 
     List<SucursalEntity> findByNegocio_IdAndNegocio_Usuarios_IdAndNegocio_ActivoTrueOrderByIdAsc(Long negocioId, Long usuarioId);
-}
 
+    boolean existsByIdAndNegocio_Id(Long id, Long negocioId);
+}

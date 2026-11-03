@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.catalogo.domain;
 
+import com.iaml.puntoventaapi.catalogo.infrastructure.persistence.CategoriaEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -17,7 +18,7 @@ public class Producto extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_categoria", nullable = false)
-    private Categoria categoria;
+    private CategoriaEntity categoria;
 
     @NotBlank
     @Size(max = 150)

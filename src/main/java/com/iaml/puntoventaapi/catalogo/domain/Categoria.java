@@ -1,30 +1,45 @@
 package com.iaml.puntoventaapi.catalogo.domain;
 
-import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
+/** Clasificación perteneciente a un área del catálogo. */
+public final class Categoria {
 
-@Entity
-@Table(name = "categoria", check = {
-    @CheckConstraint(name = "ck_categoria_1", constraint = "btrim(nombre) <> ''")
-}, indexes = {
-    @Index(name = "ix_categoria_area", columnList = "id_area")
-})
-@Getter
-@Setter
-public class Categoria extends EntidadConId {
+    private final Long id;
+    private final Long areaId;
+    private final String nombre;
+    private final String descripcion;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_area", nullable = false)
-    private Area area;
+    public Categoria(Long id, Long areaId, String nombre, String descripcion) {
+        if (id != null && id <= 0) {
+            throw new IllegalArgumentException("El identificador de la categoría debe ser positivo.");
+        }
+        if (areaId == null || areaId <= 0) {
+            throw new IllegalArgumentException("La categoría debe pertenecer a un área.");
+        }
+        DatosClasificacion datos = new DatosClasificacion(nombre, descripcion);
+        this.id = id;
+        this.areaId = areaId;
+        this.nombre = datos.nombre();
+        this.descripcion = datos.descripcion();
+    }
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "nombre", nullable = false, length = 100)
-    private String nombre;
+    public Categoria editar(String nombre, String descripcion) {
+        return new Categoria(id, areaId, nombre, descripcion);
+    }
 
-    @Column(name = "descripcion", columnDefinition = "text")
-    private String descripcion;
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAreaId() {
+        return areaId;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
 }
 

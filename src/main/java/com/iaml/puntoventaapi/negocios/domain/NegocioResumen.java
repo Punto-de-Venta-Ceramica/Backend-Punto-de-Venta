@@ -1,4 +1,4 @@
 package com.iaml.puntoventaapi.negocios.domain;
 
-public record NegocioResumen(Long id, String nombre) {
+public record NegocioResumen(Long id, String nombre, String logo) {
 }

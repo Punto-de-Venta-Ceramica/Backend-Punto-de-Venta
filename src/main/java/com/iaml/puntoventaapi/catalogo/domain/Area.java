@@ -1,24 +1,45 @@
 package com.iaml.puntoventaapi.catalogo.domain;
 
-import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
+/** Clasificación del catálogo que pertenece a un solo negocio. */
+public final class Area {
 
-@Entity
-@Table(name = "area", check = {
-    @CheckConstraint(name = "ck_area_1", constraint = "btrim(nombre) <> ''")
-})
-@Getter
-@Setter
-public class Area extends EntidadConId {
+    private final Long id;
+    private final Long negocioId;
+    private final String nombre;
+    private final String descripcion;
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "nombre", nullable = false, length = 100)
-    private String nombre;
+    public Area(Long id, Long negocioId, String nombre, String descripcion) {
+        if (id != null && id <= 0) {
+            throw new IllegalArgumentException("El identificador del área debe ser positivo.");
+        }
+        if (negocioId == null || negocioId <= 0) {
+            throw new IllegalArgumentException("El área debe pertenecer a un negocio.");
+        }
+        DatosClasificacion datos = new DatosClasificacion(nombre, descripcion);
+        this.id = id;
+        this.negocioId = negocioId;
+        this.nombre = datos.nombre();
+        this.descripcion = datos.descripcion();
+    }
 
-    @Column(name = "descripcion", columnDefinition = "text")
-    private String descripcion;
+    public Area editar(String nombre, String descripcion) {
+        return new Area(id, negocioId, nombre, descripcion);
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getNegocioId() {
+        return negocioId;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
 }
 

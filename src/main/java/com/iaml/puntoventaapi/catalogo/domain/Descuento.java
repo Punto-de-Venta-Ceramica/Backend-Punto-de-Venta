@@ -1,62 +1,89 @@
 package com.iaml.puntoventaapi.catalogo.domain;
 
-import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
-import com.iaml.puntoventaapi.shared.domain.EntidadConId;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
 import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Set;
 
-@Entity
-@Table(name = "descuento", check = {
-    @CheckConstraint(name = "ck_descuento_1", constraint = "btrim(nombre) <> ''"),
-    @CheckConstraint(name = "ck_descuento_2", constraint = "cantidad_minima > 0"),
-    @CheckConstraint(name = "ck_descuento_3", constraint = "cantidad_maxima IS NULL OR cantidad_maxima >= cantidad_minima"),
-    @CheckConstraint(name = "ck_descuento_4", constraint = "descuento BETWEEN 0 AND 100")
-}, indexes = {
-    @Index(name = "ix_descuento_negocio", columnList = "id_negocio")
-})
-@Getter
-@Setter
-public class Descuento extends EntidadConId {
+/**
+ * Descuento por volumen: se aplica cuando la cantidad comprada está entre cantidadMinima y
+ * cantidadMaxima (sin tope si es null).
+ */
+public final class Descuento {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_negocio", nullable = false)
-    private NegocioEntity negocio;
+    private static final int NOMBRE_MAX = 120;
+    private static final BigDecimal CIEN = new BigDecimal("100");
 
-    @NotBlank
-    @Size(max = 120)
-    @Column(name = "nombre", nullable = false, length = 120)
+    private final Long id;
+    private final Long negocioId;
     private String nombre;
-
-    @NotNull
-    @Min(1)
-    @Column(name = "cantidad_minima", nullable = false)
     private Integer cantidadMinima;
-
-    @Min(1)
-    @Column(name = "cantidad_maxima")
     private Integer cantidadMaxima;
+    private BigDecimal porcentaje;
+    private boolean activo;
 
-    @NotNull
-    @DecimalMin("0.00")
-    @DecimalMax("100.00")
-    @Digits(integer = 3, fraction = 2)
-    @Column(name = "descuento", precision = 5, scale = 2, nullable = false)
-    private BigDecimal descuento;
+    public Descuento(Long id, Long negocioId, String nombre, Integer cantidadMinima, Integer cantidadMaxima,
+                     BigDecimal porcentaje, boolean activo) {
+        if (negocioId == null || negocioId <= 0) {
+            throw new IllegalArgumentException("El negocio debe tener un identificador positivo.");
+        }
+        this.id = id;
+        this.negocioId = negocioId;
+        setNombre(nombre);
+        modificar(cantidadMinima, cantidadMaxima, porcentaje);
+        this.activo = activo;
+    }
 
-    @NotNull
-    @ColumnDefault("true")
-    @Column(name = "activo", nullable = false)
-    private Boolean activo = true;
+    /**
+     * Cambia el rango y el porcentaje a la vez: la regla máxima >= mínima compara ambos campos,
+     * por eso no hay setters sueltos para ellos.
+     */
+    public void modificar(Integer cantidadMinima, Integer cantidadMaxima, BigDecimal porcentaje) {
+        if (cantidadMinima == null || cantidadMinima < 1) {
+            throw new IllegalArgumentException("La cantidad mínima debe ser al menos 1.");
+        }
+        if (cantidadMaxima != null && cantidadMaxima < cantidadMinima) {
+            throw new IllegalArgumentException("La cantidad máxima no puede ser menor que la mínima.");
+        }
+        if (porcentaje == null || porcentaje.signum() < 0 || porcentaje.compareTo(CIEN) > 0
+                || porcentaje.scale() > 2) {
+            throw new IllegalArgumentException("El descuento debe estar entre 0 y 100, con máximo 2 decimales.");
+        }
+        this.cantidadMinima = cantidadMinima;
+        this.cantidadMaxima = cantidadMaxima;
+        this.porcentaje = porcentaje;
+    }
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "descuento_producto", joinColumns = @JoinColumn(name = "id_descuento"),
-        inverseJoinColumns = @JoinColumn(name = "id_producto"),
-        indexes = @Index(name = "ix_descuento_producto_producto", columnList = "id_producto"))
-    private Set<Producto> productos = new HashSet<>();
+    public Long getId() {
+        return id;
+    }
+
+    public Long getNegocioId() {
+        return negocioId;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        if (nombre == null || nombre.isBlank() || nombre.trim().length() > NOMBRE_MAX) {
+            throw new IllegalArgumentException(
+                "El nombre del descuento es obligatorio y no debe superar " + NOMBRE_MAX + " caracteres.");
+        }
+        this.nombre = nombre.trim();
+    }
+
+    public Integer getCantidadMinima() {
+        return cantidadMinima;
+    }
+
+    public Integer getCantidadMaxima() {
+        return cantidadMaxima;
+    }
+
+    public BigDecimal getPorcentaje() {
+        return porcentaje;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
 }
-

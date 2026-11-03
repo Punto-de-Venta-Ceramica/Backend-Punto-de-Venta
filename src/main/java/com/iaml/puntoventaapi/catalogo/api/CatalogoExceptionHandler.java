@@ -1,5 +1,10 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
+import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
+import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CatalogoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.DatosCatalogoInvalidosException;
 import org.springframework.core.Ordered;
@@ -10,12 +15,18 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {AreaController.class, CategoriaController.class})
+@RestControllerAdvice(assignableTypes = {ProductoController.class, AreaController.class, CategoriaController.class})
 public class CatalogoExceptionHandler {
 
-    @ExceptionHandler(CatalogoNoEncontradoException.class)
-    public ProblemDetail noEncontrado(CatalogoNoEncontradoException ex) {
+    @ExceptionHandler({ProductoNoEncontradoException.class, CategoriaNoEncontradaException.class,
+        NegocioNoEncontradoException.class, CatalogoNoEncontradoException.class})
+    public ProblemDetail noEncontrado(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ProductoInvalidoException.class)
+    public ProblemDetail productoInvalido(ProductoInvalidoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(DatosCatalogoInvalidosException.class)
@@ -23,5 +34,10 @@ public class CatalogoExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setProperty("errores", ex.getErrores());
         return problem;
+    }
+
+    @ExceptionHandler(UsuarioNoAutenticadoException.class)
+    public ProblemDetail usuarioNoAutenticado(UsuarioNoAutenticadoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 }

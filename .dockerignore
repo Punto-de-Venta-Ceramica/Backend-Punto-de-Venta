@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.env.properties
+target/
+.mvn/
+mvnw
+mvnw.cmd
+docs/
+scripts/
+*.md

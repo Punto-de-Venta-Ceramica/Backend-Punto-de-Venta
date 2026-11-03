@@ -3,12 +3,10 @@ package com.iaml.puntoventaapi.catalogo.infrastructure.persistence;
 import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
-@Entity(name = "Area")
+@Entity
 @Table(name = "area", check = {
     @CheckConstraint(name = "ck_area_1", constraint = "btrim(nombre) <> ''")
 }, indexes = {

@@ -1,4 +1,4 @@
-package com.iaml.puntoventaapi.catalogo.domain;
+package com.iaml.puntoventaapi.catalogo.infrastructure.persistence;
 
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
@@ -13,11 +13,11 @@ import lombok.*;
 })
 @Getter
 @Setter
-public class Categoria extends EntidadConId {
+public class CategoriaEntity extends EntidadConId {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_area", nullable = false)
-    private Area area;
+    private AreaEntity area;
 
     @NotBlank
     @Size(max = 100)
@@ -27,4 +27,3 @@ public class Categoria extends EntidadConId {
     @Column(name = "descripcion", columnDefinition = "text")
     private String descripcion;
 }
-

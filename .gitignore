@@ -36,6 +36,8 @@ build/
 /src/test/
 /docs/
 
+documentacion.md
+
 # Local database credentials
 .env
 .env.*

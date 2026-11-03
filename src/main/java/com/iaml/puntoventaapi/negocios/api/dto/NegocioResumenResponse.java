@@ -10,8 +10,9 @@ public class NegocioResumenResponse {
 
     private Long id;
     private String nombre;
+    private String logo;
 
     public static NegocioResumenResponse from(NegocioResumen negocio) {
-        return new NegocioResumenResponse(negocio.id(), negocio.nombre());
+        return new NegocioResumenResponse(negocio.id(), negocio.nombre(), negocio.logo());
     }
 }

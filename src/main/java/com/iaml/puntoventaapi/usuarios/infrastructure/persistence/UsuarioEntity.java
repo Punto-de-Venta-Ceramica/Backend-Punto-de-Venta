@@ -1,7 +1,9 @@
 package com.iaml.puntoventaapi.usuarios.infrastructure.persistence;
 
 import com.iaml.puntoventaapi.autenticacion.infrastructure.persistence.RolEntity;
+import com.iaml.puntoventaapi.negocios.infrastructure.persistence.NegocioEntity;
 import com.iaml.puntoventaapi.shared.domain.EntidadConId;
+import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -12,7 +14,9 @@ import lombok.*;
     @CheckConstraint(name = "ck_usuario_2", constraint = "btrim(correo) <> ''"),
     @CheckConstraint(name = "ck_usuario_3", constraint = "btrim(password_hash) <> ''")
 }, indexes = {
-    @Index(name = "ix_usuario_rol", columnList = "id_rol")
+    @Index(name = "ix_usuario_rol", columnList = "id_rol"),
+    @Index(name = "ix_usuario_negocio", columnList = "id_negocio"),
+    @Index(name = "ix_usuario_sucursal", columnList = "id_sucursal")
 })
 @Getter
 @Setter
@@ -21,6 +25,14 @@ public class UsuarioEntity extends EntidadConId {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_rol", nullable = false)
     private RolEntity rol;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_negocio")
+    private NegocioEntity negocio;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_sucursal")
+    private SucursalEntity sucursal;
 
     @NotBlank
     @Size(max = 100)
@@ -48,4 +60,3 @@ public class UsuarioEntity extends EntidadConId {
     @Column(name = "password_hash", nullable = false, columnDefinition = "text")
     private String passwordHash;
 }
-

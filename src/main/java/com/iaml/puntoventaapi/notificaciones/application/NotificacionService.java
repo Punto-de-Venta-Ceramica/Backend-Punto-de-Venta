@@ -22,6 +22,13 @@ public class NotificacionService implements NotificacionesContrato {
     }
 
     public record Aviso(long id, String titulo, String mensaje, Instant fecha, boolean leida, Long pedidoId) { }
+    public record ConteoNoLeidas(long cantidad) { }
+
+    @Transactional(readOnly = true)
+    public ConteoNoLeidas contarNoLeidas(long usuarioId) {
+        if (usuarioId <= 0) throw new IllegalArgumentException("El usuario no es válido.");
+        return new ConteoNoLeidas(notificaciones.countByUsuario_IdAndLeidaFalse(usuarioId));
+    }
 
     @Override
     @Transactional
@@ -41,7 +48,7 @@ public class NotificacionService implements NotificacionesContrato {
 
     @Transactional(readOnly = true)
     public List<Aviso> listar(long usuarioId) {
-        return notificaciones.findTop100ByUsuario_IdOrderByFechaDescIdDesc(usuarioId).stream()
+        return notificaciones.findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc(usuarioId).stream()
             .map(n -> new Aviso(n.getId(), n.getTitulo(), n.getMensaje(), n.getFecha(),
                 Boolean.TRUE.equals(n.getLeida()), n.getPedido() == null ? null : n.getPedido().getId()))
             .toList();

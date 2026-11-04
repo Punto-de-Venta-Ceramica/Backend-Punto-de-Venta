@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NotificacionRepository extends JpaRepository<Notificacion, Long> {
     @EntityGraph(attributePaths = "pedido")
-    List<Notificacion> findTop100ByUsuario_IdOrderByFechaDescIdDesc(Long usuarioId);
+    List<Notificacion> findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc(Long usuarioId);
     Optional<Notificacion> findByIdAndUsuario_Id(Long id, Long usuarioId);
+    long countByUsuario_IdAndLeidaFalse(Long usuarioId);
 }

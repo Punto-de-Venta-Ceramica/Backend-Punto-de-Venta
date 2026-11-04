@@ -35,4 +35,11 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
     boolean existsByCategoria_Id(Long categoriaId);
 
     boolean existsByCategoria_Area_Id(Long areaId);
+
+    @Query("""
+        select p from ProductoEntity p join p.categoria c join c.area a
+        where p.id = :productoId and a.negocio.id = :negocioId and p.activo = true
+          and c.activo = true and a.activo = true and a.negocio.activo = true
+        """)
+    Optional<ProductoEntity> productoParaPedido(@Param("productoId") Long productoId, @Param("negocioId") Long negocioId);
 }

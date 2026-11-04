@@ -30,20 +30,25 @@ $env:RUN_AUTH_DB_TESTS = 'true'
 .\mvnw.cmd -Dtest=AuthDatabaseIntegrationTest test
 ```
 
-La prueba queda deshabilitada por defecto. Arrancar el contexto sí ejecuta la
-inicialización habitual de Hibernate/SQL, igual que al iniciar la API.
+La prueba queda deshabilitada por defecto. Por seguridad, la configuración normal
+no modifica el esquema al arrancar. Para crear una base local vacía y exclusiva
+para pruebas se pueden activar explícitamente `DDL_AUTO=update` y `SQL_INIT_MODE=always`.
 
 Backend con Java 21, Spring Boot, Jakarta Persistence/Hibernate y PostgreSQL.
 Las entidades reproducen el script original: 19 entidades y cuatro tablas de
-unión, para un total de 23 tablas. No hace falta ejecutar manualmente ese script.
+unión. El esquema desplegado debe prepararse mediante migraciones revisadas;
+el script histórico y las entidades actuales presentan algunas diferencias.
 
 ## Base de datos y esquema
 
 - **Base de datos en Render:** `barrocontrolbd`.
 - **Esquema dentro de esa base:** `barrocontrol`, conservado del SQL original.
-- Hibernate crea el esquema, las tablas, relaciones, índices y restricciones
-  declaradas en las entidades al arrancar con `DDL_AUTO=update`.
-- Después se ejecuta `src/main/resources/db/postgresql-complementos.sql`: crea
+- Por defecto `DDL_AUTO=none` y `SQL_INIT_MODE=never`: la API no crea ni modifica
+  automáticamente el esquema al iniciar. Comprueba también las variables de Render,
+  ya que pueden sobrescribir estos valores.
+- Solo en una base local vacía y exclusiva para pruebas, `DDL_AUTO=update` crea o
+  actualiza objetos de entidades y `SQL_INIT_MODE=always` ejecuta
+  `src/main/resources/db/postgresql-complementos.sql`, que crea
   las tres vistas, el índice único de correo normalizado y la clave foránea
   compuesta que comprueba que la caja de una venta es la del corte.
 - `subtotal` y `diferencia` usan columnas `GENERATED ALWAYS AS ... STORED`
@@ -110,14 +115,15 @@ $env:DB_USERNAME = 'TU_USUARIO'
 $taskCredential = Get-Credential -UserName $env:DB_USERNAME -Message 'Contraseña de PostgreSQL en Render'
 $env:DB_PASSWORD = $taskCredential.GetNetworkCredential().Password
 $env:DB_SSLMODE = 'require'
-$env:DDL_AUTO = 'update'
+$env:DDL_AUTO = 'none'
+$env:SQL_INIT_MODE = 'never'
 $env:JWT_SECRETO = 'UNA_CADENA_ALEATORIA_DE_AL_MENOS_32_CARACTERES'
 .\mvnw.cmd spring-boot:run
 ```
 
 Render debe mostrar la base como **Available**, y sus reglas de acceso
 externo deben permitir la IP pública desde la que te conectas. El usuario
-debe tener permiso para crear el esquema y sus objetos.
+debe tener permisos sobre los objetos de una base previamente preparada.
 
 Cuando aparezca `Started PuntoventaapiApplication`, comprueba en pgAdmin
 o psql, conectado a `barrocontrolbd`:

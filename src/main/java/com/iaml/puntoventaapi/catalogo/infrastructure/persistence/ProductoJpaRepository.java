@@ -17,6 +17,7 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
         join a.negocio n
         join n.usuarios u
         where p.id = :id and u.id = :usuarioId and p.activo = true and n.activo = true
+          and c.activo = true and a.activo = true
         """)
     Optional<ProductoEntity> buscarActivoDelUsuario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
 
@@ -26,7 +27,12 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
         join p.categoria c
         join c.area a
         where a.negocio.id = :negocioId and p.activo = true
+          and c.activo = true and a.activo = true and a.negocio.activo = true
         order by p.nombre, p.id
         """)
     List<ProductoEntity> listarActivosPorNegocio(@Param("negocioId") Long negocioId);
+
+    boolean existsByCategoria_Id(Long categoriaId);
+
+    boolean existsByCategoria_Area_Id(Long areaId);
 }

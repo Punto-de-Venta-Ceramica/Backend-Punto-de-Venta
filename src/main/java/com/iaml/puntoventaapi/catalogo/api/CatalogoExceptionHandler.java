@@ -7,6 +7,7 @@ import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoExce
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CatalogoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.DatosCatalogoInvalidosException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.ClasificacionConProductosException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {ProductoController.class, AreaController.class, CategoriaController.class})
 public class CatalogoExceptionHandler {
+
+    @ExceptionHandler(ClasificacionConProductosException.class)
+    public ProblemDetail clasificacionConProductos(ClasificacionConProductosException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
 
     @ExceptionHandler({ProductoNoEncontradoException.class, CategoriaNoEncontradaException.class,
         NegocioNoEncontradoException.class, CatalogoNoEncontradoException.class})

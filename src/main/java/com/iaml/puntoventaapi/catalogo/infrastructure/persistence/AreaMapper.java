@@ -9,7 +9,8 @@ public final class AreaMapper {
     }
 
     public static Area toDomain(AreaEntity entity) {
-        return new Area(entity.getId(), entity.getNegocio().getId(), entity.getNombre(), entity.getDescripcion());
+        return new Area(entity.getId(), entity.getNegocio().getId(), entity.getNombre(), entity.getDescripcion(),
+            entity.isActivo(), entity.getFechaEliminacion());
     }
 
     public static AreaEntity toEntity(Area area, NegocioEntity negocio) {
@@ -22,5 +23,7 @@ public final class AreaMapper {
     public static void actualizar(Area area, AreaEntity entity) {
         entity.setNombre(area.getNombre());
         entity.setDescripcion(area.getDescripcion());
+        entity.setActivo(area.isActivo());
+        entity.setFechaEliminacion(area.getFechaEliminacion());
     }
 }

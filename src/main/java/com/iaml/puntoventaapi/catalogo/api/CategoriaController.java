@@ -56,4 +56,12 @@ public class CategoriaController {
         return CategoriaResponse.from(
             categorias.editar(negocioId, areaId, categoriaId, request.toCommand(), usuarioActual.id()));
     }
+
+    @DeleteMapping("/{categoriaId}")
+    public ResponseEntity<Void> eliminar(@PathVariable @Positive Long negocioId,
+                                         @PathVariable @Positive Long areaId,
+                                         @PathVariable @Positive Long categoriaId) {
+        categorias.eliminar(negocioId, areaId, categoriaId, usuarioActual.id());
+        return ResponseEntity.noContent().build();
+    }
 }

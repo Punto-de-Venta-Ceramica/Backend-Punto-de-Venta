@@ -1,9 +1,14 @@
 package com.iaml.puntoventaapi.catalogo.application;
 
 import com.iaml.puntoventaapi.catalogo.domain.Area;
+import com.iaml.puntoventaapi.catalogo.domain.Categoria;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CatalogoNoEncontradoException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.ClasificacionConProductosException;
 import com.iaml.puntoventaapi.catalogo.domain.port.AreaRepositorioPort;
+import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
+import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.negocios.NegociosContrato;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,10 +19,15 @@ public class AreaService {
 
     private final AreaRepositorioPort areas;
     private final NegociosContrato negocios;
+    private final CategoriaRepositorioPort categorias;
+    private final ProductoRepositorioPort productos;
 
-    public AreaService(AreaRepositorioPort areas, NegociosContrato negocios) {
+    public AreaService(AreaRepositorioPort areas, NegociosContrato negocios,
+                       CategoriaRepositorioPort categorias, ProductoRepositorioPort productos) {
         this.areas = areas;
         this.negocios = negocios;
+        this.categorias = categorias;
+        this.productos = productos;
     }
 
     @Transactional
@@ -39,8 +49,29 @@ public class AreaService {
 
     @Transactional
     public Area editar(Long negocioId, Long areaId, GuardarAreaCommand command, Long usuarioId) {
-        Area area = consultar(negocioId, areaId, usuarioId);
+        Area area = consultarParaActualizar(negocioId, areaId, usuarioId);
         return areas.guardar(area.editar(command.nombre(), command.descripcion()));
+    }
+
+    @Transactional
+    public void eliminar(Long negocioId, Long areaId, Long usuarioId) {
+        Area area = consultarParaActualizar(negocioId, areaId, usuarioId);
+        if (productos.existenPorArea(areaId)) {
+            throw new ClasificacionConProductosException(
+                "No se puede eliminar el área porque alguna de sus categorías tiene productos relacionados.");
+        }
+        Instant fecha = Instant.now();
+        for (Categoria categoria : categorias.listarPorArea(areaId, negocioId)) {
+            categorias.guardar(categoria.eliminar(fecha), negocioId);
+        }
+        areas.guardar(area.eliminar(fecha));
+    }
+
+    @Transactional
+    public Area consultarParaActualizar(Long negocioId, Long areaId, Long usuarioId) {
+        verificarNegocio(negocioId, usuarioId);
+        return areas.buscarPorIdParaActualizar(areaId, negocioId)
+            .orElseThrow(() -> new CatalogoNoEncontradoException("El área no existe o no tienes acceso."));
     }
 
     private void verificarNegocio(Long negocioId, Long usuarioId) {

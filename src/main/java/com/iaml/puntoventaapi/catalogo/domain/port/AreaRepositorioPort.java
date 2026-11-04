@@ -10,5 +10,8 @@ public interface AreaRepositorioPort {
 
     Optional<Area> buscarPorId(Long areaId, Long negocioId);
 
+    /** Serializa los cambios del área, sus categorías y las asignaciones de productos. */
+    Optional<Area> buscarPorIdParaActualizar(Long areaId, Long negocioId);
+
     List<Area> listarPorNegocio(Long negocioId);
 }

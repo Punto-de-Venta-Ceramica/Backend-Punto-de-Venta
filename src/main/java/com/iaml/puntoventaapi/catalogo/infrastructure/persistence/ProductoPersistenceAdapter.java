@@ -43,4 +43,16 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
     public List<Producto> listarPorNegocio(Long negocioId) {
         return productos.listarActivosPorNegocio(negocioId).stream().map(ProductoMapper::toDomain).toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existenPorCategoria(Long categoriaId) {
+        return productos.existsByCategoria_Id(categoriaId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existenPorArea(Long areaId) {
+        return productos.existsByCategoria_Area_Id(areaId);
+    }
 }

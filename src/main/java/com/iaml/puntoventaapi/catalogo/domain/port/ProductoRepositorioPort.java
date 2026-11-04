@@ -14,4 +14,9 @@ public interface ProductoRepositorioPort {
 
     /** Productos activos del negocio, ordenados por nombre. */
     List<Producto> listarPorNegocio(Long negocioId);
+
+    /** Incluye productos activos y dados de baja, pues ambos conservan la relación. */
+    boolean existenPorCategoria(Long categoriaId);
+
+    boolean existenPorArea(Long areaId);
 }

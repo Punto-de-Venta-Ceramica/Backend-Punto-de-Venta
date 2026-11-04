@@ -58,11 +58,9 @@ public class ProductoService {
         producto.setNombre(command.nombre());
         producto.setPrecio(command.precio());
         producto.setCategoriaId(command.categoriaId());
-        if (!producto.getCategoriaId().equals(categoriaAnterior)) {
-            Long negocioNuevo = resolverNegocioDeCategoria(producto.getCategoriaId(), usuarioId);
-            if (!negocioNuevo.equals(negocioId)) {
-                throw new ProductoInvalidoException("La categoría debe pertenecer al mismo negocio del producto.");
-            }
+        Long negocioNuevo = resolverNegocioDeCategoria(producto.getCategoriaId(), usuarioId);
+        if (!negocioNuevo.equals(negocioId)) {
+            throw new ProductoInvalidoException("La categoría debe pertenecer al mismo negocio del producto.");
         }
 
         Producto guardado = productos.guardar(producto);
@@ -101,7 +99,7 @@ public class ProductoService {
 
     /** Una categoría ajena y una inexistente producen la misma respuesta pública. */
     private Long resolverNegocioDeCategoria(Long categoriaId, Long usuarioId) {
-        Long negocioId = categorias.buscarNegocioId(categoriaId)
+        Long negocioId = categorias.buscarNegocioIdParaActualizar(categoriaId)
             .orElseThrow(() -> new CategoriaNoEncontradaException());
         if (!negocios.perteneceAUsuario(negocioId, usuarioId)) {
             throw new CategoriaNoEncontradaException();

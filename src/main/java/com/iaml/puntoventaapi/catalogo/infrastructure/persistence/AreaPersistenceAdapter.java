@@ -30,7 +30,7 @@ public class AreaPersistenceAdapter implements AreaRepositorioPort {
             NegocioEntity negocio = entityManager.getReference(NegocioEntity.class, area.getNegocioId());
             entity = AreaMapper.toEntity(area, negocio);
         } else {
-            entity = areas.findByIdAndNegocio_IdAndNegocio_ActivoTrue(area.getId(), area.getNegocioId())
+            entity = areas.buscarActivaPorId(area.getId(), area.getNegocioId())
                 .orElseThrow(() -> new CatalogoNoEncontradoException("El área no existe o no tienes acceso."));
             AreaMapper.actualizar(area, entity);
         }
@@ -39,12 +39,19 @@ public class AreaPersistenceAdapter implements AreaRepositorioPort {
 
     @Override
     public Optional<Area> buscarPorId(Long areaId, Long negocioId) {
-        return areas.findByIdAndNegocio_IdAndNegocio_ActivoTrue(areaId, negocioId).map(AreaMapper::toDomain);
+        return areas.buscarActivaPorId(areaId, negocioId).map(AreaMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Area> buscarPorIdParaActualizar(Long areaId, Long negocioId) {
+        return areas.bloquearActivaPorId(areaId, negocioId)
+            .map(AreaMapper::toDomain);
     }
 
     @Override
     public List<Area> listarPorNegocio(Long negocioId) {
-        return areas.findByNegocio_IdAndNegocio_ActivoTrueOrderByNombreAscIdAsc(negocioId).stream()
+        return areas.listarActivasPorNegocio(negocioId).stream()
             .map(AreaMapper::toDomain).toList();
     }
 }

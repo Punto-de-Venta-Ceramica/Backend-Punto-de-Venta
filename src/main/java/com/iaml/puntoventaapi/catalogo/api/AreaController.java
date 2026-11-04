@@ -48,4 +48,11 @@ public class AreaController {
                               @Valid @RequestBody GuardarAreaRequest request) {
         return AreaResponse.from(areas.editar(negocioId, areaId, request.toCommand(), usuarioActual.id()));
     }
+
+    @DeleteMapping("/{areaId}")
+    public ResponseEntity<Void> eliminar(@PathVariable @Positive Long negocioId,
+                                         @PathVariable @Positive Long areaId) {
+        areas.eliminar(negocioId, areaId, usuarioActual.id());
+        return ResponseEntity.noContent().build();
+    }
 }

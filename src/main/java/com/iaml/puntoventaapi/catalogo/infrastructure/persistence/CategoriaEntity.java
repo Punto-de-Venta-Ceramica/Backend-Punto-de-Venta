@@ -4,6 +4,8 @@ import com.iaml.puntoventaapi.shared.domain.EntidadConId;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import java.time.Instant;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "categoria", check = {
@@ -26,4 +28,13 @@ public class CategoriaEntity extends EntidadConId {
 
     @Column(name = "descripcion", columnDefinition = "text")
     private String descripcion;
+
+    @ColumnDefault("true")
+    @Column(name = "activo", nullable = false)
+    @Setter(AccessLevel.PACKAGE)
+    private boolean activo = true;
+
+    @Column(name = "fecha_eliminacion", columnDefinition = "timestamp with time zone")
+    @Setter(AccessLevel.PACKAGE)
+    private Instant fechaEliminacion;
 }

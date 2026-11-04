@@ -15,6 +15,7 @@ import java.util.List;
 public class CategoriaPersistenceAdapter implements CategoriaRepositorioPort {
 
     private final CategoriaJpaRepository categorias;
+    private final AreaJpaRepository areas;
     private final EntityManager entityManager;
 
     @Override
@@ -25,13 +26,22 @@ public class CategoriaPersistenceAdapter implements CategoriaRepositorioPort {
 
     @Override
     @Transactional
+    public Optional<Long> buscarNegocioIdParaActualizar(Long categoriaId) {
+        // Se comprueba de nuevo después del bloqueo por si fue eliminada mientras se esperaba.
+        return categorias.buscarAreaId(categoriaId)
+            .flatMap(areas::bloquearActivaPorId)
+            .flatMap(area -> categorias.buscarNegocioId(categoriaId));
+    }
+
+    @Override
+    @Transactional
     public Categoria guardar(Categoria categoria, Long negocioId) {
         CategoriaEntity entity;
         if (categoria.getId() == null) {
             AreaEntity area = entityManager.getReference(AreaEntity.class, categoria.getAreaId());
             entity = CategoriaMapper.toEntity(categoria, area);
         } else {
-            entity = categorias.findByIdAndArea_IdAndArea_Negocio_IdAndArea_Negocio_ActivoTrue(
+            entity = categorias.buscarActivaPorId(
                 categoria.getId(), categoria.getAreaId(), negocioId)
                 .orElseThrow(() -> new CatalogoNoEncontradoException("La categoría no existe o no tienes acceso."));
             CategoriaMapper.actualizar(categoria, entity);
@@ -42,14 +52,14 @@ public class CategoriaPersistenceAdapter implements CategoriaRepositorioPort {
     @Override
     @Transactional(readOnly = true)
     public Optional<Categoria> buscarPorId(Long categoriaId, Long areaId, Long negocioId) {
-        return categorias.findByIdAndArea_IdAndArea_Negocio_IdAndArea_Negocio_ActivoTrue(
+        return categorias.buscarActivaPorId(
             categoriaId, areaId, negocioId).map(CategoriaMapper::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Categoria> listarPorArea(Long areaId, Long negocioId) {
-        return categorias.findByArea_IdAndArea_Negocio_IdAndArea_Negocio_ActivoTrueOrderByNombreAscIdAsc(
+        return categorias.listarActivasPorArea(
             areaId, negocioId).stream().map(CategoriaMapper::toDomain).toList();
     }
 }

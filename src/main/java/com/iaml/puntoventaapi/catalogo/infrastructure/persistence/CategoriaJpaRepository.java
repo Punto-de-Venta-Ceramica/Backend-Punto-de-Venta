@@ -8,12 +8,32 @@ import java.util.List;
 
 public interface CategoriaJpaRepository extends JpaRepository<CategoriaEntity, Long> {
 
-    @Query("select a.negocio.id from CategoriaEntity c join c.area a where c.id = :categoriaId")
+    @Query("""
+        select a.negocio.id from CategoriaEntity c join c.area a
+        where c.id = :categoriaId and c.activo = true and a.activo = true and a.negocio.activo = true
+        """)
     Optional<Long> buscarNegocioId(@Param("categoriaId") Long categoriaId);
 
-    Optional<CategoriaEntity> findByIdAndArea_IdAndArea_Negocio_IdAndArea_Negocio_ActivoTrue(
-        Long categoriaId, Long areaId, Long negocioId);
+    @Query("""
+        select c.area.id from CategoriaEntity c
+        where c.id = :categoriaId and c.activo = true and c.area.activo = true
+          and c.area.negocio.activo = true
+        """)
+    Optional<Long> buscarAreaId(@Param("categoriaId") Long categoriaId);
 
-    List<CategoriaEntity> findByArea_IdAndArea_Negocio_IdAndArea_Negocio_ActivoTrueOrderByNombreAscIdAsc(
-        Long areaId, Long negocioId);
+    @Query("""
+        select c from CategoriaEntity c
+        where c.id = :categoriaId and c.area.id = :areaId and c.area.negocio.id = :negocioId
+          and c.activo = true and c.area.activo = true and c.area.negocio.activo = true
+        """)
+    Optional<CategoriaEntity> buscarActivaPorId(@Param("categoriaId") Long categoriaId,
+        @Param("areaId") Long areaId, @Param("negocioId") Long negocioId);
+
+    @Query("""
+        select c from CategoriaEntity c
+        where c.area.id = :areaId and c.area.negocio.id = :negocioId
+          and c.activo = true and c.area.activo = true and c.area.negocio.activo = true
+        order by c.nombre, c.id
+        """)
+    List<CategoriaEntity> listarActivasPorArea(@Param("areaId") Long areaId, @Param("negocioId") Long negocioId);
 }

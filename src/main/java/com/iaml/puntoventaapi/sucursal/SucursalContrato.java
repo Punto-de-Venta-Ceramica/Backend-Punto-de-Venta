@@ -11,4 +11,10 @@ public interface SucursalContrato {
     boolean perteneceANegocio(Long sucursalId, Long negocioId);
 
     Optional<String> obtenerNombrePorId(Long sucursalId);
+
+    /** Negocio de la sucursal si pertenece al propietario o al empleado asignado. */
+    Optional<Long> negocioAutorizado(Long sucursalId, Long usuarioId);
+
+    List<Long> propietariosDeSucursal(Long sucursalId);
+    List<Long> empleadosDeSucursal(Long sucursalId);
 }

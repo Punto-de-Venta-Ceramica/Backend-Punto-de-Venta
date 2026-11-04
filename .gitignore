@@ -32,8 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-# Local tests and documentation
-/src/test/
+# Local documentation
 /docs/
 
 documentacion.md

@@ -43,4 +43,25 @@ public class SucursalContratoService implements SucursalContrato {
         }
         return sucursalesJpa.findById(sucursalId).map(SucursalEntity::getNombre);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> negocioAutorizado(Long sucursalId, Long usuarioId) {
+        if (sucursalId == null || sucursalId <= 0 || usuarioId == null || usuarioId <= 0) return Optional.empty();
+        return sucursalesJpa.negocioAutorizado(sucursalId, usuarioId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> propietariosDeSucursal(Long sucursalId) {
+        if (sucursalId == null || sucursalId <= 0) return List.of();
+        return sucursalesJpa.propietariosDeSucursal(sucursalId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> empleadosDeSucursal(Long sucursalId) {
+        if (sucursalId == null || sucursalId <= 0) return List.of();
+        return sucursalesJpa.empleadosDeSucursal(sucursalId);
+    }
 }

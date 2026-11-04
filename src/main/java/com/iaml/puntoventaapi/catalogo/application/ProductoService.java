@@ -36,8 +36,13 @@ public class ProductoService {
     /** Producto, descuento (opcional) e inventario por sucursal se guardan en una sola transacción. */
     @Transactional
     public ProductoDetalle crear(CrearProductoCommand command, Long usuarioId) {
-        Long negocioId = resolverNegocioDeCategoria(command.categoriaId(), usuarioId);
-        Map<Long, Integer> existencias = resolverExistencias(negocioId, command.existencias(), usuarioId);
+        Long negocioId = categorias.buscarNegocioIdParaActualizar(command.categoriaId())
+            .orElseThrow(CategoriaNoEncontradaException::new);
+        List<Long> sucursalIds = sucursales.idsParaRegistrarProductos(negocioId, usuarioId);
+        if (sucursalIds.isEmpty() && !negocios.perteneceAUsuario(negocioId, usuarioId)) {
+            throw new CategoriaNoEncontradaException();
+        }
+        Map<Long, Integer> existencias = resolverExistencias(sucursalIds, command.existencias());
 
         Producto producto = productos.guardar(new Producto(null, command.categoriaId(), command.nombre(),
             command.precio(), true));
@@ -111,9 +116,7 @@ public class ProductoService {
      * Un negocio con una sola sucursal asigna el producto a ella por defecto; con varias,
      * el propietario debe elegir en cuáles estará disponible.
      */
-    private Map<Long, Integer> resolverExistencias(Long negocioId, List<ExistenciaInicialCommand> solicitadas,
-                                                   Long usuarioId) {
-        List<Long> sucursalIds = sucursales.idsPorNegocio(negocioId, usuarioId);
+    private Map<Long, Integer> resolverExistencias(List<Long> sucursalIds, List<ExistenciaInicialCommand> solicitadas) {
         if (sucursalIds.isEmpty()) {
             throw new ProductoInvalidoException(
                 "El negocio no tiene sucursales. Registra una sucursal antes de crear productos.");

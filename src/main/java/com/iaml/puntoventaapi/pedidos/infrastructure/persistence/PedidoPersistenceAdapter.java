@@ -80,6 +80,14 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
     }
 
     @Override
+    public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) {
+        jdbc.update("""
+            update barrocontrol.pedido set id_cliente = ?, descripcion = ?, tipo_entrega = ?, descripcion_envio = ?
+            where id = ?
+            """, clienteId, datos.descripcion(), datos.tipoEntrega(), datos.descripcionEnvio(), pedidoId);
+    }
+
+    @Override
     public void guardarPago(long pedidoId, PagoPedido pago, long corteCajaId) {
         BigDecimal saldo = jdbc.queryForObject("select saldo from barrocontrol.vw_pedido where id = ?", BigDecimal.class, pedidoId);
         if (saldo == null) throw new IllegalStateException("No se pudo calcular el saldo.");

@@ -24,34 +24,38 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/productos")
-@PreAuthorize("hasRole('PROPIETARIO')")
 public class ProductoController {
 
     private final ProductoService productos;
     private final UsuarioActual usuarioActual;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public ResponseEntity<ProductoResponse> crear(@Valid @RequestBody CrearProductoRequest request) {
         ProductoResponse producto = ProductoResponse.from(productos.crear(request.toCommand(), usuarioActual.id()));
         return ResponseEntity.created(URI.create("/api/productos/" + producto.id())).body(producto);
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public List<ProductoResponse> listar(@RequestParam Long negocioId) {
         return productos.listar(negocioId, usuarioActual.id()).stream().map(ProductoResponse::from).toList();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ProductoResponse consultar(@PathVariable Long id) {
         return ProductoResponse.from(productos.consultar(id, usuarioActual.id()));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ProductoResponse editar(@PathVariable Long id, @Valid @RequestBody EditarProductoRequest request) {
         return ProductoResponse.from(productos.editar(request.toCommand(id), usuarioActual.id()));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productos.eliminar(id, usuarioActual.id());
         return ResponseEntity.noContent().build();

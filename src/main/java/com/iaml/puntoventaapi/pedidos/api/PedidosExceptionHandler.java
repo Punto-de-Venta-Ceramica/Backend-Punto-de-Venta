@@ -5,6 +5,7 @@ import com.iaml.puntoventaapi.pedidos.api.cambiarestado.CambiarEstadoController;
 import com.iaml.puntoventaapi.pedidos.api.cancelar.CancelarPedidoController;
 import com.iaml.puntoventaapi.pedidos.api.consultar.ConsultarPedidosController;
 import com.iaml.puntoventaapi.pedidos.api.registrar.RegistrarPedidoController;
+import com.iaml.puntoventaapi.pedidos.api.editar.EditarDatosPedidoController;
 import com.iaml.puntoventaapi.pedidos.infrastructure.persistence.PedidoNoEncontradoException;
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
 import org.springframework.core.Ordered;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {RegistrarPedidoController.class, ConsultarPedidosController.class,
-    RegistrarPagoController.class, CambiarEstadoController.class, CancelarPedidoController.class})
+    RegistrarPagoController.class, CambiarEstadoController.class, CancelarPedidoController.class, EditarDatosPedidoController.class})
 public class PedidosExceptionHandler {
     @ExceptionHandler(CorteCajaInvalidoException.class)
     public ProblemDetail corteInvalido(CorteCajaInvalidoException ex) {

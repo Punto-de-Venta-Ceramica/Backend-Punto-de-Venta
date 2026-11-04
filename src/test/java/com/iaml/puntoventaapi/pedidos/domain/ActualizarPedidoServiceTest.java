@@ -22,6 +22,7 @@ class ActualizarPedidoServiceTest {
         public long guardar(DatosRegistro datos, long clienteId, Pedido pedido) { throw new UnsupportedOperationException(); }
         public Pedido obtenerParaActualizar(long pedidoId, long usuarioId) { return pedido; }
         public boolean esPropietarioActual(long pedidoId, long usuarioId) { return propietario; }
+        public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) { throw new UnsupportedOperationException(); }
         public void guardarPago(long pedidoId, PagoPedido pago, long corteId) { pagosGuardados++; }
         public void guardarEstado(long pedidoId, EstadoPedido estado) { estadosGuardados++; }
     }

@@ -26,7 +26,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/sucursales")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasRole('PROPIETARIO')")
 public class SucursalController {
 
     private final SucursalService sucursalService;

@@ -30,6 +30,13 @@ public class SucursalContratoService implements SucursalContrato {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Long> idsParaRegistrarProductos(Long negocioId, Long usuarioId) {
+        if (negocioId == null || negocioId <= 0 || usuarioId == null || usuarioId <= 0) return List.of();
+        return sucursalesJpa.idsParaRegistrarProductos(negocioId, usuarioId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean perteneceANegocio(Long sucursalId, Long negocioId) {
         return sucursalId != null && sucursalId > 0 && negocioId != null && negocioId > 0
             && sucursalesJpa.existsByIdAndNegocio_Id(sucursalId, negocioId);

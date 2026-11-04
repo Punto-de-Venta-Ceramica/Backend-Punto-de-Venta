@@ -8,6 +8,9 @@ public interface SucursalContrato {
     /** Ids de las sucursales del negocio, si el negocio está activo y pertenece al usuario; si no, lista vacía. */
     List<Long> idsPorNegocio(Long negocioId, Long usuarioId);
 
+    /** Sucursales donde el propietario o empleado pueden registrar un producto nuevo. */
+    List<Long> idsParaRegistrarProductos(Long negocioId, Long usuarioId);
+
     boolean perteneceANegocio(Long sucursalId, Long negocioId);
 
     Optional<String> obtenerNombrePorId(Long sucursalId);

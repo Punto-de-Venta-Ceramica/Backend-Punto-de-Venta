@@ -9,10 +9,12 @@ import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/negocios/{negocioId}/areas")
+@PreAuthorize("hasRole('PROPIETARIO')")
 public class AreaController {
 
     private final AreaService areas;

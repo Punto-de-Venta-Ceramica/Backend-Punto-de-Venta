@@ -28,6 +28,20 @@ public interface SucursalJpaRepository extends JpaRepository<SucursalEntity, Lon
     Optional<Long> negocioAutorizado(@Param("sucursalId") Long sucursalId, @Param("usuarioId") Long usuarioId);
 
     @Query("""
+        select s.id from Sucursal s, UsuarioEntity actor
+        left join actor.negocio negocioEmpleado
+        left join actor.sucursal sucursalEmpleado
+        where s.negocio.id = :negocioId and s.negocio.activo = true and actor.id = :usuarioId
+          and ((actor.rol.nombre = 'PROPIETARIO' and exists
+                (select n.id from Negocio n join n.usuarios propietario
+                 where n.id = s.negocio.id and propietario.id = actor.id))
+            or (actor.rol.nombre = 'EMPLEADO' and negocioEmpleado.id = s.negocio.id
+                and sucursalEmpleado.id = s.id))
+        order by s.id
+        """)
+    List<Long> idsParaRegistrarProductos(@Param("negocioId") Long negocioId, @Param("usuarioId") Long usuarioId);
+
+    @Query("""
         select distinct u.id from Sucursal s join s.negocio.usuarios u
         where s.id = :sucursalId and s.negocio.activo = true and u.rol.nombre = 'PROPIETARIO'
         """)

@@ -5,6 +5,7 @@ import com.iaml.puntoventaapi.sucursal.SucursalContrato;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 @Component("catalogoSucursalAdapter")
 public class SucursalAdapter implements SucursalPort {
@@ -17,7 +18,13 @@ public class SucursalAdapter implements SucursalPort {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Long> idsPorNegocio(Long negocioId, Long usuarioId) {
-        return sucursales.idsPorNegocio(negocioId, usuarioId);
+    public List<Long> idsParaRegistrarProductos(Long negocioId, Long usuarioId) {
+        return sucursales.idsParaRegistrarProductos(negocioId, usuarioId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> negocioAutorizado(Long sucursalId, Long usuarioId) {
+        return sucursales.negocioAutorizado(sucursalId, usuarioId);
     }
 }

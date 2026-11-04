@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 class RegistrarPedidoServiceTest {
     private abstract static class RepoRegistro implements PedidoRepositorioPort {
         public boolean esPropietarioActual(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
+        public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) { throw new UnsupportedOperationException(); }
         public Pedido obtenerParaActualizar(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
         public void guardarPago(long pedidoId, PagoPedido pago, long corteId) { throw new UnsupportedOperationException(); }
         public void guardarEstado(long pedidoId, EstadoPedido estado) { throw new UnsupportedOperationException(); }

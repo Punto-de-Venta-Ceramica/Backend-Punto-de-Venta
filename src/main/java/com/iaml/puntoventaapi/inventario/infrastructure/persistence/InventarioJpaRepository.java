@@ -40,7 +40,7 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
 
     @Query("""
         select n.id
-        from SucursalEntity s
+        from Sucursal s
         join s.negocio n
         join n.usuarios u
         where s.id = :sucursalId and u.id = :usuarioId and n.activo = true

@@ -3,6 +3,8 @@ package com.iaml.puntoventaapi.inventario.application;
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontradoException;
+import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteException;
+import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.inventario.domain.port.NegocioPort;
@@ -25,6 +27,25 @@ public class InventarioService {
             throw new NegocioNoEncontradoException();
         }
         return inventarios.listarPanel(negocioId, sucursalId, usuarioId);
+    }
+
+    /**
+     * Asigna un producto ya registrado a otra sucursal del mismo negocio. Un producto o una sucursal
+     * ajenos o inexistentes producen la misma respuesta pública.
+     */
+    @Transactional
+    public Inventario asignar(Long productoId, Long sucursalId, int existencia, Long usuarioId) {
+        Long negocioProducto = inventarios.negocioDeProducto(productoId, usuarioId)
+            .orElseThrow(() -> new ProductoOSucursalNoEncontradoException());
+        Long negocioSucursal = inventarios.negocioDeSucursal(sucursalId, usuarioId)
+            .orElseThrow(() -> new ProductoOSucursalNoEncontradoException());
+        if (!negocioProducto.equals(negocioSucursal)) {
+            throw new ProductoOSucursalNoEncontradoException();
+        }
+        if (inventarios.existe(sucursalId, productoId)) {
+            throw new InventarioYaExisteException();
+        }
+        return inventarios.guardar(new Inventario(null, sucursalId, productoId, existencia));
     }
 
     /** El bloqueo de la fila dura hasta que termina esta transacción: lectura, regla y guardado son atómicos. */

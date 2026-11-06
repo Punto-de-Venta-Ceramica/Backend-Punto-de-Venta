@@ -7,6 +7,8 @@ import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaExc
 import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
+import com.iaml.puntoventaapi.catalogo.domain.Categoria;
+import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,8 +49,7 @@ class ProductoServiceTest {
         sucursalesDelNegocio = List.of(10L);
         // Puertos sin estado propio sustituidos por lambdas.
         service = new ProductoService(productos,
-            categoriaId -> Optional.ofNullable(Map.of(CATEGORIA, NEGOCIO, CATEGORIA_OTRO_NEGOCIO_PROPIO, 101L,
-                CATEGORIA_AJENA, NEGOCIO_AJENO).get(categoriaId)),
+            new FakeCategorias(),
             descuentos,
             (negocioId, usuarioId) -> PROPIETARIO.equals(usuarioId) && (NEGOCIO.equals(negocioId) || negocioId == 101L),
             (negocioId, usuarioId) -> sucursalesDelNegocio,
@@ -256,6 +257,48 @@ class ProductoServiceTest {
         @Override
         public List<Producto> listarPorNegocio(Long negocioId) {
             return new ArrayList<>(guardados.values().stream().filter(Producto::isActivo).toList());
+        }
+
+        @Override
+        public boolean existenPorCategoria(Long categoriaId) {
+            return guardados.values().stream().anyMatch(p -> p.getCategoriaId().equals(categoriaId));
+        }
+
+        @Override
+        public boolean existenPorArea(Long areaId) {
+            return false;
+        }
+    }
+
+    /** Categorías de prueba: solo resuelven el negocio de cada una. */
+    private static final class FakeCategorias implements CategoriaRepositorioPort {
+
+        private static final Map<Long, Long> NEGOCIO_POR_CATEGORIA = Map.of(CATEGORIA, NEGOCIO,
+            CATEGORIA_OTRO_NEGOCIO_PROPIO, 101L, CATEGORIA_AJENA, NEGOCIO_AJENO);
+
+        @Override
+        public Optional<Long> buscarNegocioId(Long categoriaId) {
+            return Optional.ofNullable(NEGOCIO_POR_CATEGORIA.get(categoriaId));
+        }
+
+        @Override
+        public Optional<Long> buscarNegocioIdParaActualizar(Long categoriaId) {
+            return buscarNegocioId(categoriaId);
+        }
+
+        @Override
+        public Categoria guardar(Categoria categoria, Long negocioId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Optional<Categoria> buscarPorId(Long categoriaId, Long areaId, Long negocioId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Categoria> listarPorArea(Long areaId, Long negocioId) {
+            throw new UnsupportedOperationException();
         }
     }
 

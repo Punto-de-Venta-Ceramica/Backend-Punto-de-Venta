@@ -60,3 +60,24 @@ LEFT JOIN (
     GROUP BY id_pedido
 ) a ON a.id_pedido = p.id;
 ^^^
+
+-- Roles base requeridos por el registro de propietarios y empleados (idempotente).
+INSERT INTO barrocontrol.rol (nombre)
+VALUES ('PROPIETARIO'), ('EMPLEADO')
+ON CONFLICT (nombre) DO NOTHING;
+^^^
+
+-- ddl-auto=update no agrega CHECKs a tablas que ya existen: el precio nunca puede ser negativo.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'ck_producto_precio'
+          AND conrelid = 'barrocontrol.producto'::regclass
+    ) THEN
+        ALTER TABLE barrocontrol.producto
+            ADD CONSTRAINT ck_producto_precio CHECK (precio >= 0);
+    END IF;
+END
+$$;
+^^^

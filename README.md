@@ -1,16 +1,54 @@
 # BarroControl: base de datos con Hibernate
 
+Las reglas de validación, mensajes HTTP 400/409, anotaciones y pruebas se
+documentan en [VALIDACIONES.md](VALIDACIONES.md).
+
+## Arranque local y conexión con Flutter
+
+El archivo `.env` local se importa mediante `spring.config.import` y está ignorado
+por Git. Configura `DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRETO`
+y `JWT_EXPIRACION_MINUTOS` allí. `DB_NAME` debe coincidir con tu instancia de Render;
+los nombres que aparecen en los ejemplos de este README son referencias.
+No copies credenciales al frontend ni a archivos versionados.
+
+Desde esta carpeta ejecuta `.\scripts\run.ps1`; utiliza el JDK 21 local del proyecto
+si está disponible y arranca Maven con esta carpeta como directorio de trabajo,
+para que Spring encuentre `.env`.
+
+- `POST /api/usuarios/registro`: crea un propietario y devuelve HTTP 201; correo repetido devuelve 409.
+- `POST /api/auth/login`: devuelve token Bearer, `expiraEn`, `usuarioId` y `rol`; credenciales incorrectas devuelven 401.
+- Los datos inválidos devuelven HTTP 400 con un mapa `errores`, sin publicar contraseñas rechazadas.
+- CORS permite `http://localhost:5173` y `http://127.0.0.1:5173`. Cambia
+  `APP_CORS_ALLOWED_ORIGINS` para otros orígenes, separados por comas.
+- La duración del token se configura en minutos; el frontend respeta la expiración recibida.
+
+Para probar el ciclo real de registro/login con rollback automático de las
+inserciones de prueba (requiere PostgreSQL configurado):
+
+```powershell
+$env:RUN_AUTH_DB_TESTS = 'true'
+.\mvnw.cmd -Dtest=AuthDatabaseIntegrationTest test
+```
+
+La prueba queda deshabilitada por defecto. Por seguridad, la configuración normal
+no modifica el esquema al arrancar. Para crear una base local vacía y exclusiva
+para pruebas se pueden activar explícitamente `DDL_AUTO=update` y `SQL_INIT_MODE=always`.
+
 Backend con Java 21, Spring Boot, Jakarta Persistence/Hibernate y PostgreSQL.
 Las entidades reproducen el script original: 19 entidades y cuatro tablas de
-unión, para un total de 23 tablas. No hace falta ejecutar manualmente ese script.
+unión. El esquema desplegado debe prepararse mediante migraciones revisadas;
+el script histórico y las entidades actuales presentan algunas diferencias.
 
 ## Base de datos y esquema
 
 - **Base de datos en Render:** `barrocontrolbd`.
 - **Esquema dentro de esa base:** `barrocontrol`, conservado del SQL original.
-- Hibernate crea el esquema, las tablas, relaciones, índices y restricciones
-  declaradas en las entidades al arrancar con `DDL_AUTO=update`.
-- Después se ejecuta `src/main/resources/db/postgresql-complementos.sql`: crea
+- Por defecto `DDL_AUTO=none` y `SQL_INIT_MODE=never`: la API no crea ni modifica
+  automáticamente el esquema al iniciar. Comprueba también las variables de Render,
+  ya que pueden sobrescribir estos valores.
+- Solo en una base local vacía y exclusiva para pruebas, `DDL_AUTO=update` crea o
+  actualiza objetos de entidades y `SQL_INIT_MODE=always` ejecuta
+  `src/main/resources/db/postgresql-complementos.sql`, que crea
   las tres vistas, el índice único de correo normalizado y la clave foránea
   compuesta que comprueba que la caja de una venta es la del corte.
 - `subtotal` y `diferencia` usan columnas `GENERATED ALWAYS AS ... STORED`
@@ -60,9 +98,10 @@ definir `DB_USERNAME` y `DB_PASSWORD`. Copia la contraseña del campo
 Password de Render, sin codificación URL.
 
 No necesitas compartir la contraseña en el chat ni guardarla en Git.
-`.env.example` es una referencia: Spring Boot no carga automáticamente
-archivos `.env`. Configura las variables en la terminal, tu IDE o el
-entorno del servicio donde ejecutarás el backend.
+`.env.example` es una referencia sin secretos. Este proyecto importa `.env`
+explícitamente mediante `spring.config.import`; ejecútalo desde la carpeta del
+backend para encontrarlo. Las variables del entorno también se admiten y tienen
+prioridad sobre ese archivo.
 
 ## Arranque desde PowerShell
 
@@ -76,13 +115,15 @@ $env:DB_USERNAME = 'TU_USUARIO'
 $taskCredential = Get-Credential -UserName $env:DB_USERNAME -Message 'Contraseña de PostgreSQL en Render'
 $env:DB_PASSWORD = $taskCredential.GetNetworkCredential().Password
 $env:DB_SSLMODE = 'require'
-$env:DDL_AUTO = 'update'
+$env:DDL_AUTO = 'none'
+$env:SQL_INIT_MODE = 'never'
+$env:JWT_SECRETO = 'UNA_CADENA_ALEATORIA_DE_AL_MENOS_32_CARACTERES'
 .\mvnw.cmd spring-boot:run
 ```
 
 Render debe mostrar la base como **Available**, y sus reglas de acceso
 externo deben permitir la IP pública desde la que te conectas. El usuario
-debe tener permiso para crear el esquema y sus objetos.
+debe tener permisos sobre los objetos de una base previamente preparada.
 
 Cuando aparezca `Started PuntoventaapiApplication`, comprueba en pgAdmin
 o psql, conectado a `barrocontrolbd`:
@@ -136,3 +177,158 @@ Evita `create` y `create-drop` sobre la base del negocio: eliminan datos.
 Referencias: [Inicialización en Spring Boot](https://docs.spring.io/spring-boot/how-to/data-initialization.html),
 [Conexión a Render Postgres](https://render.com/docs/postgresql-creating-connecting),
 [URL JDBC de PostgreSQL](https://jdbc.postgresql.org/documentation/use/).
+
+
+---
+
+# Arquitectura
+
+Monolito modular organizado por **negocio** (screaming architecture). Todos
+los módulos comparten el **mismo esqueleto**; lo que cambia es el **nivel**:
+ligero o robusto (hexagonal completa).
+
+## Esqueleto común
+
+```text
+com/iaml/puntoventaapi/<modulo>/
+├── api/                 Puerta HTTP: controllers y dto/ (Request/Response)
+├── application/         Services: orquestan casos de uso y transacciones
+├── domain/              Modelo y reglas del negocio
+├── infrastructure/      BD, correo, archivos, JWT, adaptadores a otros módulos
+└── <Modulo>Contrato     Única interfaz pública del módulo hacia los demás
+```
+
+| Módulo | HU | Nivel |
+| --- | --- | --- |
+| `autenticacion` | 05, 06 | **Robusto** (login con JWT ya implementado; recuperar contraseña pendiente) |
+| `usuarios` | 01, 04 | Dominio puro + puerto (por ahora solo lo que usa el login) |
+| `negocios` | 02, 03 | Ligero (negocio, sucursal, logo) |
+| `catalogo` | 07, 08 | Ligero (área, categoría, producto, descuento) |
+| `clientes` | 10, 06 | Ligero |
+| `inventario` | 11 | Ligero |
+| `caja` | 13 | Ligero (`CalculadoraCorte` concentra el cálculo) |
+| `notificaciones` | 04, 05, 10 | Ligero (correo, push) |
+| `reportes` | 14 | Solo lectura (consultas directas y Excel), sin contrato |
+| `ventas` | 09, 12 | **Robusto** |
+| `pedidos` | 10 | **Robusto + slices** |
+| `shared` | — | `EntidadConId`, manejo global de errores, usuario actual |
+
+**Regla para elegir el nivel:** si no puedes nombrar una regla de negocio que
+se probaría sin base de datos, el módulo es ligero. Si un módulo ligero
+crece, se “sube” a robusto sin cambiar sus carpetas.
+
+## Contenido según el nivel
+
+| Carpeta | Ligero | Robusto |
+| --- | --- | --- |
+| `api/` | Controllers + `dto/` | Igual |
+| `application/` | Services; pueden recibir el Request | Services + `Command`; **nunca** reciben DTOs HTTP |
+| `domain/` | La entidad JPA es el modelo | Clases Java puras (sin JPA ni Spring) + `port/` |
+| `infrastructure/` | `persistence/` con repositorios Spring Data | Entidades JPA, `Mapper`, adaptador de persistencia, `adapters/` hacia otros módulos |
+
+En módulos robustos solo hay **puertos de salida** (`domain/port`). No se
+crean interfaces `UseCase` de entrada: un service con una implementación no
+necesita interfaz.
+
+### Slices en `pedidos`
+
+Cada caso de uso tiene su subpaquete, con el mismo nombre en `api/` y en
+`application/`: `registrar`, `cambiarestado`, `abonar`, `cancelar`,
+`consultar`. En los slices el Request vive junto a su controller. El
+`domain/`, los puertos y la `infrastructure/` se comparten entre slices.
+`consultar` puede leer directo del repositorio porque no modifica nada.
+
+## Reglas entre módulos
+
+1. Un módulo **nunca** usa el repository, service o clase interna de otro:
+   solo su `<Modulo>Contrato`.
+2. Un módulo ligero llama al contrato ajeno directamente.
+3. Un módulo robusto define su puerto (`ventas.domain.port.CatalogoPort`) y
+   lo implementa un adaptador en `infrastructure/adapters/` que llama al
+   contrato (`CatalogoContrato`).
+4. Las relaciones JPA `@ManyToOne` que cruzan módulos se permiten en el MVP,
+   salvo hacia las entidades internas de `ventas` y `pedidos` (ver pendientes).
+5. Se recomienda agregar Spring Modulith o ArchUnit para que un test falle si
+   se rompen estas reglas.
+
+## DTOs
+
+- Viven en `api/dto/` (o junto al controller en los slices de `pedidos`).
+- Se escriben como `record`. Nombres: `<Acción><Recurso>Request` para la
+  entrada y `<Recurso>Response` para la salida.
+- Nunca se devuelve una entidad JPA en un endpoint (expone `password_hash`,
+  provoca ciclos de serialización y `LazyInitializationException`).
+- La validación (`@NotBlank`, `@Positive`...) va en el Request.
+- La conversión se hace con un método estático `from(...)` en el Response;
+  no se usa MapStruct por ahora.
+
+## Pendientes en las entidades actuales
+
+Las 22 clases del antiguo paquete `entity` se movieron a su módulo sin
+cambiar su contenido (solo `package` e `imports`). Para cumplir por
+completo la arquitectura falta:
+
+1. **Renombrar las entidades JPA de los módulos robustos** para que no
+   choquen con las clases puras del dominio: `Venta` → `VentaEntity`,
+   `DetalleVenta` → `DetalleVentaEntity`, `DetalleVentaId` →
+   `DetalleVentaEntityId`, y lo mismo para `Pedido`, `DetallePedido`,
+   `DetallePedidoId` y `PagoPedido`. El nombre de la tabla no cambia, porque
+   lo fija `@Table`.
+2. **Desacoplar `notificaciones.domain.Notificacion`** de `Venta` y `Pedido`.
+   Hoy tiene `@ManyToOne` hacia entidades internas de módulos robustos;
+   deben pasar a `Long ventaId` / `Long pedidoId` sobre las mismas columnas
+   `id_venta` / `id_pedido`. La FK en BD puede mantenerse.
+3. **Pasar a enums los textos con valores cerrados**, mapeados en el
+   `Mapper`: `Venta.metodoPago` y `PagoPedido.metodoPago` → `MetodoPago`;
+   `Pedido.estado` → `EstadoPedido`; `Pedido.tipoEntrega` → `TipoEntrega`.
+   Si se usa `@Enumerated(EnumType.STRING)`, hay que alinear los `CHECK` de
+   la BD con los valores del enum.
+4. **Crear la persistencia de `CodigoRecuperacion`** (HU-05): el script
+   original no tiene una tabla para el código de 6 caracteres ni para su
+   expiración.
+5. **El dominio puro de `ventas` y `pedidos`** (`domain/Venta`,
+   `domain/Pedido`, ...) no debe importar nada de `jakarta.persistence` ni
+   entidades de otros módulos: guarda IDs (`productoId`, `clienteId`) y los
+   datos que obtiene por sus puertos.
+6. `usuarios.infrastructure.persistence.UsuarioEntity` tiene `@ManyToOne`
+   hacia `autenticacion.infrastructure.persistence.RolEntity`. Se acepta en
+   el MVP porque es solo un mapeo JPA; el dominio `usuarios.domain.Usuario`
+   ya guarda solo `rolId`. Las entidades de otros módulos (`Venta`, `Pedido`,
+   `CorteCaja`, `Negocio`, `Notificacion`) apuntan a `UsuarioEntity` por el
+   mismo motivo.
+
+## Login (`autenticacion`, módulo robusto de referencia)
+
+`POST /api/auth/login` con `{"correo": "...", "password": "..."}` devuelve
+`{token, tipo: "Bearer", expiraEn, usuarioId, rol}`. Con credenciales
+incorrectas responde `401`, con el mismo mensaje exista o no el correo.
+Las demás rutas, salvo `/api/auth/**`, exigen
+`Authorization: Bearer <token>`.
+
+```text
+api/            AuthController, LoginRequest → IniciarSesionCommand, LoginResponse
+application/    IniciarSesionService (solo habla con puertos)
+domain/         Credencial, Rol, Permiso, Sesion  (Java puro)
+  port/         CredencialRepositorioPort, PasswordHasherPort, TokenPort
+  exception/    CredencialesInvalidasException
+infrastructure/
+  persistence/  RolEntity, PermisoEntity, RolJpaRepository, RolMapper
+  adapters/     CredencialAdapter → UsuariosContrato + RolJpaRepository
+  security/     SecurityConfig, BCryptPasswordHasher, JwtTokenAdapter
+```
+
+El JWT lo firma y valida Spring Security (HS256). El token lleva en `sub`
+el id del usuario, además de `correo`, `rol` y `autoridades`
+(`ROLE_<ROL>` + permisos), que se pueden usar con
+`@PreAuthorize("hasRole('PROPIETARIO')")`. Las contraseñas se comparan con
+BCrypt, así que `password_hash` debe guardarse con BCrypt.
+
+Variables nuevas:
+
+| Variable | Valor |
+| --- | --- |
+| `JWT_SECRETO` | Obligatoria, mínimo 32 caracteres aleatorios |
+| `JWT_EXPIRACION_MINUTOS` | Opcional, por defecto `480` |
+
+`IniciarSesionServiceTest` muestra la ventaja de los puertos: prueba el caso
+de uso sin base de datos ni Spring.

@@ -1,13 +1,17 @@
 package com.iaml.puntoventaapi.inventario.api;
 
 import com.iaml.puntoventaapi.inventario.api.dto.AjustarExistenciaRequest;
+import com.iaml.puntoventaapi.inventario.api.dto.AsignarProductoRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.ExistenciaResponse;
 import com.iaml.puntoventaapi.inventario.api.dto.InventarioPanelResponse;
 import com.iaml.puntoventaapi.inventario.application.InventarioService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +36,14 @@ public class InventarioController {
                                                @RequestParam(required = false) Long sucursalId) {
         return inventario.consultarPanel(negocioId, sucursalId, usuarioActual.id()).stream()
             .map(InventarioPanelResponse::from).toList();
+    }
+
+    /** Asigna un producto existente a una sucursal del mismo negocio. */
+    @PostMapping
+    public ResponseEntity<ExistenciaResponse> asignar(@Valid @RequestBody AsignarProductoRequest request) {
+        ExistenciaResponse creada = ExistenciaResponse.from(inventario.asignar(request.productoId(),
+            request.sucursalId(), request.existenciaInicial(), usuarioActual.id()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(creada);
     }
 
     /** Ajuste manual: cantidad positiva suma, negativa resta. */

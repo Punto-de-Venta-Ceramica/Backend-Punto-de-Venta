@@ -16,6 +16,14 @@ public interface InventarioRepositorioPort {
      */
     Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId);
 
+    /** Negocio activo del usuario al que pertenece el producto activo; vacío si no es accesible. */
+    Optional<Long> negocioDeProducto(Long productoId, Long usuarioId);
+
+    /** Negocio activo del usuario al que pertenece la sucursal; vacío si no es accesible. */
+    Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId);
+
+    boolean existe(Long sucursalId, Long productoId);
+
     /** Existencias de los productos activos del negocio; sucursalId es opcional. */
     List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId);
 }

@@ -28,6 +28,29 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
     boolean esAccesibleParaUsuario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
 
     @Query("""
+        select n.id
+        from ProductoEntity p
+        join p.categoria c
+        join c.area a
+        join a.negocio n
+        join n.usuarios u
+        where p.id = :productoId and u.id = :usuarioId and n.activo = true and p.activo = true
+        """)
+    Optional<Long> negocioDeProducto(@Param("productoId") Long productoId, @Param("usuarioId") Long usuarioId);
+
+    @Query("""
+        select n.id
+        from SucursalEntity s
+        join s.negocio n
+        join n.usuarios u
+        where s.id = :sucursalId and u.id = :usuarioId and n.activo = true
+        """)
+    Optional<Long> negocioDeSucursal(@Param("sucursalId") Long sucursalId, @Param("usuarioId") Long usuarioId);
+
+    @Query("select count(i) > 0 from InventarioEntity i where i.sucursal.id = :sucursalId and i.producto.id = :productoId")
+    boolean existe(@Param("sucursalId") Long sucursalId, @Param("productoId") Long productoId);
+
+    @Query("""
         select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
         from InventarioEntity i
         join i.producto p

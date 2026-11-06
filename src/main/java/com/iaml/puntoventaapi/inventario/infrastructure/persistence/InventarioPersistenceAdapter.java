@@ -47,6 +47,24 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Long> negocioDeProducto(Long productoId, Long usuarioId) {
+        return inventarios.negocioDeProducto(productoId, usuarioId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId) {
+        return inventarios.negocioDeSucursal(sucursalId, usuarioId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existe(Long sucursalId, Long productoId) {
+        return inventarios.existe(sucursalId, productoId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
         List<Object[]> filas = sucursalId == null
             ? inventarios.panelPorNegocio(negocioId, usuarioId)

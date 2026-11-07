@@ -54,8 +54,11 @@ public final class Pedido {
 
     public void registrarPago(PagoPedido pago) {
         Objects.requireNonNull(pago, "El pago es obligatorio.");
-        if (estado == EstadoPedido.CANCELADO || pago.monto().compareTo(saldoPendiente()) > 0) {
+        if (estado == EstadoPedido.CANCELADO) {
             throw new IllegalArgumentException("No es posible registrar ese pago para el pedido.");
+        }
+        if (pago.monto().compareTo(saldoPendiente()) > 0) {
+            throw new PagoExcedeSaldoException();
         }
         pagos.add(pago);
     }

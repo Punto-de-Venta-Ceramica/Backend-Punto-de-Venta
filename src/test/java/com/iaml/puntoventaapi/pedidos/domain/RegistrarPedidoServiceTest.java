@@ -15,7 +15,7 @@ class RegistrarPedidoServiceTest {
     private abstract static class RepoRegistro implements PedidoRepositorioPort {
         public boolean esPropietarioActual(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
         public Pedido obtenerParaActualizar(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
-        public void guardarPago(long pedidoId, PagoPedido pago, long corteId) { throw new UnsupportedOperationException(); }
+        public void guardarPago(long pedidoId, PagoPedido pago) { throw new UnsupportedOperationException(); }
         public void guardarEstado(long pedidoId, EstadoPedido estado) { throw new UnsupportedOperationException(); }
     }
     @Test
@@ -38,10 +38,10 @@ class RegistrarPedidoServiceTest {
             }
             public void pedidoEntregado(long pedidoId) { throw new AssertionError(); }
         });
-        var cliente = new ClientePedido("Ana", "123", "Puebla", "Centro", "Calle 1");
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2)), "LOCAL", null,
-            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO, 1L);
+            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO);
         var resultado = service.registrar(comando);
         assertEquals(new BigDecimal("130.00"), resultado.saldoPendiente());
         assertEquals(2, escrituras.get());
@@ -60,10 +60,10 @@ class RegistrarPedidoServiceTest {
                 public void pedidoRegistrado(long p, long s, long u) { escrituras.incrementAndGet(); }
                 public void pedidoEntregado(long p) { escrituras.incrementAndGet(); }
             });
-        var cliente = new ClientePedido("Ana", "123", "Puebla", "Centro", "Calle 1");
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 1)), "LOCAL", null,
-            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA, 1L);
+            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA);
         assertThrows(IllegalArgumentException.class, () -> service.registrar(comando));
         assertEquals(0, escrituras.get());
     }

@@ -2,6 +2,6 @@ package com.iaml.puntoventaapi.pedidos.domain;
 
 public class CorteCajaInvalidoException extends RuntimeException {
     public CorteCajaInvalidoException() {
-        super("El corte de caja debe estar abierto y pertenecer a la sucursal del pedido.");
+        super("Debe haber un corte de caja abierto para la sucursal del pedido.");
     }
 }

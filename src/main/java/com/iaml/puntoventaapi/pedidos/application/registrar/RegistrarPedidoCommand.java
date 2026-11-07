@@ -7,6 +7,6 @@ import java.util.List;
 
 public record RegistrarPedidoCommand(long sucursalId, long usuarioId,
         String descripcion, ClientePedido cliente, List<ProductoSolicitado> productos,
-        String tipoEntrega, String descripcionEnvio, BigDecimal montoInicial, MetodoPago metodoPago, Long corteCajaId) {
+        String tipoEntrega, String descripcionEnvio, BigDecimal montoInicial, MetodoPago metodoPago) {
     public record ProductoSolicitado(long productoId, int cantidad) { }
 }

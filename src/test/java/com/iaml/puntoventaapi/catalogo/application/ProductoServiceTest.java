@@ -17,12 +17,15 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -155,17 +158,21 @@ class ProductoServiceTest {
     }
 
     @Test
-    void editarSinDescuentoLoQuitaYNoTocaElInventario() {
+    void editarSinDatosDeDescuentoNoTocaElDescuentoNiElInventario() {
         ProductoDetalle creado = service.crear(comando(
             new DescuentoProductoCommand(6, null, new BigDecimal("10.00")), null), PROPIETARIO);
         Long productoId = creado.producto().getId();
+        Long descuentoId = creado.descuento().getId();
         Map<Long, Integer> antes = Map.copyOf(inventarioRegistrado.get(productoId));
 
-        ProductoDetalle editado = service.editar(new EditarProductoCommand(productoId, "Tarjeta",
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(productoId, "Tarjeta XL",
             new BigDecimal("25.50"), CATEGORIA, null), PROPIETARIO);
 
-        assertNull(editado.descuento());
-        assertFalse(descuentos.vinculos.containsKey(productoId));
+        // Los descuentos se gestionan en su propio módulo: editar el producto sin descuento no los borra.
+        assertEquals("Tarjeta XL", editado.producto().getNombre());
+        assertEquals(descuentoId, editado.descuento().getId());
+        assertEquals(descuentoId, descuentos.vinculos.get(productoId));
+        assertTrue(descuentos.guardados.containsKey(descuentoId));
         assertEquals(antes, inventarioRegistrado.get(productoId));
         assertEquals(1, inventarioRegistrado.size());
     }
@@ -180,6 +187,85 @@ class ProductoServiceTest {
 
         assertNotNull(editado.descuento());
         assertEquals(editado.descuento().getId(), descuentos.vinculos.get(productoId));
+    }
+
+    @Test
+    void editarNoModificaUnDescuentoCompartidoSinoQueCreaUnoPropio() {
+        Long a = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        Long b = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        Descuento compartido = descuentos.guardar(new Descuento(null, NEGOCIO, "Mayoreo", 6, null,
+            new BigDecimal("10.00"), true));
+        descuentos.vincularAProducto(compartido.getId(), a);
+        descuentos.vinculos.put(b, compartido.getId());
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(a, "Tarjeta",
+            new BigDecimal("25.50"), CATEGORIA, new DescuentoProductoCommand(20, null, new BigDecimal("30.00"))),
+            PROPIETARIO);
+
+        assertNotEquals(compartido.getId(), editado.descuento().getId());
+        assertEquals(30, editado.descuento().getPorcentaje().intValue());
+        Descuento intacto = descuentos.guardados.get(compartido.getId());
+        assertEquals(6, intacto.getCantidadMinima());
+        assertEquals(10, intacto.getPorcentaje().intValue());
+        assertEquals(compartido.getId(), descuentos.vinculos.get(b));
+    }
+
+    @Test
+    void editarSinDatosDeDescuentoConservaUnoAsignadoACategoriaOArea() {
+        Long productoId = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        Descuento deCategoria = descuentos.guardar(new Descuento(null, NEGOCIO, "Categoría", 1, null,
+            new BigDecimal("5.00"), true));
+        descuentos.vincularAProducto(deCategoria.getId(), productoId);
+        descuentos.conOtrosDestinos.add(deCategoria.getId());
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(productoId, "Tarjeta",
+            new BigDecimal("25.50"), CATEGORIA, null), PROPIETARIO);
+
+        assertTrue(descuentos.guardados.containsKey(deCategoria.getId()));
+        assertEquals(deCategoria.getId(), editado.descuento().getId());
+    }
+
+    @Test
+    void sinDescuentoPropioElProductoMuestraElQueHeredaDeSuCategoria() {
+        Descuento deCategoria = descuentos.guardar(new Descuento(null, NEGOCIO, "Categoría", 1, null,
+            new BigDecimal("5.00"), true));
+        Long productoId = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        descuentos.heredados.put(productoId, deCategoria.getId());
+
+        assertEquals(deCategoria.getId(), service.consultar(productoId, PROPIETARIO).descuento().getId());
+    }
+
+    @Test
+    void guardarSinCambiosElDescuentoHeredadoNoCreaUnaCopiaPropia() {
+        Descuento deCategoria = descuentos.guardar(new Descuento(null, NEGOCIO, "Categoría", 6, null,
+            new BigDecimal("10.00"), true));
+        Long productoId = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        descuentos.heredados.put(productoId, deCategoria.getId());
+
+        // El formulario reenvía tal cual el descuento heredado que mostró.
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(productoId, "Tarjeta",
+            new BigDecimal("30.00"), CATEGORIA, new DescuentoProductoCommand(6, null, new BigDecimal("10.0"))),
+            PROPIETARIO);
+
+        assertEquals(deCategoria.getId(), editado.descuento().getId());
+        assertFalse(descuentos.vinculos.containsKey(productoId));
+        assertEquals(1, descuentos.guardados.size());
+    }
+
+    @Test
+    void cambiarElDescuentoHeredadoCreaUnoPropioQueLoSustituye() {
+        Descuento deCategoria = descuentos.guardar(new Descuento(null, NEGOCIO, "Categoría", 6, null,
+            new BigDecimal("10.00"), true));
+        Long productoId = service.crear(comando(null, null), PROPIETARIO).producto().getId();
+        descuentos.heredados.put(productoId, deCategoria.getId());
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(productoId, "Tarjeta",
+            new BigDecimal("30.00"), CATEGORIA, new DescuentoProductoCommand(6, null, new BigDecimal("25.00"))),
+            PROPIETARIO);
+
+        assertNotEquals(deCategoria.getId(), editado.descuento().getId());
+        assertEquals(25, editado.descuento().getPorcentaje().intValue());
+        assertEquals(10, descuentos.guardados.get(deCategoria.getId()).getPorcentaje().intValue());
     }
 
     @Test
@@ -324,9 +410,14 @@ class ProductoServiceTest {
             vinculos.put(productoId, descuentoId);
         }
 
+        /** Descuentos que además están asignados a una categoría o un área (no son propios de un producto). */
+        final Set<Long> conOtrosDestinos = new HashSet<>();
+        /** Descuentos que aplican a un producto por su categoría o área: producto -> descuento. */
+        final Map<Long, Long> heredados = new HashMap<>();
+
         @Override
         public Optional<Descuento> buscarActivoPorProducto(Long productoId) {
-            Long descuentoId = vinculos.get(productoId);
+            Long descuentoId = vinculos.getOrDefault(productoId, heredados.get(productoId));
             return descuentoId == null ? Optional.empty() : Optional.of(copia(guardados.get(descuentoId)));
         }
 
@@ -338,11 +429,15 @@ class ProductoServiceTest {
         }
 
         @Override
-        public void quitarDeProducto(Long productoId) {
-            Long descuentoId = vinculos.remove(productoId);
-            if (descuentoId != null && !vinculos.containsValue(descuentoId)) {
-                guardados.remove(descuentoId);
-            }
+        public Optional<Descuento> buscarPropioActivoDeProducto(Long productoId) {
+            Long descuentoId = vinculos.get(productoId);
+            return descuentoId != null && esPropio(descuentoId)
+                ? Optional.of(copia(guardados.get(descuentoId))) : Optional.empty();
+        }
+
+        private boolean esPropio(Long descuentoId) {
+            return !conOtrosDestinos.contains(descuentoId)
+                && vinculos.values().stream().filter(descuentoId::equals).count() == 1;
         }
 
         private static Descuento copia(Descuento d) {

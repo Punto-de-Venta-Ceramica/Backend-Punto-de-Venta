@@ -2,7 +2,9 @@ package com.iaml.puntoventaapi.autenticacion.api;
 
 import com.iaml.puntoventaapi.autenticacion.api.dto.LoginRequest;
 import com.iaml.puntoventaapi.autenticacion.api.dto.LoginResponse;
+import com.iaml.puntoventaapi.autenticacion.api.dto.RefreshRequest;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionService;
+import com.iaml.puntoventaapi.autenticacion.application.RenovarSesionService;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,8 +22,16 @@ public class AuthController {
 
     private final IniciarSesionService iniciarSesionService;
 
-    public AuthController(IniciarSesionService iniciarSesionService) {
+    private final RenovarSesionService renovarSesionService;
+
+    public AuthController(IniciarSesionService iniciarSesionService, RenovarSesionService renovarSesionService) {
         this.iniciarSesionService = iniciarSesionService;
+        this.renovarSesionService = renovarSesionService;
+    }
+
+    @PostMapping("/refresh")
+    public LoginResponse refresh(@Valid @RequestBody RefreshRequest request) {
+        return LoginResponse.from(renovarSesionService.renovar(request.refreshToken()));
     }
 
     @PostMapping("/login")

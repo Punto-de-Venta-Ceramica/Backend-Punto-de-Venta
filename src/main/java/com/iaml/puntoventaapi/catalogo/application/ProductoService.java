@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +43,9 @@ public class ProductoService {
 
         Producto producto = productos.guardar(new Producto(null, command.categoriaId(), command.nombre(),
             command.precio(), true));
-        Descuento descuento = command.descuento() == null ? null
+        // Sin descuento propio, el producto puede heredar el de su categoría o área.
+        Descuento descuento = command.descuento() == null
+            ? descuentos.buscarActivoPorProducto(producto.getId()).orElse(null)
             : crearDescuento(producto, negocioId, command.descuento());
         inventario.registrarExistenciasIniciales(producto.getId(), existencias);
         return new ProductoDetalle(producto, descuento);
@@ -150,22 +154,38 @@ public class ProductoService {
     }
 
     /**
-     * Los descuentos se crean desde el producto, así que cada uno es exclusivo de su producto y se
-     * actualiza en sitio. Si más adelante se permiten descuentos compartidos, habrá que separar
-     * el descuento antes de editarlo.
+     * Compatibilidad con clientes que mandan un único descuento en el producto: se edita su descuento propio
+     * (el asignado únicamente a este producto) o se crea uno. Un descuento compartido con otros productos,
+     * categorías o áreas no se modifica aquí: si el producto quiere uno distinto, se le crea uno propio, que
+     * tiene prioridad sobre los de su categoría o área. Sin datos (null) no se toca ningún descuento.
      */
     private Descuento aplicarDescuento(Producto producto, Long negocioId, DescuentoProductoCommand datos) {
         if (datos == null) {
-            descuentos.quitarDeProducto(producto.getId());
-            return null;
+            // Sin datos de descuento no se toca ninguno: los descuentos del producto (varios, propios o
+            // compartidos) se gestionan desde el módulo de descuentos y editar el producto no debe borrarlos.
+            return descuentos.buscarActivoPorProducto(producto.getId()).orElse(null);
         }
-        return descuentos.buscarActivoPorProducto(producto.getId())
+        return descuentos.buscarPropioActivoDeProducto(producto.getId())
             .map(existente -> {
                 existente.modificar(datos.cantidadMinima(), datos.cantidadMaxima(), datos.porcentaje());
                 existente.setNombre(nombreDescuento(producto));
                 return descuentos.guardar(existente);
             })
-            .orElseGet(() -> crearDescuento(producto, negocioId, datos));
+            .orElseGet(() -> {
+                // El formulario reenvía el descuento que recibió. Si es el heredado de la categoría o el área
+                // y no cambió, no se crea una copia propia: seguiría aplicando el original y se desligaría de él.
+                Optional<Descuento> heredado = descuentos.buscarActivoPorProducto(producto.getId());
+                if (heredado.isPresent() && coincide(heredado.get(), datos)) {
+                    return heredado.get();
+                }
+                return crearDescuento(producto, negocioId, datos);
+            });
+    }
+
+    private static boolean coincide(Descuento descuento, DescuentoProductoCommand datos) {
+        return Objects.equals(descuento.getCantidadMinima(), datos.cantidadMinima())
+            && Objects.equals(descuento.getCantidadMaxima(), datos.cantidadMaxima())
+            && datos.porcentaje() != null && descuento.getPorcentaje().compareTo(datos.porcentaje()) == 0;
     }
 
     private static String nombreDescuento(Producto producto) {

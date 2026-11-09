@@ -86,4 +86,12 @@ public final class Descuento {
     public boolean isActivo() {
         return activo;
     }
+
+    public void activar() {
+        this.activo = true;
+    }
+
+    public void desactivar() {
+        this.activo = false;
+    }
 }

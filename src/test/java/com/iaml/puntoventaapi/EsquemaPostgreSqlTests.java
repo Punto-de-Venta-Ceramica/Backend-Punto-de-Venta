@@ -100,11 +100,11 @@ class EsquemaPostgreSqlTests {
     }
 
     @Test
-    void creaLas23TablasYLasTresVistasDelScript() {
+    void creaLas25TablasYLasTresVistasDelScript() {
         assertThat(jdbc.queryForObject("""
             select count(*) from information_schema.tables
             where table_schema = 'barrocontrol' and table_type = 'BASE TABLE'
-            """, Integer.class)).isEqualTo(23);
+            """, Integer.class)).isEqualTo(25);
         assertThat(jdbc.queryForList("""
             select table_name from information_schema.views
             where table_schema = 'barrocontrol'
@@ -132,9 +132,12 @@ class EsquemaPostgreSqlTests {
         descuento.setCantidadMinima(10);
         descuento.setDescuento(new BigDecimal("5.00"));
         descuento.getProductos().add(producto);
+        descuento.getCategorias().add(producto.getCategoria());
+        descuento.getAreas().add(producto.getCategoria().getArea());
         em.persist(descuento);
         em.flush();
-        for (String tabla : new String[]{"rol_permiso", "negocio_usuario", "sucursal_area", "descuento_producto"}) {
+        for (String tabla : new String[]{"rol_permiso", "negocio_usuario", "sucursal_area", "descuento_producto",
+            "descuento_categoria", "descuento_area"}) {
             assertThat(jdbc.queryForObject("select count(*) from barrocontrol." + tabla, Integer.class))
                 .isEqualTo(1);
         }

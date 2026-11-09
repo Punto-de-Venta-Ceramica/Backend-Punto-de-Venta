@@ -7,4 +7,6 @@ public interface UsuariosContrato {
     boolean existePorId(Long usuarioId);
 
     Optional<CredencialesUsuario> buscarCredencialesPorCorreo(String correo);
+
+    Optional<CredencialesUsuario> buscarCredencialesPorId(Long usuarioId);
 }

@@ -6,4 +6,6 @@ import java.util.Optional;
 public interface CredencialRepositorioPort {
 
     Optional<Credencial> buscarPorCorreo(String correo);
+
+    Optional<Credencial> buscarPorUsuarioId(Long usuarioId);
 }

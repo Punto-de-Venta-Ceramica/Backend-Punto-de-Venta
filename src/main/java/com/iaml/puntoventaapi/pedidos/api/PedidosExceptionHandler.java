@@ -7,6 +7,8 @@ import com.iaml.puntoventaapi.pedidos.api.consultar.ConsultarPedidosController;
 import com.iaml.puntoventaapi.pedidos.api.registrar.RegistrarPedidoController;
 import com.iaml.puntoventaapi.pedidos.infrastructure.persistence.PedidoNoEncontradoException;
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
+import com.iaml.puntoventaapi.pedidos.domain.PagoExcedeSaldoException;
+import com.iaml.puntoventaapi.pedidos.domain.ProductoPedidoNoDisponibleException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -20,7 +22,26 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class PedidosExceptionHandler {
     @ExceptionHandler(CorteCajaInvalidoException.class)
     public ProblemDetail corteInvalido(CorteCajaInvalidoException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+            "No hay un corte de caja abierto en esta sucursal. Abre uno antes de registrar un pago.");
+        problem.setProperty("codigo", "CORTE_CAJA_NO_ABIERTO");
+        return problem;
+    }
+
+    @ExceptionHandler(PagoExcedeSaldoException.class)
+    public ProblemDetail pagoExcedeSaldo(PagoExcedeSaldoException ex) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+            "El pago supera el saldo calculado por el servidor. Actualiza el pedido y revisa el importe.");
+        problem.setProperty("codigo", "PAGO_SUPERA_SALDO");
+        return problem;
+    }
+
+    @ExceptionHandler(ProductoPedidoNoDisponibleException.class)
+    public ProblemDetail productoNoDisponible(ProductoPedidoNoDisponibleException ex) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+            "Uno de los productos ya no está disponible. Vuelve a la lista de pedidos e inicia el registro de nuevo.");
+        problem.setProperty("codigo", "PRODUCTO_NO_DISPONIBLE");
+        return problem;
     }
     @ExceptionHandler(PedidoNoEncontradoException.class)
     public ProblemDetail noEncontrado(PedidoNoEncontradoException ex) {

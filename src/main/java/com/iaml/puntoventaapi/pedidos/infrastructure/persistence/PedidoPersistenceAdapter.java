@@ -47,7 +47,7 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
                 values (?, ?, ?, ?, ?)
                 """, id, detalle.productoId(), detalle.cantidad(), detalle.precioUnitario(), detalle.porcentajeDescuento());
         }
-        for (var pago : pedido.pagos()) insertarPago(id, pago, pedido.pagado(), datos.corteCajaId());
+        for (var pago : pedido.pagos()) insertarPago(id, pago, pedido.pagado());
         return id;
     }
 
@@ -80,22 +80,24 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
     }
 
     @Override
-    public void guardarPago(long pedidoId, PagoPedido pago, long corteCajaId) {
+    public void guardarPago(long pedidoId, PagoPedido pago) {
         BigDecimal saldo = jdbc.queryForObject("select saldo from barrocontrol.vw_pedido where id = ?", BigDecimal.class, pedidoId);
         if (saldo == null) throw new IllegalStateException("No se pudo calcular el saldo.");
-        insertarPago(pedidoId, pago, pago.monto().compareTo(saldo) == 0, corteCajaId);
+        insertarPago(pedidoId, pago, pago.monto().compareTo(saldo) == 0);
     }
 
-    private void insertarPago(long pedidoId, PagoPedido pago, boolean liquidado, Long corteCajaId) {
-        if (corteCajaId == null) throw new CorteCajaInvalidoException();
+    private void insertarPago(long pedidoId, PagoPedido pago, boolean liquidado) {
         var cortes = jdbc.queryForList("""
             select cc.id from barrocontrol.corte_caja cc
             join barrocontrol.caja c on c.id = cc.id_caja
             join barrocontrol.pedido p on p.id_sucursal = c.id_sucursal
-            where p.id = ? and cc.id = ? and cc.fecha_hora_cierre is null
+            where p.id = ? and cc.fecha_hora_cierre is null
+            order by cc.fecha_hora_apertura desc, cc.id desc
+            limit 1
             for update of cc
-            """, Long.class, pedidoId, corteCajaId);
+            """, Long.class, pedidoId);
         if (cortes.isEmpty()) throw new CorteCajaInvalidoException();
+        Long corteCajaId = cortes.get(0);
         jdbc.update("""
             insert into barrocontrol.pago_pedido (id_pedido, id_corte_caja, monto, metodo_pago, fecha_hora, tipo_pago)
             values (?, ?, ?, ?, current_timestamp, ?)

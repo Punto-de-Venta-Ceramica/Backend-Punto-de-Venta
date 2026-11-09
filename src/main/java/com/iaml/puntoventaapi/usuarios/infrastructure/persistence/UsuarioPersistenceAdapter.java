@@ -32,6 +32,12 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositorioPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<Usuario> buscarPorId(Long usuarioId) {
+        return usuarioJpaRepository.findById(usuarioId).map(UsuarioMapper::toDomain);
+    }
+
+    @Override
     @Transactional
     public Usuario guardar(Usuario usuario) {
         RolEntity rol = entityManager.getReference(RolEntity.class, usuario.getRolId());

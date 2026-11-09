@@ -15,12 +15,12 @@ public class RegistrarPagoService {
     public record Resultado(BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }
 
     @Transactional
-    public Resultado registrar(long pedidoId, long usuarioId, PagoPedido pago, long corteCajaId) {
-        if (pedidoId <= 0 || usuarioId <= 0 || corteCajaId <= 0) throw new IllegalArgumentException("Pedido, usuario o corte inválido.");
+    public Resultado registrar(long pedidoId, long usuarioId, PagoPedido pago) {
+        if (pedidoId <= 0 || usuarioId <= 0) throw new IllegalArgumentException("Pedido o usuario inválido.");
         Objects.requireNonNull(pago, "El pago es obligatorio.");
         var pedido = pedidos.obtenerParaActualizar(pedidoId, usuarioId);
         pedido.registrarPago(pago);
-        pedidos.guardarPago(pedidoId, pago, corteCajaId);
+        pedidos.guardarPago(pedidoId, pago);
         return new Resultado(pedido.totalPagado(), pedido.saldoPendiente(), pedido.pagado());
     }
 }

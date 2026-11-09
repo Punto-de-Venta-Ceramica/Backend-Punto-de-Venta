@@ -4,6 +4,7 @@ import com.iaml.puntoventaapi.autenticacion.domain.Credencial;
 import com.iaml.puntoventaapi.autenticacion.domain.Rol;
 import com.iaml.puntoventaapi.autenticacion.domain.Sesion;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
+import com.iaml.puntoventaapi.autenticacion.domain.port.CredencialRepositorioPort;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Optional;
@@ -19,9 +20,19 @@ class IniciarSesionServiceTest {
 
     // Puertos sustituidos por lambdas: el caso de uso se prueba sin BD ni Spring.
     private final IniciarSesionService service = new IniciarSesionService(
-        correo -> correo.equals("dueno@barro.mx") ? Optional.of(CREDENCIAL) : Optional.empty(),
+        new CredencialRepositorioPort() {
+            @Override
+            public Optional<Credencial> buscarPorCorreo(String correo) {
+                return correo.equals("dueno@barro.mx") ? Optional.of(CREDENCIAL) : Optional.empty();
+            }
+
+            @Override
+            public Optional<Credencial> buscarPorUsuarioId(Long usuarioId) {
+                return Optional.empty();
+            }
+        },
         (plano, hash) -> hash.equals("hash-" + plano),
-        c -> new Sesion("token", Instant.EPOCH, c.getUsuarioId(), c.getRol().getNombre()));
+        c -> new Sesion("token", Instant.EPOCH, "refresh", Instant.EPOCH, c.getUsuarioId(), c.getRol().getNombre()));
 
     @Test
     void devuelveSesionConCredencialesCorrectas() {

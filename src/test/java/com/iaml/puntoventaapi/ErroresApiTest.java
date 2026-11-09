@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi;
 
 import com.iaml.puntoventaapi.autenticacion.api.AuthController;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionService;
+import com.iaml.puntoventaapi.autenticacion.application.RenovarSesionService;
 import com.iaml.puntoventaapi.shared.infrastructure.json.JsonConfig;
 import com.iaml.puntoventaapi.sucursal.api.SucursalController;
 import com.iaml.puntoventaapi.sucursal.application.SucursalService;
@@ -37,6 +38,7 @@ class ErroresApiTest {
     @Autowired MockMvc mvc;
     @MockitoBean SucursalService sucursales;
     @MockitoBean IniciarSesionService sesiones;
+    @MockitoBean RenovarSesionService renovaciones;
     @MockitoBean PropietarioService propietarios;
 
     static Stream<Arguments> endpoints() {

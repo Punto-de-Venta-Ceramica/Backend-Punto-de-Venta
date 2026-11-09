@@ -16,7 +16,7 @@ class PedidoTest {
         pedido.registrarPago(new PagoPedido(cantidad("100.00"), PagoPedido.MetodoPago.EFECTIVO));
         assertEquals(cantidad("170.00"), pedido.saldoPendiente());
         assertFalse(pedido.pagado());
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(PagoExcedeSaldoException.class,
             () -> pedido.registrarPago(new PagoPedido(cantidad("171.00"), PagoPedido.MetodoPago.TARJETA)));
         pedido.registrarPago(new PagoPedido(cantidad("170.00"), PagoPedido.MetodoPago.TARJETA));
         assertTrue(pedido.pagado());
@@ -50,7 +50,13 @@ class PedidoTest {
 
     @Test
     void exigeDatosDelClienteYProductosSinDuplicados() {
-        assertThrows(IllegalArgumentException.class, () -> new ClientePedido("Ana", "123", "X", "Y", " "));
+        assertThrows(IllegalArgumentException.class, () -> new ClientePedido("Ana123", "5512345678", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> new ClientePedido("Ana", "123", null, null, null));
+        var cliente = new ClientePedido("  María   José  ", "5512345678", "  ", "  5   de Mayo ", " Calle  12 #34 ");
+        assertEquals("María José", cliente.nombre());
+        assertNull(cliente.ciudad());
+        assertEquals("5 de Mayo", cliente.colonia());
+        assertEquals("Calle 12 #34", cliente.calle());
         var detalle = new DetallePedido(1, 1, cantidad("10.00"), cantidad("0.00"));
         assertThrows(IllegalArgumentException.class, () -> new Pedido(List.of(detalle, detalle)));
         assertThrows(IllegalArgumentException.class, () -> new Pedido(List.of()));

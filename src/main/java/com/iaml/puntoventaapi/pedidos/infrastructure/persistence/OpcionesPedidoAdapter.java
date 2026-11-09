@@ -31,11 +31,27 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
             join barrocontrol.categoria c on c.id = p.id_categoria
             join barrocontrol.area a on a.id = c.id_area
             left join lateral (
-                select descuento.cantidad_minima, descuento.cantidad_maxima, descuento.descuento
-                from barrocontrol.descuento descuento
-                join barrocontrol.descuento_producto dp on dp.id_descuento = descuento.id
-                where dp.id_producto = p.id and descuento.activo = true
-                order by descuento.id limit 1
+                -- Prioridad: asignado al producto, luego a su categoría, luego a su área; a igual nivel, menor id.
+                -- Debe coincidir con DescuentoPersistenceAdapter.buscarActivosPorProductos.
+                select x.cantidad_minima, x.cantidad_maxima, x.descuento
+                from (
+                    select 1 as prioridad, descuento.id, descuento.cantidad_minima, descuento.cantidad_maxima,
+                           descuento.descuento
+                    from barrocontrol.descuento descuento
+                    join barrocontrol.descuento_producto dp on dp.id_descuento = descuento.id
+                    where dp.id_producto = p.id and descuento.activo = true
+                    union all
+                    select 2, descuento.id, descuento.cantidad_minima, descuento.cantidad_maxima, descuento.descuento
+                    from barrocontrol.descuento descuento
+                    join barrocontrol.descuento_categoria dc on dc.id_descuento = descuento.id
+                    where dc.id_categoria = c.id and descuento.activo = true
+                    union all
+                    select 3, descuento.id, descuento.cantidad_minima, descuento.cantidad_maxima, descuento.descuento
+                    from barrocontrol.descuento descuento
+                    join barrocontrol.descuento_area da on da.id_descuento = descuento.id
+                    where da.id_area = a.id and descuento.activo = true
+                ) x
+                order by x.prioridad, x.id limit 1
             ) d on true
             where a.id_negocio = ? and p.activo = true and c.activo = true and a.activo = true
             order by p.nombre, p.id

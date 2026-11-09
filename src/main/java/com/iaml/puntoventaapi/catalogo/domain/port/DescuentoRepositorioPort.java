@@ -13,11 +13,19 @@ public interface DescuentoRepositorioPort {
     /** Enlaza el descuento con el producto (tabla descuento_producto). */
     void vincularAProducto(Long descuentoId, Long productoId);
 
+    /**
+     * Descuento activo que aplica al producto: el asignado directamente al producto; si no hay,
+     * el de su categoría; si no, el de su área. Dentro del mismo nivel gana el de menor id.
+     */
     Optional<Descuento> buscarActivoPorProducto(Long productoId);
 
-    /** Descuento activo de cada producto indicado (los productos sin descuento no aparecen). */
+    /** Igual que {@link #buscarActivoPorProducto} para varios productos (los que no tienen no aparecen). */
     Map<Long, Descuento> buscarActivosPorProductos(Collection<Long> productoIds);
 
-    /** Desenlaza el producto de sus descuentos y elimina los que se quedan sin ningún producto. */
-    void quitarDeProducto(Long productoId);
+    /**
+     * Descuento activo propio del producto: el que solo está asignado a ese producto (no a otros
+     * productos, ni a categorías o áreas). Es el único que se edita en sitio al guardar un producto con un
+     * descuento único (compatibilidad).
+     */
+    Optional<Descuento> buscarPropioActivoDeProducto(Long productoId);
 }

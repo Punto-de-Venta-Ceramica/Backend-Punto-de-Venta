@@ -6,7 +6,7 @@ import com.iaml.puntoventaapi.pedidos.domain.EstadoPedido;
 
 public interface PedidoRepositorioPort {
     record DatosRegistro(long sucursalId, long usuarioId, String descripcion,
-                         String tipoEntrega, String descripcionEnvio, Long corteCajaId) { }
+                         String tipoEntrega, String descripcionEnvio) { }
     /** Rechaza sucursales ajenas o inaccesibles al usuario autenticado. */
     void comprobarAcceso(long sucursalId, long usuarioId);
     long guardar(DatosRegistro datos, long clienteId, Pedido pedido);
@@ -14,6 +14,6 @@ public interface PedidoRepositorioPort {
     Pedido obtenerParaActualizar(long pedidoId, long usuarioId);
     /** Confirma el rol vigente y la pertenencia al negocio durante la transacción. */
     boolean esPropietarioActual(long pedidoId, long usuarioId);
-    void guardarPago(long pedidoId, PagoPedido pago, long corteCajaId);
+    void guardarPago(long pedidoId, PagoPedido pago);
     void guardarEstado(long pedidoId, EstadoPedido estado);
 }

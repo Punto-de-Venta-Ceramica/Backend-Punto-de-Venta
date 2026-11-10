@@ -25,12 +25,23 @@ public record CrearProductoRequest(
         @Digits(integer = 10, fraction = 2, message = "El precio admite máximo 10 enteros y 2 decimales.") BigDecimal precio,
         @NotNull(message = "El id de la categoría es obligatorio.")
         @Positive(message = "El id de la categoría debe ser positivo.") Long categoriaId,
+        @Pattern(regexp = "^https://res\\.cloudinary\\.com/\\S+$",
+                message = "La URL de la imagen debe usar https y pertenecer al dominio res.cloudinary.com.")
+        @Size(max = 2048, message = "La URL de la imagen no debe superar 2048 caracteres.") String imagenUrl,
+        @Pattern(regexp = "^[\\P{Cc}]*$",
+                message = "El identificador público de la imagen no debe contener caracteres de control.")
+        @Size(max = 500, message = "El identificador público de la imagen no debe superar 500 caracteres.") String imagenPublicId,
         @Valid DescuentoProductoRequest descuento,
         @Size(max = 100, message = "No se admiten más de 100 sucursales.")
         @Valid List<ExistenciaInicialRequest> existencias) {
 
+    public CrearProductoRequest(String nombre, BigDecimal precio, Long categoriaId,
+                                DescuentoProductoRequest descuento, List<ExistenciaInicialRequest> existencias) {
+        this(nombre, precio, categoriaId, null, null, descuento, existencias);
+    }
+
     public CrearProductoCommand toCommand() {
-        return new CrearProductoCommand(nombre, precio, categoriaId,
+        return new CrearProductoCommand(nombre, precio, categoriaId, imagenUrl, imagenPublicId,
             descuento == null ? null : descuento.toCommand(),
             existencias == null ? null : existencias.stream().map(ExistenciaInicialRequest::toCommand).toList());
     }

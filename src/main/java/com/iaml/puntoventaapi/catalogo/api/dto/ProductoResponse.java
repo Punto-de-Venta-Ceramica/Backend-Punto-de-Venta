@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import java.math.BigDecimal;
 
 public record ProductoResponse(Long id, String nombre, BigDecimal precio, Long categoriaId,
+                               String imagenUrl, String imagenPublicId,
                                DescuentoResponse descuento) {
 
     public record DescuentoResponse(Integer cantidadMinima, Integer cantidadMaxima, BigDecimal porcentaje) {
@@ -19,6 +20,7 @@ public record ProductoResponse(Long id, String nombre, BigDecimal precio, Long c
     public static ProductoResponse from(ProductoDetalle detalle) {
         Producto producto = detalle.producto();
         return new ProductoResponse(producto.getId(), producto.getNombre(), producto.getPrecio(),
-            producto.getCategoriaId(), DescuentoResponse.from(detalle.descuento()));
+            producto.getCategoriaId(), producto.getImagenUrl(), producto.getImagenPublicId(),
+            DescuentoResponse.from(detalle.descuento()));
     }
 }

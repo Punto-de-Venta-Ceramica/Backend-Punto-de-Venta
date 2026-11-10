@@ -38,4 +38,10 @@ public class ProductoEntity extends EntidadConId {
     @ColumnDefault("true")
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
+
+    @Column(name = "imagen_url", columnDefinition = "text")
+    private String imagenUrl;
+
+    @Column(name = "imagen_public_id", columnDefinition = "text")
+    private String imagenPublicId;
 }

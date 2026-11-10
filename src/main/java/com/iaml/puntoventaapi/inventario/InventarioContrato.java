@@ -11,4 +11,7 @@ public interface InventarioContrato {
      * @param existenciaPorSucursal id de sucursal -> existencia inicial (>= 0)
      */
     void registrarExistenciasIniciales(Long productoId, Map<Long, Integer> existenciaPorSucursal);
+
+    /** Consulta disponibilidad sin reservar ni modificar las existencias. */
+    Map<Long, Integer> consultarExistencias(Long negocioId, Long sucursalId, Long usuarioId);
 }

@@ -346,6 +346,14 @@ class ProductoServiceTest {
         }
 
         @Override
+        public List<Producto> listarActivosPorIds(Long negocioId, Collection<Long> productoIds) {
+            return listarPorNegocio(negocioId).stream()
+                .filter(p -> productoIds.contains(p.getId()))
+                .filter(p -> negocioId.equals(FakeCategorias.NEGOCIO_POR_CATEGORIA.get(p.getCategoriaId())))
+                .toList();
+        }
+
+        @Override
         public boolean existenPorCategoria(Long categoriaId) {
             return guardados.values().stream().anyMatch(p -> p.getCategoriaId().equals(categoriaId));
         }

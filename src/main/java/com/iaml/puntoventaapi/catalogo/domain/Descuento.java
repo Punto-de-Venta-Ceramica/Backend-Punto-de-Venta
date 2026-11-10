@@ -83,6 +83,15 @@ public final class Descuento {
         return porcentaje;
     }
 
+    public BigDecimal porcentajeParaCantidad(int cantidad) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+        }
+        boolean aplica = activo && cantidad >= cantidadMinima
+            && (cantidadMaxima == null || cantidad <= cantidadMaxima);
+        return aplica ? porcentaje : BigDecimal.ZERO;
+    }
+
     public boolean isActivo() {
         return activo;
     }

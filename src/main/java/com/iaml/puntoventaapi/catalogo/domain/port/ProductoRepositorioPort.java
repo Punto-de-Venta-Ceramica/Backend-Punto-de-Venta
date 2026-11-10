@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.catalogo.domain.port;
 
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface ProductoRepositorioPort {
@@ -14,6 +15,8 @@ public interface ProductoRepositorioPort {
 
     /** Productos activos del negocio, ordenados por nombre. */
     List<Producto> listarPorNegocio(Long negocioId);
+
+    List<Producto> listarActivosPorIds(Long negocioId, Collection<Long> productoIds);
 
     /** Incluye productos activos y dados de baja, pues ambos conservan la relación. */
     boolean existenPorCategoria(Long categoriaId);

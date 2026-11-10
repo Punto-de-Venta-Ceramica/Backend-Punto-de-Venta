@@ -64,4 +64,10 @@ public class SucursalContratoService implements SucursalContrato {
         if (sucursalId == null || sucursalId <= 0) return List.of();
         return sucursalesJpa.empleadosDeSucursal(sucursalId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> obtenerNegocioIdAccesible(Long sucursalId, Long usuarioId) {
+        return sucursales.buscarPorId(sucursalId, usuarioId).map(Sucursal::getNegocioId);
+    }
 }

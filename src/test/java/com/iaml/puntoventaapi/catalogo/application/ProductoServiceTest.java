@@ -1,6 +1,8 @@
 package com.iaml.puntoventaapi.catalogo.application;
 
+import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
@@ -12,6 +14,7 @@ import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -305,19 +308,32 @@ class ProductoServiceTest {
     }
 
     @Test
-    void listaSoloProductosActivosConSuDescuento() {
-        Long conDescuento = service.crear(comando(
-            new DescuentoProductoCommand(6, null, new BigDecimal("10.00")), null), PROPIETARIO).producto().getId();
+    void listaSoloProductosActivosEnUnaPagina() {
+        service.crear(comando(null, null), PROPIETARIO);
         Long baja = service.crear(comando(null, null), PROPIETARIO).producto().getId();
         service.crear(comando(null, null), PROPIETARIO);
         service.eliminar(baja, PROPIETARIO);
 
-        List<ProductoDetalle> lista = service.listar(NEGOCIO, PROPIETARIO);
+        Pagina<Producto> pagina = service.listar(NEGOCIO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 0, 30);
 
-        assertEquals(2, lista.size());
-        assertNotNull(lista.stream().filter(d -> d.producto().getId().equals(conDescuento)).findFirst()
-            .orElseThrow().descuento());
-        assertThrows(NegocioNoEncontradoException.class, () -> service.listar(NEGOCIO_AJENO, PROPIETARIO));
+        assertEquals(2, pagina.contenido().size());
+        assertEquals(2, pagina.totalElementos());
+        assertThrows(NegocioNoEncontradoException.class,
+            () -> service.listar(NEGOCIO_AJENO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 0, 30));
+    }
+
+    @Test
+    void listaPaginaDeAcuerdoAlTamanioSolicitado() {
+        for (int i = 0; i < 5; i++) {
+            service.crear(comando(null, null), PROPIETARIO);
+        }
+
+        Pagina<Producto> segunda = service.listar(NEGOCIO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 1, 2);
+
+        assertEquals(2, segunda.contenido().size());
+        assertEquals(5, segunda.totalElementos());
+        assertEquals(3, segunda.totalPaginas());
+        assertEquals(false, segunda.ultima());
     }
 
     @Test
@@ -451,6 +467,19 @@ class ProductoServiceTest {
         @Override
         public List<Producto> listarPorNegocio(Long negocioId) {
             return new ArrayList<>(guardados.values().stream().filter(Producto::isActivo).toList());
+        }
+
+        @Override
+        public Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio) {
+            List<Producto> activos = guardados.values().stream().filter(Producto::isActivo).toList();
+            int desde = Math.min(pagina * tamanio, activos.size());
+            int hasta = Math.min(desde + tamanio, activos.size());
+            return new Pagina<>(activos.subList(desde, hasta), pagina, tamanio, activos.size());
+        }
+
+        @Override
+        public Optional<ClasificacionProducto> buscarClasificacion(Long categoriaId) {
+            return Optional.empty();
         }
 
         @Override

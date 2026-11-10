@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.AreaResponse;
-import com.iaml.puntoventaapi.catalogo.api.dto.GuardarAreaRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.AreaResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarAreaRequest;
 import com.iaml.puntoventaapi.catalogo.application.AreaService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;

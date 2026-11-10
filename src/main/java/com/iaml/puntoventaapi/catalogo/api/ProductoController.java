@@ -1,12 +1,18 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.CrearProductoRequest;
-import com.iaml.puntoventaapi.catalogo.api.dto.EditarProductoRequest;
-import com.iaml.puntoventaapi.catalogo.api.dto.ProductoResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.CrearProductoRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.EditarProductoRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.PaginaResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.ProductoCatalogoResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.ProductoResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.ProductoResumenResponse;
 import com.iaml.puntoventaapi.catalogo.application.ProductoService;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,9 +42,28 @@ public class ProductoController {
         return ResponseEntity.created(URI.create("/api/productos/" + producto.id())).body(producto);
     }
 
+    /**
+     * Listado paginado (20 por página, ?page=0&size=20) con lo mínimo para las tarjetas. Siempre ordenado por
+     * nombre: se ignora cualquier ?sort. Los filtros son opcionales.
+     */
     @GetMapping
-    public List<ProductoResponse> listar(@RequestParam Long negocioId) {
-        return productos.listar(negocioId, usuarioActual.id()).stream().map(ProductoResponse::from).toList();
+    public PaginaResponse<ProductoResumenResponse> listar(
+            @RequestParam Long negocioId,
+            @RequestParam(required = false) Long areaId,
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Long sucursalId,
+            @RequestParam(required = false) String buscar,
+            @PageableDefault(size = 20) Pageable pageable) {
+        FiltroProductos filtro = new FiltroProductos(areaId, categoriaId, buscar, sucursalId);
+        return PaginaResponse.from(productos.listar(negocioId, usuarioActual.id(), filtro,
+            pageable.getPageNumber(), pageable.getPageSize()).mapear(ProductoResumenResponse::from));
+    }
+
+    /** Todos los productos del negocio con id, nombre y categoría, sin paginar (selectores de otros módulos). */
+    @GetMapping("/catalogo")
+    public List<ProductoCatalogoResponse> catalogo(@RequestParam Long negocioId) {
+        return productos.catalogo(negocioId, usuarioActual.id()).stream()
+            .map(ProductoCatalogoResponse::from).toList();
     }
 
     @GetMapping("/{id}")

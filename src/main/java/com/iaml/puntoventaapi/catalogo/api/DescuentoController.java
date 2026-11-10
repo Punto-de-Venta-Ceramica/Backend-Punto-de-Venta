@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.DescuentoResponse;
-import com.iaml.puntoventaapi.catalogo.api.dto.GuardarDescuentoRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.DescuentoResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarDescuentoRequest;
 import com.iaml.puntoventaapi.catalogo.application.DescuentoService;
 import com.iaml.puntoventaapi.catalogo.domain.DestinoDescuento;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;

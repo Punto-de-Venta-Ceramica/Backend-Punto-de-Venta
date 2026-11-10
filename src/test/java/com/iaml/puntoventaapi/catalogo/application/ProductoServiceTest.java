@@ -8,6 +8,7 @@ import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoExcep
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.Categoria;
+import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
@@ -40,9 +41,12 @@ class ProductoServiceTest {
     private static final Long CATEGORIA = 1L;
     private static final Long CATEGORIA_OTRO_NEGOCIO_PROPIO = 2L;
     private static final Long CATEGORIA_AJENA = 3L;
+    private static final String URL_IMG_1 = "https://res.cloudinary.com/ecbb3tac/image/upload/v1/productos/jarron_1.jpg";
+    private static final String URL_IMG_2 = "https://res.cloudinary.com/ecbb3tac/image/upload/v1/productos/jarron_2.jpg";
 
     private final FakeProductos productos = new FakeProductos();
     private final FakeDescuentos descuentos = new FakeDescuentos();
+    private final FakeAlmacenImagenes almacenImagenes = new FakeAlmacenImagenes();
     private final Map<Long, Map<Long, Integer>> inventarioRegistrado = new LinkedHashMap<>();
     private List<Long> sucursalesDelNegocio;
     private ProductoService service;
@@ -56,7 +60,8 @@ class ProductoServiceTest {
             descuentos,
             (negocioId, usuarioId) -> PROPIETARIO.equals(usuarioId) && (NEGOCIO.equals(negocioId) || negocioId == 101L),
             (negocioId, usuarioId) -> sucursalesDelNegocio,
-            inventarioRegistrado::put);
+            inventarioRegistrado::put,
+            almacenImagenes);
     }
 
     private CrearProductoCommand comando(DescuentoProductoCommand descuento, List<ExistenciaInicialCommand> existencias) {
@@ -315,6 +320,109 @@ class ProductoServiceTest {
         assertThrows(NegocioNoEncontradoException.class, () -> service.listar(NEGOCIO_AJENO, PROPIETARIO));
     }
 
+    @Test
+    void creaYConsultaProductoConImagenDeCloudinary() {
+        ProductoDetalle creado = service.crear(new CrearProductoCommand("Jarrón Barro",
+            new BigDecimal("180.00"), CATEGORIA, URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO);
+
+        assertEquals(URL_IMG_1, creado.producto().getImagenUrl());
+        assertEquals("productos/jarron_1", creado.producto().getImagenPublicId());
+        assertTrue(almacenImagenes.eliminadas.isEmpty());
+
+        ProductoDetalle consultado = service.consultar(creado.producto().getId(), PROPIETARIO);
+        assertEquals(URL_IMG_1, consultado.producto().getImagenUrl());
+        assertEquals("productos/jarron_1", consultado.producto().getImagenPublicId());
+    }
+
+    @Test
+    void rechazaImagenUrlQueNoSeaHttpsNiDeCloudinary() {
+        assertThrows(ProductoInvalidoException.class, () -> service.crear(new CrearProductoCommand("Jarrón",
+            BigDecimal.TEN, CATEGORIA, "http://res.cloudinary.com/ecbb3tac/image/upload/v1/img.jpg", "img",
+            null, null), PROPIETARIO));
+        assertThrows(ProductoInvalidoException.class, () -> service.crear(new CrearProductoCommand("Jarrón",
+            BigDecimal.TEN, CATEGORIA, "https://mi-sitio.com/img.jpg", "img",
+            null, null), PROPIETARIO));
+        assertTrue(productos.guardados.isEmpty());
+    }
+
+    @Test
+    void alEditarConUnaImagenDistintaBorraLaAnteriorEnCloudinary() {
+        Long id = service.crear(new CrearProductoCommand("Jarrón", new BigDecimal("100.00"), CATEGORIA,
+            URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO).producto().getId();
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(id, "Jarrón Editado",
+            new BigDecimal("120.00"), CATEGORIA, URL_IMG_2, "productos/jarron_2", null), PROPIETARIO);
+
+        assertEquals(URL_IMG_2, editado.producto().getImagenUrl());
+        assertEquals("productos/jarron_2", editado.producto().getImagenPublicId());
+        assertEquals(List.of("productos/jarron_1"), almacenImagenes.eliminadas);
+    }
+
+    @Test
+    void alEditarConservandoLaMismaImagenNoLaBorraEnCloudinary() {
+        Long id = service.crear(new CrearProductoCommand("Jarrón", new BigDecimal("100.00"), CATEGORIA,
+            URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO).producto().getId();
+
+        service.editar(new EditarProductoCommand(id, "Jarrón Renombrado",
+            new BigDecimal("120.00"), CATEGORIA, URL_IMG_1, "productos/jarron_1", null), PROPIETARIO);
+
+        assertTrue(almacenImagenes.eliminadas.isEmpty());
+    }
+
+    @Test
+    void alEditarQuitandoLaImagenBorraLaAnteriorEnCloudinary() {
+        Long id = service.crear(new CrearProductoCommand("Jarrón", new BigDecimal("100.00"), CATEGORIA,
+            URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO).producto().getId();
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(id, "Jarrón Sin Imagen",
+            new BigDecimal("120.00"), CATEGORIA, null, null, null), PROPIETARIO);
+
+        assertNull(editado.producto().getImagenUrl());
+        assertNull(editado.producto().getImagenPublicId());
+        assertEquals(List.of("productos/jarron_1"), almacenImagenes.eliminadas);
+    }
+
+    @Test
+    void alEliminarUnProductoBorraSuImagenEnCloudinary() {
+        Long id = service.crear(new CrearProductoCommand("Jarrón", new BigDecimal("100.00"), CATEGORIA,
+            URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO).producto().getId();
+
+        service.eliminar(id, PROPIETARIO);
+
+        assertFalse(productos.guardados.get(id).isActivo());
+        assertEquals(List.of("productos/jarron_1"), almacenImagenes.eliminadas);
+    }
+
+    @Test
+    void siCloudinaryFallaAlEditarOEliminarNoRompeLaOperacion() {
+        Long id = service.crear(new CrearProductoCommand("Jarrón", new BigDecimal("100.00"), CATEGORIA,
+            URL_IMG_1, "productos/jarron_1", null, null), PROPIETARIO).producto().getId();
+        almacenImagenes.fallar = true;
+
+        ProductoDetalle editado = service.editar(new EditarProductoCommand(id, "Jarrón 2",
+            new BigDecimal("150.00"), CATEGORIA, URL_IMG_2, "productos/jarron_2", null), PROPIETARIO);
+        assertEquals("Jarrón 2", editado.producto().getNombre());
+        assertEquals("productos/jarron_2", editado.producto().getImagenPublicId());
+
+        service.eliminar(id, PROPIETARIO);
+        assertFalse(productos.guardados.get(id).isActivo());
+    }
+
+    /** Adaptador simulado de almacenamiento de imágenes (Cloudinary). */
+    private static final class FakeAlmacenImagenes implements AlmacenImagenesPort {
+
+        final List<String> eliminadas = new ArrayList<>();
+        boolean fallar = false;
+
+        @Override
+        public void eliminar(String publicId) {
+            if (fallar) {
+                throw new RuntimeException("Fallo simulado de comunicación con Cloudinary");
+            }
+            eliminadas.add(publicId);
+        }
+    }
+
     /** Repositorio en memoria. Solo el propietario de prueba ve sus productos activos. */
     private static final class FakeProductos implements ProductoRepositorioPort {
 
@@ -325,7 +433,7 @@ class ProductoServiceTest {
         public Producto guardar(Producto producto) {
             Long id = producto.getId() != null ? producto.getId() : siguienteId++;
             Producto persistido = new Producto(id, producto.getCategoriaId(), producto.getNombre(),
-                producto.getPrecio(), producto.isActivo());
+                producto.getPrecio(), producto.getImagenUrl(), producto.getImagenPublicId(), producto.isActivo());
             guardados.put(id, persistido);
             return persistido;
         }
@@ -337,7 +445,7 @@ class ProductoServiceTest {
                 return Optional.empty();
             }
             return Optional.of(new Producto(producto.getId(), producto.getCategoriaId(), producto.getNombre(),
-                producto.getPrecio(), true));
+                producto.getPrecio(), producto.getImagenUrl(), producto.getImagenPublicId(), true));
         }
 
         @Override

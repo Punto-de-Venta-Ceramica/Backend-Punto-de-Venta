@@ -1,6 +1,8 @@
 package com.iaml.puntoventaapi.catalogo.application;
 
+import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
@@ -14,6 +16,7 @@ import com.iaml.puntoventaapi.catalogo.domain.port.InventarioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.SucursalPort;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,7 @@ public class ProductoService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProductoService.class);
     private static final int NOMBRE_DESCUENTO_MAX = 120;
+    public static final int TAMANIO_PAGINA_MAX = 100;
 
     private final ProductoRepositorioPort productos;
     private final CategoriaRepositorioPort categorias;
@@ -53,7 +57,7 @@ public class ProductoService {
             ? descuentos.buscarActivoPorProducto(producto.getId()).orElse(null)
             : crearDescuento(producto, negocioId, command.descuento());
         inventario.registrarExistenciasIniciales(producto.getId(), existencias);
-        return new ProductoDetalle(producto, descuento);
+        return conClasificacion(producto, descuento);
     }
 
     /** Nunca modifica la existencia: eso es responsabilidad del módulo de inventario. */
@@ -81,7 +85,7 @@ public class ProductoService {
         if (cambioImagen(publicIdAnterior, urlAnterior, guardado) && publicIdAnterior != null) {
             eliminarImagenSegura(publicIdAnterior);
         }
-        return new ProductoDetalle(guardado, descuento);
+        return conClasificacion(guardado, descuento);
     }
 
     /** Baja lógica: el producto sigue referenciado por ventas, pedidos e inventario. */
@@ -115,19 +119,38 @@ public class ProductoService {
     @Transactional(readOnly = true)
     public ProductoDetalle consultar(Long id, Long usuarioId) {
         Producto producto = buscarProducto(id, usuarioId);
-        return new ProductoDetalle(producto, descuentos.buscarActivoPorProducto(id).orElse(null));
+        return conClasificacion(producto, descuentos.buscarActivoPorProducto(id).orElse(null));
     }
 
+    /**
+     * Página de productos para el listado: solo el producto (imagen, nombre, precio). Descuento, existencia,
+     * área y categoría se consultan en el detalle.
+     */
     @Transactional(readOnly = true)
-    public List<ProductoDetalle> listar(Long negocioId, Long usuarioId) {
-        // Un negocio ajeno y uno inexistente producen la misma respuesta pública.
+    public Pagina<Producto> listar(Long negocioId, Long usuarioId, FiltroProductos filtro,
+                                   int pagina, int tamanio) {
+        validarNegocio(negocioId, usuarioId);
+        return productos.listarPagina(negocioId, filtro,
+            Math.max(pagina, 0), Math.min(Math.max(tamanio, 1), TAMANIO_PAGINA_MAX));
+    }
+
+    /** Todos los productos activos del negocio, sin existencia ni descuento: lo usan los selectores de otros módulos. */
+    @Transactional(readOnly = true)
+    public List<Producto> catalogo(Long negocioId, Long usuarioId) {
+        validarNegocio(negocioId, usuarioId);
+        return productos.listarPorNegocio(negocioId);
+    }
+
+    /** Un negocio ajeno y uno inexistente producen la misma respuesta pública. */
+    private void validarNegocio(Long negocioId, Long usuarioId) {
         if (!negocios.perteneceAUsuario(negocioId, usuarioId)) {
             throw new NegocioNoEncontradoException();
         }
-        List<Producto> lista = productos.listarPorNegocio(negocioId);
-        Map<Long, Descuento> descuentosPorProducto =
-            descuentos.buscarActivosPorProductos(lista.stream().map(Producto::getId).toList());
-        return lista.stream().map(p -> new ProductoDetalle(p, descuentosPorProducto.get(p.getId()))).toList();
+    }
+
+    private ProductoDetalle conClasificacion(Producto producto, Descuento descuento) {
+        ClasificacionProducto clasificacion = productos.buscarClasificacion(producto.getCategoriaId()).orElse(null);
+        return new ProductoDetalle(producto, descuento, clasificacion);
     }
 
     private Producto buscarProducto(Long id, Long usuarioId) {

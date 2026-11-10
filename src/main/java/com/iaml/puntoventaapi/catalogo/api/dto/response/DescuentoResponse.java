@@ -1,4 +1,4 @@
-package com.iaml.puntoventaapi.catalogo.api.dto;
+package com.iaml.puntoventaapi.catalogo.api.dto.response;
 
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
 import com.iaml.puntoventaapi.catalogo.domain.DescuentoConAsignaciones;

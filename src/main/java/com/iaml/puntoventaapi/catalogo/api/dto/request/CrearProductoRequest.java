@@ -1,6 +1,6 @@
-package com.iaml.puntoventaapi.catalogo.api.dto;
+package com.iaml.puntoventaapi.catalogo.api.dto.request;
 
-import com.iaml.puntoventaapi.catalogo.application.EditarProductoCommand;
+import com.iaml.puntoventaapi.catalogo.application.CrearProductoCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -10,9 +10,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.util.List;
 
-/** Reemplazo completo de los datos editables. Si descuento es null, el producto queda sin descuento. */
-public record EditarProductoRequest(
+/**
+ * El negocio se deduce de la categoría (categoría -> área -> negocio).
+ * descuento y existencias son opcionales; con una sola sucursal el producto se asigna a ella con existencia 0.
+ */
+public record CrearProductoRequest(
         @NotBlank(message = "El nombre es obligatorio y no puede contener solo espacios.")
         @Pattern(regexp = "^[\\P{Cc}]*$", message = "El nombre no debe contener saltos de línea ni caracteres de control.")
         @Size(max = 150, message = "El nombre no debe superar 150 caracteres.") String nombre,
@@ -27,15 +31,18 @@ public record EditarProductoRequest(
         @Pattern(regexp = "^[\\P{Cc}]*$",
                 message = "El identificador público de la imagen no debe contener caracteres de control.")
         @Size(max = 500, message = "El identificador público de la imagen no debe superar 500 caracteres.") String imagenPublicId,
-        @Valid DescuentoProductoRequest descuento) {
+        @Valid DescuentoProductoRequest descuento,
+        @Size(max = 100, message = "No se admiten más de 100 sucursales.")
+        @Valid List<ExistenciaInicialRequest> existencias) {
 
-    public EditarProductoRequest(String nombre, BigDecimal precio, Long categoriaId,
-                                 DescuentoProductoRequest descuento) {
-        this(nombre, precio, categoriaId, null, null, descuento);
+    public CrearProductoRequest(String nombre, BigDecimal precio, Long categoriaId,
+                                DescuentoProductoRequest descuento, List<ExistenciaInicialRequest> existencias) {
+        this(nombre, precio, categoriaId, null, null, descuento, existencias);
     }
 
-    public EditarProductoCommand toCommand(Long id) {
-        return new EditarProductoCommand(id, nombre, precio, categoriaId, imagenUrl, imagenPublicId,
-            descuento == null ? null : descuento.toCommand());
+    public CrearProductoCommand toCommand() {
+        return new CrearProductoCommand(nombre, precio, categoriaId, imagenUrl, imagenPublicId,
+            descuento == null ? null : descuento.toCommand(),
+            existencias == null ? null : existencias.stream().map(ExistenciaInicialRequest::toCommand).toList());
     }
 }

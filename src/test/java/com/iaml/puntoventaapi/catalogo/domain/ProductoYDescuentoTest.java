@@ -37,6 +37,33 @@ class ProductoYDescuentoTest {
     }
 
     @Test
+    void productoAceptaImagenNulaODeCloudinaryHttps() {
+        Producto sinImagen = new Producto(null, 1L, "Jarrón", BigDecimal.TEN, null, null, true);
+        assertNull(sinImagen.getImagenUrl());
+        assertNull(sinImagen.getImagenPublicId());
+
+        Producto conImagen = new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "  https://res.cloudinary.com/ecbb3tac/image/upload/v1/productos/jarron.jpg  ",
+            "  productos/jarron  ", true);
+        assertEquals("https://res.cloudinary.com/ecbb3tac/image/upload/v1/productos/jarron.jpg", conImagen.getImagenUrl());
+        assertEquals("productos/jarron", conImagen.getImagenPublicId());
+    }
+
+    @Test
+    void productoRechazaImagenUrlSinHttpsODeOtroDominio() {
+        assertThrows(IllegalArgumentException.class, () -> new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "http://res.cloudinary.com/ecbb3tac/image/upload/v1/jarron.jpg", "jarron", true));
+        assertThrows(IllegalArgumentException.class, () -> new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "https://otro-dominio.com/image/upload/v1/jarron.jpg", "jarron", true));
+        assertThrows(IllegalArgumentException.class, () -> new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "https://res.cloudinary.com.atacante.com/jarron.jpg", "jarron", true));
+        assertThrows(IllegalArgumentException.class, () -> new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "https://res.cloudinary.com/", "jarron", true));
+        assertThrows(IllegalArgumentException.class, () -> new Producto(null, 1L, "Jarrón", BigDecimal.TEN,
+            "   ", "jarron", true));
+    }
+
+    @Test
     void descuentoAceptaRangoSinTope() {
         Descuento descuento = new Descuento(null, 1L, "Mayoreo", 12, null, new BigDecimal("10.00"), true);
 

@@ -20,4 +20,6 @@ ALTER TABLE barrocontrol.area ADD COLUMN IF NOT EXISTS id_negocio BIGINT NOT NUL
 CREATE INDEX IF NOT EXISTS ix_area_negocio ON barrocontrol.area(id_negocio);
 ALTER TABLE barrocontrol.producto ADD COLUMN IF NOT EXISTS precio NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (precio >= 0);
 ALTER TABLE barrocontrol.producto ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE barrocontrol.producto ADD COLUMN IF NOT EXISTS imagen_url TEXT;
+ALTER TABLE barrocontrol.producto ADD COLUMN IF NOT EXISTS imagen_public_id TEXT;
 COMMIT;

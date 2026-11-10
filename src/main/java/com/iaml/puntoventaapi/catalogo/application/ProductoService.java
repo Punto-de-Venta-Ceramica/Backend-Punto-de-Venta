@@ -7,6 +7,7 @@ import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaExc
 import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
+import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.InventarioPort;
@@ -14,6 +15,8 @@ import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.SucursalPort;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
@@ -26,6 +29,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProductoService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ProductoService.class);
     private static final int NOMBRE_DESCUENTO_MAX = 120;
 
     private final ProductoRepositorioPort productos;
@@ -34,6 +38,7 @@ public class ProductoService {
     private final NegocioPort negocios;
     private final SucursalPort sucursales;
     private final InventarioPort inventario;
+    private final AlmacenImagenesPort almacenImagenes;
 
     /** Producto, descuento (opcional) e inventario por sucursal se guardan en una sola transacción. */
     @Transactional
@@ -42,7 +47,7 @@ public class ProductoService {
         Map<Long, Integer> existencias = resolverExistencias(negocioId, command.existencias(), usuarioId);
 
         Producto producto = productos.guardar(new Producto(null, command.categoriaId(), command.nombre(),
-            command.precio(), true));
+            command.precio(), command.imagenUrl(), command.imagenPublicId(), true));
         // Sin descuento propio, el producto puede heredar el de su categoría o área.
         Descuento descuento = command.descuento() == null
             ? descuentos.buscarActivoPorProducto(producto.getId()).orElse(null)
@@ -56,27 +61,55 @@ public class ProductoService {
     public ProductoDetalle editar(EditarProductoCommand command, Long usuarioId) {
         Producto producto = buscarProducto(command.id(), usuarioId);
         Long categoriaAnterior = producto.getCategoriaId();
+        String publicIdAnterior = producto.getImagenPublicId();
+        String urlAnterior = producto.getImagenUrl();
         Long negocioId = categorias.buscarNegocioId(categoriaAnterior)
             .orElseThrow(() -> new CategoriaNoEncontradaException());
 
         producto.setNombre(command.nombre());
         producto.setPrecio(command.precio());
         producto.setCategoriaId(command.categoriaId());
+        producto.setImagenUrl(command.imagenUrl());
+        producto.setImagenPublicId(command.imagenPublicId());
         Long negocioNuevo = resolverNegocioDeCategoria(producto.getCategoriaId(), usuarioId);
         if (!negocioNuevo.equals(negocioId)) {
             throw new ProductoInvalidoException("La categoría debe pertenecer al mismo negocio del producto.");
         }
 
         Producto guardado = productos.guardar(producto);
-        return new ProductoDetalle(guardado, aplicarDescuento(guardado, negocioId, command.descuento()));
+        Descuento descuento = aplicarDescuento(guardado, negocioId, command.descuento());
+        if (cambioImagen(publicIdAnterior, urlAnterior, guardado) && publicIdAnterior != null) {
+            eliminarImagenSegura(publicIdAnterior);
+        }
+        return new ProductoDetalle(guardado, descuento);
     }
 
     /** Baja lógica: el producto sigue referenciado por ventas, pedidos e inventario. */
     @Transactional
     public void eliminar(Long id, Long usuarioId) {
         Producto producto = buscarProducto(id, usuarioId);
+        String publicIdAnterior = producto.getImagenPublicId();
         producto.desactivar();
         productos.guardar(producto);
+        if (publicIdAnterior != null) {
+            eliminarImagenSegura(publicIdAnterior);
+        }
+    }
+
+    private void eliminarImagenSegura(String publicId) {
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        try {
+            almacenImagenes.eliminar(publicId);
+        } catch (Exception ex) {
+            LOG.error("No se pudo eliminar la imagen '{}' en Cloudinary; la operación del producto continúa.", publicId, ex);
+        }
+    }
+
+    private static boolean cambioImagen(String publicIdAnterior, String urlAnterior, Producto actual) {
+        return !Objects.equals(publicIdAnterior, actual.getImagenPublicId())
+            || !Objects.equals(urlAnterior, actual.getImagenUrl());
     }
 
     @Transactional(readOnly = true)

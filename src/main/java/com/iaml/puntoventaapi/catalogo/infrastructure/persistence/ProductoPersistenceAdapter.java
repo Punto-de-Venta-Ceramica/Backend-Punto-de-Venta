@@ -3,6 +3,7 @@ package com.iaml.puntoventaapi.catalogo.infrastructure.persistence;
 import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
 import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
+import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import jakarta.persistence.EntityManager;
@@ -41,6 +42,17 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
     @Transactional(readOnly = true)
     public Optional<Producto> buscarPorId(Long id, Long usuarioId) {
         return productos.buscarActivoDelUsuario(id, usuarioId).map(ProductoMapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ProductoDetalle> buscarConClasificacion(Long id, Long usuarioId) {
+        return productos.buscarActivoConClasificacion(id, usuarioId).map(entity -> {
+            CategoriaEntity categoria = entity.getCategoria();
+            AreaEntity area = categoria.getArea();
+            return new ProductoDetalle(ProductoMapper.toDomain(entity), null,
+                new ClasificacionProducto(area.getId(), area.getNombre(), categoria.getId(), categoria.getNombre()));
+        });
     }
 
     @Override

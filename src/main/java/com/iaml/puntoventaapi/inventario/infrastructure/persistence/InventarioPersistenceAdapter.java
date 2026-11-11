@@ -71,4 +71,11 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             : inventarios.panelPorSucursal(negocioId, sucursalId, usuarioId);
         return filas.stream().map(InventarioMapper::toExistencia).toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId) {
+        return inventarios.existenciasDeProducto(productoId, usuarioId).stream()
+            .map(InventarioMapper::toExistencia).toList();
+    }
 }

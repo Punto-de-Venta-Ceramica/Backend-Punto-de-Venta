@@ -31,10 +31,17 @@ public class InventarioController {
     private final UsuarioActual usuarioActual;
 
     /** Panel global: existencias de todas las sucursales del negocio, o de una si se envía sucursalId. */
-    @GetMapping
+    @GetMapping(params = "negocioId")
     public List<InventarioPanelResponse> panel(@RequestParam Long negocioId,
                                                @RequestParam(required = false) Long sucursalId) {
         return inventario.consultarPanel(negocioId, sucursalId, usuarioActual.id()).stream()
+            .map(InventarioPanelResponse::from).toList();
+    }
+
+    /** Existencias de un solo producto en cada sucursal: lo que necesita el detalle del producto. */
+    @GetMapping(params = "productoId")
+    public List<InventarioPanelResponse> porProducto(@RequestParam Long productoId) {
+        return inventario.consultarPorProducto(productoId, usuarioActual.id()).stream()
             .map(InventarioPanelResponse::from).toList();
     }
 

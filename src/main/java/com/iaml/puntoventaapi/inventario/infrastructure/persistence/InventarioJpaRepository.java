@@ -75,4 +75,16 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         """)
     List<Object[]> panelPorSucursal(@Param("negocioId") Long negocioId, @Param("sucursalId") Long sucursalId,
                                     @Param("usuarioId") Long usuarioId);
+
+    @Query("""
+        select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
+        from InventarioEntity i
+        join i.producto p
+        join i.sucursal s
+        join s.negocio n
+        join n.usuarios u
+        where p.id = :productoId and u.id = :usuarioId and n.activo = true and p.activo = true
+        order by s.nombre, i.id
+        """)
+    List<Object[]> existenciasDeProducto(@Param("productoId") Long productoId, @Param("usuarioId") Long usuarioId);
 }

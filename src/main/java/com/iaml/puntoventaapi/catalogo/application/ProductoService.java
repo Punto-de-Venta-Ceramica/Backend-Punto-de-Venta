@@ -118,8 +118,10 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public ProductoDetalle consultar(Long id, Long usuarioId) {
-        Producto producto = buscarProducto(id, usuarioId);
-        return conClasificacion(producto, descuentos.buscarActivoPorProducto(id).orElse(null));
+        ProductoDetalle detalle = productos.buscarConClasificacion(id, usuarioId)
+            .orElseThrow(() -> new ProductoNoEncontradoException());
+        return new ProductoDetalle(detalle.producto(), descuentos.buscarActivoPorProducto(id).orElse(null),
+            detalle.clasificacion());
     }
 
     /**

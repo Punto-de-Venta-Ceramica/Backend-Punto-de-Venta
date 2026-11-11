@@ -35,6 +35,19 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
     List<ProductoEntity> listarActivosPorNegocio(@Param("negocioId") Long negocioId);
 
     /** Texto ya en minúsculas y con comodines (%texto%); los demás filtros null no se aplican. */
+    /** Igual que buscarActivoDelUsuario, pero trae categoría y área en la misma consulta. */
+    @Query("""
+        select p
+        from ProductoEntity p
+        join fetch p.categoria c
+        join fetch c.area a
+        join a.negocio n
+        join n.usuarios u
+        where p.id = :id and u.id = :usuarioId and p.activo = true and n.activo = true
+          and c.activo = true and a.activo = true
+        """)
+    Optional<ProductoEntity> buscarActivoConClasificacion(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
+
     @Query(value = """
         select p
         from ProductoEntity p

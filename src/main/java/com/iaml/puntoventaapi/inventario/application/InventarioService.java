@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontrado
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteException;
 import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
+import com.iaml.puntoventaapi.inventario.domain.exception.UltimaSucursalException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.inventario.domain.port.NegocioPort;
 import lombok.RequiredArgsConstructor;
@@ -44,10 +45,11 @@ public class InventarioService {
 
     /**
      * Asigna un producto ya registrado a otra sucursal del mismo negocio. Un producto o una sucursal
-     * ajenos o inexistentes producen la misma respuesta pública.
+     * ajenos o inexistentes producen la misma respuesta pública. Si el producto se había quitado de esa
+     * sucursal, se reactiva su registro: sin existencia indicada (null) conserva la que tenía.
      */
     @Transactional
-    public Inventario asignar(Long productoId, Long sucursalId, int existencia, Long usuarioId) {
+    public Inventario asignar(Long productoId, Long sucursalId, Integer existencia, Long usuarioId) {
         Long negocioProducto = inventarios.negocioDeProducto(productoId, usuarioId)
             .orElseThrow(() -> new ProductoOSucursalNoEncontradoException());
         Long negocioSucursal = inventarios.negocioDeSucursal(sucursalId, usuarioId)
@@ -55,10 +57,31 @@ public class InventarioService {
         if (!negocioProducto.equals(negocioSucursal)) {
             throw new ProductoOSucursalNoEncontradoException();
         }
-        if (inventarios.existe(sucursalId, productoId)) {
+        Inventario previo = inventarios.buscarPorSucursalYProducto(sucursalId, productoId).orElse(null);
+        if (previo == null) {
+            return inventarios.guardar(new Inventario(null, sucursalId, productoId,
+                existencia == null ? 0 : existencia));
+        }
+        if (previo.isActivo()) {
             throw new InventarioYaExisteException();
         }
-        return inventarios.guardar(new Inventario(null, sucursalId, productoId, existencia));
+        previo.reactivar(existencia);
+        return inventarios.guardar(previo);
+    }
+
+    /**
+     * Quita el producto de una sucursal (baja lógica): la existencia se conserva por si se vuelve a asignar.
+     * El producto debe seguir asignado al menos a otra sucursal.
+     */
+    @Transactional
+    public void quitar(Long inventarioId, Long usuarioId) {
+        Inventario inventario = inventarios.buscarParaQuitar(inventarioId, usuarioId)
+            .orElseThrow(() -> new InventarioNoEncontradoException());
+        if (inventarios.contarActivosDeProducto(inventario.getProductoId()) <= 1) {
+            throw new UltimaSucursalException();
+        }
+        inventario.desactivar();
+        inventarios.guardar(inventario);
     }
 
     /** El bloqueo de la fila dura hasta que termina esta transacción: lectura, regla y guardado son atómicos. */

@@ -12,7 +12,7 @@ public final class InventarioMapper {
 
     public static Inventario toDomain(InventarioEntity entity) {
         return new Inventario(entity.getId(), entity.getSucursal().getId(), entity.getProducto().getId(),
-            entity.getExistencia());
+            entity.getExistencia(), entity.isActivo());
     }
 
     public static InventarioEntity toEntity(Inventario inventario, SucursalEntity sucursal, ProductoEntity producto) {
@@ -20,6 +20,7 @@ public final class InventarioMapper {
         entity.setSucursal(sucursal);
         entity.setProducto(producto);
         entity.setExistencia(inventario.getExistencia());
+        entity.setActivo(inventario.isActivo());
         return entity;
     }
 

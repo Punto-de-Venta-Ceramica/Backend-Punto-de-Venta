@@ -8,6 +8,7 @@ import com.iaml.puntoventaapi.catalogo.domain.port.AreaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.negocios.NegociosContrato;
+import com.iaml.puntoventaapi.sucursal.SucursalContrato;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -21,9 +22,12 @@ public class AreaService {
     private final NegociosContrato negocios;
     private final CategoriaRepositorioPort categorias;
     private final ProductoRepositorioPort productos;
+    private final SucursalContrato sucursales;
 
     public AreaService(AreaRepositorioPort areas, NegociosContrato negocios,
-                       CategoriaRepositorioPort categorias, ProductoRepositorioPort productos) {
+                       CategoriaRepositorioPort categorias, ProductoRepositorioPort productos,
+                       SucursalContrato sucursales) {
+        this.sucursales = sucursales;
         this.areas = areas;
         this.negocios = negocios;
         this.categorias = categorias;
@@ -37,8 +41,19 @@ public class AreaService {
     }
 
     public List<Area> listar(Long negocioId, Long usuarioId) {
-        verificarNegocio(negocioId, usuarioId);
+        return listar(negocioId, usuarioId, null);
+    }
+
+    /** Con sucursalId, un empleado asignado a ella también puede consultar (solo lectura). */
+    public List<Area> listar(Long negocioId, Long usuarioId, Long sucursalId) {
+        verificarLectura(negocioId, usuarioId, sucursalId);
         return areas.listarPorNegocio(negocioId);
+    }
+
+    public Area consultar(Long negocioId, Long areaId, Long usuarioId, Long sucursalId) {
+        verificarLectura(negocioId, usuarioId, sucursalId);
+        return areas.buscarPorId(areaId, negocioId)
+            .orElseThrow(() -> new CatalogoNoEncontradoException("El área no existe o no tienes acceso."));
     }
 
     public Area consultar(Long negocioId, Long areaId, Long usuarioId) {
@@ -72,6 +87,14 @@ public class AreaService {
         verificarNegocio(negocioId, usuarioId);
         return areas.buscarPorIdParaActualizar(areaId, negocioId)
             .orElseThrow(() -> new CatalogoNoEncontradoException("El área no existe o no tienes acceso."));
+    }
+
+    private void verificarLectura(Long negocioId, Long usuarioId, Long sucursalId) {
+        boolean empleado = sucursalId != null && sucursales.negocioAutorizado(sucursalId, usuarioId)
+            .filter(negocioId::equals).isPresent();
+        if (!empleado) {
+            verificarNegocio(negocioId, usuarioId);
+        }
     }
 
     private void verificarNegocio(Long negocioId, Long usuarioId) {

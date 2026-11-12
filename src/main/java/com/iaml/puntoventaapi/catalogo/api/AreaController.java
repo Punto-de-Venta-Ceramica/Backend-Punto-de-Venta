@@ -32,8 +32,9 @@ public class AreaController {
     }
 
     @GetMapping
-    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId) {
-        return areas.listar(negocioId, usuarioActual.id()).stream().map(AreaResponse::from).toList();
+    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId,
+                                     @RequestParam(required = false) Long sucursalId) {
+        return areas.listar(negocioId, usuarioActual.id(), sucursalId).stream().map(AreaResponse::from).toList();
     }
 
     @GetMapping("/{areaId}")

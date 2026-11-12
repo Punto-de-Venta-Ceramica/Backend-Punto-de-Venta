@@ -47,12 +47,21 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
     @Override
     @Transactional(readOnly = true)
     public Optional<ProductoDetalle> buscarConClasificacion(Long id, Long usuarioId) {
-        return productos.buscarActivoConClasificacion(id, usuarioId).map(entity -> {
-            CategoriaEntity categoria = entity.getCategoria();
-            AreaEntity area = categoria.getArea();
-            return new ProductoDetalle(ProductoMapper.toDomain(entity), null,
-                new ClasificacionProducto(area.getId(), area.getNombre(), categoria.getId(), categoria.getNombre()));
-        });
+        return productos.buscarActivoConClasificacion(id, usuarioId).map(ProductoPersistenceAdapter::conClasificacion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ProductoDetalle> buscarConClasificacionEnNegocio(Long id, Long negocioId) {
+        return productos.buscarActivoConClasificacionEnNegocio(id, negocioId)
+            .map(ProductoPersistenceAdapter::conClasificacion);
+    }
+
+    private static ProductoDetalle conClasificacion(ProductoEntity entity) {
+        CategoriaEntity categoria = entity.getCategoria();
+        AreaEntity area = categoria.getArea();
+        return new ProductoDetalle(ProductoMapper.toDomain(entity), null,
+            new ClasificacionProducto(area.getId(), area.getNombre(), categoria.getId(), categoria.getNombre()));
     }
 
     @Override
@@ -66,6 +75,7 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
     public Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio) {
         Page<ProductoEntity> resultado = productos.buscarActivosPorNegocio(negocioId, filtro.areaId(),
             filtro.categoriaId(), patronBusqueda(filtro.texto()), filtro.sucursalId(),
+            filtro.precioMinimo(), filtro.precioMaximo(),
             PageRequest.of(pagina, tamanio));
         return new Pagina<>(resultado.getContent().stream().map(ProductoMapper::toDomain).toList(),
             pagina, tamanio, resultado.getTotalElements());

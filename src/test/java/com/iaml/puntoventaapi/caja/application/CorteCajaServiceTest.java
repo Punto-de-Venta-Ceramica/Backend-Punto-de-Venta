@@ -15,6 +15,10 @@ import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioJpaRepo
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -220,5 +224,27 @@ class CorteCajaServiceTest {
         assertThatThrownBy(() -> service.obtenerCorteActivo(null, 1L))
             .isInstanceOf(CorteCajaNoAbiertoException.class)
             .hasMessageContaining("No hay un corte de caja abierto");
+    }
+
+    @Test
+    @DisplayName("Listar historial devuelve página con cortes ordenados")
+    void listarHistorialPaginado() {
+        when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
+
+        CorteCaja c = new CorteCaja();
+        ReflectionTestUtils.setField(c, "id", 600L);
+        c.setCaja(caja);
+        c.setUsuario(empleado);
+        c.setFechaHoraApertura(Instant.now());
+        c.setMontoInicial(new BigDecimal("100.00"));
+        c.setTotalEstimado(new BigDecimal("500.00"));
+
+        when(corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(eq(10L), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(c)));
+
+        Page<ResumenCorteCajaDto> page = service.listarHistorial(null, 1L, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).id()).isEqualTo(600L);
     }
 }

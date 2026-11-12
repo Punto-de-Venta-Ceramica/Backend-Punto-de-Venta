@@ -34,6 +34,15 @@ public class InventarioService {
     }
 
     /**
+     * Existencias de un solo producto (detalle). Un producto ajeno o inexistente devuelve una lista vacía,
+     * igual que uno sin sucursales asignadas: no revela si existe.
+     */
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> consultarPorProducto(Long productoId, Long usuarioId) {
+        return inventarios.listarPorProducto(productoId, usuarioId);
+    }
+
+    /**
      * Asigna un producto ya registrado a otra sucursal del mismo negocio. Un producto o una sucursal
      * ajenos o inexistentes producen la misma respuesta pública.
      */

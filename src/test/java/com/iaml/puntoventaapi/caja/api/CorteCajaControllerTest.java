@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -44,7 +46,6 @@ class CorteCajaControllerTest {
             10L,
             1L,
             2L,
-            "Sucursal Principal",
             1L,
             "Juan Empleado",
             Instant.now(),
@@ -55,6 +56,7 @@ class CorteCajaControllerTest {
             new BigDecimal("200.00"),
             new BigDecimal("150.00"),
             new BigDecimal("100.00"),
+            new BigDecimal("1950.00"),
             new DesgloseMetodoPagoDto(
                 new BigDecimal("800.00"),
                 new BigDecimal("150.00"),
@@ -187,21 +189,21 @@ class CorteCajaControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/cortes-caja responde 200 con lista de historial")
+    @DisplayName("GET /api/cortes-caja responde 200 con pagina de historial")
     void listarHistorialResponde200() throws Exception {
         var resumen = new ResumenCorteCajaDto(
-            10L, 1L, 2L, "Sucursal Principal", 1L, "Juan",
+            10L, 1L, 2L, 1L, "Juan",
             Instant.now(), Instant.now(), true,
             new BigDecimal("500.00"), new BigDecimal("1200.00"),
             new BigDecimal("1700.00"), new BigDecimal("1700.00"), BigDecimal.ZERO
         );
 
-        when(service.listarHistorial(eq(2L), eq(1L))).thenReturn(List.of(resumen));
+        when(service.listarHistorial(eq(2L), eq(1L), any())).thenReturn(new PageImpl<>(List.of(resumen), PageRequest.of(0, 20), 1));
 
         mvc.perform(get("/api/cortes-caja?sucursalId=2"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(10))
-            .andExpect(jsonPath("$[0].cerrado").value(true));
+            .andExpect(jsonPath("$.content[0].id").value(10))
+            .andExpect(jsonPath("$.content[0].cerrado").value(true));
     }
 }
 

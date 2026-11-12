@@ -92,12 +92,19 @@ class ErroresApiTest {
             Arguments.of("GET", "/api/sucursales", "{\"negocioId\":2.5}"),
             Arguments.of("GET", "/api/sucursales", "{\"negocioId\":{\"dato\":\"SENSITIVE_MARKER\"}}"),
             Arguments.of("POST", "/api/auth/login", "{\"correo\":true,\"password\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("POST", "/api/usuarios/registro", "{\"nombre\":{},\"password\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("POST", "/api/sucursales", "{\"negocioId\":2,\"nombre\":\"Centro\",\"campoInterno\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("PATCH", "/api/sucursales", "{\"id\":2,\"nombre\":\"Centro\",\"ciudad\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("DELETE", "/api/sucursales", "{\"id\":2,\"campoInterno\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("GET", "/api/sucursales", "{\"negocioId\":2,\"campoInterno\":\"SENSITIVE_MARKER\"}"),
-            Arguments.of("POST", "/api/auth/login", "{\"correo\":\"a@example.com\",\"password\":\"SENSITIVE_MARKER\",\"extra\":1}"));
+            Arguments.of("POST", "/api/usuarios/registro", "{\"nombre\":{},\"password\":\"SENSITIVE_MARKER\"}"));
+    }
+
+    /** JsonConfig ignora los campos que no existen en el DTO: no producen 400 ni se reflejan en la respuesta. */
+    @Test
+    void ignoraCamposDesconocidosSinReflejarlos() throws Exception {
+        when(sucursales.crear(any())).thenReturn(
+            new com.iaml.puntoventaapi.sucursal.domain.Sucursal(5L, 2L, "Centro", null, null, null, null));
+        mvc.perform(post("/api/sucursales").contentType("application/json")
+                .content("{\"negocioId\":2,\"nombre\":\"Centro\",\"campoInterno\":\"SENSITIVE_MARKER\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.nombre").value("Centro"))
+            .andExpect(content().string(not(containsString("SENSITIVE_MARKER"))));
     }
 
     @ParameterizedTest

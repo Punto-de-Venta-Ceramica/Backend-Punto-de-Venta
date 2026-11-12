@@ -36,8 +36,9 @@ public class CategoriaController {
 
     @GetMapping
     public List<CategoriaResponse> listar(@PathVariable @Positive Long negocioId,
-                                        @PathVariable @Positive Long areaId) {
-        return categorias.listar(negocioId, areaId, usuarioActual.id()).stream()
+                                        @PathVariable @Positive Long areaId,
+                                        @RequestParam(required = false) Long sucursalId) {
+        return categorias.listar(negocioId, areaId, usuarioActual.id(), sucursalId).stream()
             .map(CategoriaResponse::from).toList();
     }
 

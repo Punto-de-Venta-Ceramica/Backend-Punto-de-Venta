@@ -118,7 +118,16 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public ProductoDetalle consultar(Long id, Long usuarioId) {
+        return consultar(id, usuarioId, null);
+    }
+
+    /** Con sucursalId, un empleado asignado a ella también puede consultar productos de ese negocio. */
+    @Transactional(readOnly = true)
+    public ProductoDetalle consultar(Long id, Long usuarioId, Long sucursalId) {
         ProductoDetalle detalle = productos.buscarConClasificacion(id, usuarioId)
+            .or(() -> sucursalId == null ? Optional.empty()
+                : negocios.negocioDeSucursal(sucursalId, usuarioId)
+                    .flatMap(negocioId -> productos.buscarConClasificacionEnNegocio(id, negocioId)))
             .orElseThrow(() -> new ProductoNoEncontradoException());
         return new ProductoDetalle(detalle.producto(), descuentos.buscarActivoPorProducto(id).orElse(null),
             detalle.clasificacion());
@@ -131,7 +140,10 @@ public class ProductoService {
     @Transactional(readOnly = true)
     public Pagina<Producto> listar(Long negocioId, Long usuarioId, FiltroProductos filtro,
                                    int pagina, int tamanio) {
-        validarNegocio(negocioId, usuarioId);
+        // El empleado solo lista productos de una sucursal suya (filtro obligatorio).
+        if (!negocios.puedeConsultar(negocioId, filtro.sucursalId(), usuarioId)) {
+            throw new NegocioNoEncontradoException();
+        }
         return productos.listarPagina(negocioId, filtro,
             Math.max(pagina, 0), Math.min(Math.max(tamanio, 1), TAMANIO_PAGINA_MAX));
     }

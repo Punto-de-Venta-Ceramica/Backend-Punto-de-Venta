@@ -31,7 +31,12 @@ public class CategoriaService {
     }
 
     public List<Categoria> listar(Long negocioId, Long areaId, Long usuarioId) {
-        areas.consultar(negocioId, areaId, usuarioId);
+        return listar(negocioId, areaId, usuarioId, null);
+    }
+
+    /** Con sucursalId, un empleado asignado a ella también puede consultar (solo lectura). */
+    public List<Categoria> listar(Long negocioId, Long areaId, Long usuarioId, Long sucursalId) {
+        areas.consultar(negocioId, areaId, usuarioId, sucursalId);
         return categorias.listarPorArea(areaId, negocioId);
     }
 

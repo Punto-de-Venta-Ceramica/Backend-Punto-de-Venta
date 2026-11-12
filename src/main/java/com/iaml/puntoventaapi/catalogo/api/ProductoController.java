@@ -24,12 +24,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/productos")
+/** El empleado solo puede listar y consultar productos de su sucursal; el resto es del propietario. */
 @PreAuthorize("hasRole('PROPIETARIO')")
 public class ProductoController {
 
@@ -47,14 +49,18 @@ public class ProductoController {
      * nombre: se ignora cualquier ?sort. Los filtros son opcionales.
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public PaginaResponse<ProductoResumenResponse> listar(
             @RequestParam Long negocioId,
             @RequestParam(required = false) Long areaId,
             @RequestParam(required = false) Long categoriaId,
             @RequestParam(required = false) Long sucursalId,
             @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) BigDecimal precioMinimo,
+            @RequestParam(required = false) BigDecimal precioMaximo,
             @PageableDefault(size = 20) Pageable pageable) {
-        FiltroProductos filtro = new FiltroProductos(areaId, categoriaId, buscar, sucursalId);
+        FiltroProductos filtro = new FiltroProductos(areaId, categoriaId, buscar, sucursalId,
+            precioMinimo, precioMaximo);
         return PaginaResponse.from(productos.listar(negocioId, usuarioActual.id(), filtro,
             pageable.getPageNumber(), pageable.getPageSize()).mapear(ProductoResumenResponse::from));
     }
@@ -67,8 +73,9 @@ public class ProductoController {
     }
 
     @GetMapping("/{id}")
-    public ProductoResponse consultar(@PathVariable Long id) {
-        return ProductoResponse.from(productos.consultar(id, usuarioActual.id()));
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
+    public ProductoResponse consultar(@PathVariable Long id, @RequestParam(required = false) Long sucursalId) {
+        return ProductoResponse.from(productos.consultar(id, usuarioActual.id(), sucursalId));
     }
 
     @PutMapping("/{id}")

@@ -31,6 +31,11 @@ public interface ProductoRepositorioPort {
             buscarClasificacion(producto.getCategoriaId()).orElse(null)));
     }
 
+    /** Producto activo del negocio indicado, con categoría y área, sin verificar al usuario. */
+    default Optional<ProductoDetalle> buscarConClasificacionEnNegocio(Long id, Long negocioId) {
+        return Optional.empty();
+    }
+
     /** Categoría y área de la categoría indicada. */
     Optional<ClasificacionProducto> buscarClasificacion(Long categoriaId);
 

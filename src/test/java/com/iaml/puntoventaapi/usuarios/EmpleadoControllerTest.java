@@ -32,7 +32,7 @@ class EmpleadoControllerTest {
 
     @Test
     void registrarDevuelve201YPasswordGenerada() throws Exception {
-        Usuario usuario = new Usuario(10L, 2L, 5L, 20L, "Laura", "Perez", "Diaz", "laura@test.com", null, "hash");
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(20L), "Laura", "Perez", "Diaz", "laura@test.com", null, "hash");
         when(service.registrar(any())).thenReturn(new EmpleadoCreado(usuario, "PassSecret1!", "Sucursal Centro"));
 
         mvc.perform(post("/api/empleados")
@@ -94,8 +94,8 @@ class EmpleadoControllerTest {
 
     @Test
     void listarDevuelve200ConLista() throws Exception {
-        Usuario usuario = new Usuario(10L, 2L, 5L, null, "Laura", "Perez", null, "laura@test.com", null, "hash");
-        when(service.listarPorNegocio(5L, false)).thenReturn(List.of(new EmpleadoDetalle(usuario, null, null)));
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(), "Laura", "Perez", null, "laura@test.com", null, "hash");
+        when(service.listarPorNegocio(5L, false, null)).thenReturn(List.of(new EmpleadoDetalle(usuario, List.of(), null)));
 
         mvc.perform(get("/api/empleados?negocioId=5"))
             .andExpect(status().isOk())
@@ -105,8 +105,8 @@ class EmpleadoControllerTest {
 
     @Test
     void consultarDesdeWebDevuelve200() throws Exception {
-        Usuario usuario = new Usuario(10L, 2L, 5L, 20L, "Laura", "Perez", null, "laura@test.com", null, "hash");
-        when(service.listarPorNegocio(5L, true)).thenReturn(List.of(new EmpleadoDetalle(usuario, "Sucursal Centro", true)));
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(20L), "Laura", "Perez", null, "laura@test.com", null, "hash");
+        when(service.listarPorNegocio(5L, true, null)).thenReturn(List.of(new EmpleadoDetalle(usuario, List.of(new SucursalDetalle(20L, "Sucursal Centro")), true)));
 
         mvc.perform(post("/api/empleados/consultar")
                 .contentType("application/json")
@@ -125,8 +125,8 @@ class EmpleadoControllerTest {
 
     @Test
     void asignarSucursalDevuelve200() throws Exception {
-        Usuario usuario = new Usuario(10L, 2L, 5L, 20L, "Laura", "Perez", null, "laura@test.com", null, "hash");
-        when(service.asignarSucursal(any())).thenReturn(new EmpleadoDetalle(usuario, "Sucursal Norte", true));
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(20L), "Laura", "Perez", null, "laura@test.com", null, "hash");
+        when(service.asignarSucursal(any())).thenReturn(new EmpleadoDetalle(usuario, List.of(new SucursalDetalle(20L, "Sucursal Norte")), true));
 
         mvc.perform(patch("/api/empleados/asignar-sucursal")
                 .contentType("application/json")
@@ -139,6 +139,23 @@ class EmpleadoControllerTest {
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sucursalId").value(20))
+            .andExpect(jsonPath("$.asignado").value(true));
+    }
+
+    @Test
+    void actualizarSucursalesDevuelveTodasLasSucursalesDelEmpleado() throws Exception {
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(20L, 21L), "Laura", "Perez", null, "laura@test.com", null, "hash");
+        when(service.actualizarSucursales(any())).thenReturn(new EmpleadoDetalle(usuario,
+            List.of(new SucursalDetalle(20L, "Centro"), new SucursalDetalle(21L, "Norte")), true));
+
+        mvc.perform(put("/api/empleados/sucursales")
+                .contentType("application/json")
+                .content("""
+                    {"negocioId": 5, "empleadoId": 10, "sucursalIds": [20, 21]}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sucursales.length()").value(2))
+            .andExpect(jsonPath("$.sucursales[1].nombre").value("Norte"))
             .andExpect(jsonPath("$.asignado").value(true));
     }
 
@@ -161,8 +178,8 @@ class EmpleadoControllerTest {
 
     @Test
     void editarDevuelve200() throws Exception {
-        Usuario usuario = new Usuario(10L, 2L, 5L, null, "Laura Elena", "Perez", "Diaz", "laura@test.com", null, "hash");
-        when(service.editar(any())).thenReturn(new EmpleadoDetalle(usuario, null, false));
+        Usuario usuario = new Usuario(10L, 2L, 5L, List.of(), "Laura Elena", "Perez", "Diaz", "laura@test.com", null, "hash");
+        when(service.editar(any())).thenReturn(new EmpleadoDetalle(usuario, List.of(), false));
 
         mvc.perform(patch("/api/empleados")
                 .contentType("application/json")

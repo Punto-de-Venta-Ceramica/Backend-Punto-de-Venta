@@ -81,3 +81,21 @@ BEGIN
 END
 $$;
 ^^^
+
+-- Un empleado puede trabajar en varias sucursales (tabla empleado_sucursal, creada por Hibernate).
+-- Migra la asignación única anterior (usuario.id_sucursal) si la columna todavía existe.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'barrocontrol' AND table_name = 'usuario' AND column_name = 'id_sucursal'
+    ) THEN
+        INSERT INTO barrocontrol.empleado_sucursal (id_usuario, id_sucursal)
+        SELECT id, id_sucursal FROM barrocontrol.usuario WHERE id_sucursal IS NOT NULL
+        ON CONFLICT DO NOTHING;
+        -- Se vacía la columna heredada para que no se vuelva a copiar en el siguiente arranque.
+        UPDATE barrocontrol.usuario SET id_sucursal = NULL WHERE id_sucursal IS NOT NULL;
+    END IF;
+END
+$$;
+^^^

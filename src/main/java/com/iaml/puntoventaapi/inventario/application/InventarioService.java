@@ -22,8 +22,12 @@ public class InventarioService {
 
     @Transactional(readOnly = true)
     public List<ExistenciaProducto> consultarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
-        // Un negocio ajeno y uno inexistente producen la misma respuesta pública.
-        if (!negocios.perteneceAUsuario(negocioId, usuarioId)) {
+        // Un negocio ajeno y uno inexistente producen la misma respuesta pública. El empleado solo consulta
+        // una sucursal suya; el panel de todo el negocio es del propietario.
+        boolean permitido = sucursalId == null
+            ? negocios.perteneceAUsuario(negocioId, usuarioId)
+            : negocios.puedeOperarSucursal(negocioId, sucursalId, usuarioId);
+        if (!permitido) {
             throw new NegocioNoEncontradoException();
         }
         return inventarios.listarPanel(negocioId, sucursalId, usuarioId);

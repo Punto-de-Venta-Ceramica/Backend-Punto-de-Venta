@@ -11,5 +11,5 @@ public interface OpcionesPedidoPort {
     record SucursalAsignada(long sucursalId, String sucursal, long negocioId, String negocio) { }
     List<Producto> productos(long sucursalId, long usuarioId);
     List<Corte> cortesAbiertos(long sucursalId, long usuarioId);
-    java.util.Optional<SucursalAsignada> sucursalAsignada(long usuarioId);
+    List<SucursalAsignada> sucursalesAsignadas(long usuarioId);
 }

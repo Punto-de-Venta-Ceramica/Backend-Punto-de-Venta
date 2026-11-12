@@ -80,7 +80,7 @@ class CorteCajaServiceTest {
         ReflectionTestUtils.setField(empleado, "id", 1L);
         empleado.setNombre("Empleado Juan");
         empleado.setRol(rolEmpleado);
-        empleado.setSucursal(sucursal);
+        empleado.setSucursales(new java.util.LinkedHashSet<>(java.util.List.of(sucursal)));
 
         propietario = new UsuarioEntity();
         ReflectionTestUtils.setField(propietario, "id", 2L);

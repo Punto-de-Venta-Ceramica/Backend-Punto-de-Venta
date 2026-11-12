@@ -33,6 +33,7 @@ public class EmpleadoController {
     @GetMapping
     public List<EmpleadoResponse> listar(
             @RequestParam(required = false) Long negocioId,
+            @RequestParam(required = false) Long sucursalId,
             @RequestParam(defaultValue = "false") boolean incluirAsignacion,
             @Valid @RequestBody(required = false) ConsultarEmpleadosRequest body) {
         Long id = body != null && body.negocioId() != null ? body.negocioId() : negocioId;
@@ -42,7 +43,7 @@ public class EmpleadoController {
         boolean conAsignacion = body != null && body.incluirAsignacion() != null
             ? body.incluirAsignacion()
             : incluirAsignacion;
-        return empleadoService.listarPorNegocio(id, conAsignacion).stream()
+        return empleadoService.listarPorNegocio(id, conAsignacion, sucursalId).stream()
             .map(EmpleadoResponse::from)
             .toList();
     }
@@ -51,7 +52,7 @@ public class EmpleadoController {
     @PostMapping("/consultar")
     public List<EmpleadoResponse> consultarDesdeWeb(@Valid @RequestBody ConsultarEmpleadosRequest request) {
         boolean conAsignacion = Boolean.TRUE.equals(request.incluirAsignacion());
-        return empleadoService.listarPorNegocio(request.negocioId(), conAsignacion).stream()
+        return empleadoService.listarPorNegocio(request.negocioId(), conAsignacion, null).stream()
             .map(EmpleadoResponse::from)
             .toList();
     }
@@ -59,6 +60,12 @@ public class EmpleadoController {
     @PatchMapping("/asignar-sucursal")
     public EmpleadoResponse asignarSucursal(@Valid @RequestBody AsignarSucursalEmpleadoRequest request) {
         return EmpleadoResponse.from(empleadoService.asignarSucursal(request.toCommand()));
+    }
+
+    /** Reemplaza el conjunto de sucursales de un empleado (asignar y desasignar en una sola llamada). */
+    @PutMapping("/sucursales")
+    public EmpleadoResponse actualizarSucursales(@Valid @RequestBody ActualizarSucursalesEmpleadoRequest request) {
+        return EmpleadoResponse.from(empleadoService.actualizarSucursales(request.toCommand()));
     }
 
     @PatchMapping

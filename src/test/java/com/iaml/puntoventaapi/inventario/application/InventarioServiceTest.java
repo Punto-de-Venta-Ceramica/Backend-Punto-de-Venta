@@ -8,6 +8,7 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteExce
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
+import com.iaml.puntoventaapi.inventario.domain.port.NegocioPort;
 import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.List;
@@ -23,9 +24,23 @@ class InventarioServiceTest {
     private static final Long NEGOCIO = 100L;
 
     private final FakeInventarios repositorio = new FakeInventarios();
-    // Puerto de negocio sustituido por lambda: solo el negocio 100 es del usuario 7.
-    private final InventarioService service = new InventarioService(repositorio,
-        (negocioId, usuarioId) -> NEGOCIO.equals(negocioId) && PROPIETARIO.equals(usuarioId));
+    private static final Long EMPLEADO = 8L;
+    private static final Long SUCURSAL_EMPLEADO = 10L;
+
+    // Solo el negocio 100 es del usuario 7; el empleado 8 solo opera la sucursal 10 de ese negocio.
+    private final InventarioService service = new InventarioService(repositorio, new NegocioPort() {
+        @Override
+        public boolean perteneceAUsuario(Long negocioId, Long usuarioId) {
+            return NEGOCIO.equals(negocioId) && PROPIETARIO.equals(usuarioId);
+        }
+
+        @Override
+        public boolean puedeOperarSucursal(Long negocioId, Long sucursalId, Long usuarioId) {
+            return perteneceAUsuario(negocioId, usuarioId)
+                || (NEGOCIO.equals(negocioId) && EMPLEADO.equals(usuarioId)
+                    && SUCURSAL_EMPLEADO.equals(sucursalId));
+        }
+    });
 
     @Test
     void ajustaSumandoYRestando() {
@@ -50,6 +65,14 @@ class InventarioServiceTest {
 
         assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(1L, 1, 999L));
         assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(2L, 1, PROPIETARIO));
+    }
+
+    @Test
+    void empleadoSoloConsultaElPanelDeSuSucursal() {
+        assertThrows(NegocioNoEncontradoException.class, () -> service.consultarPanel(NEGOCIO, null, EMPLEADO));
+        assertThrows(NegocioNoEncontradoException.class, () -> service.consultarPanel(NEGOCIO, 11L, EMPLEADO));
+
+        service.consultarPanel(NEGOCIO, SUCURSAL_EMPLEADO, EMPLEADO);
     }
 
     @Test

@@ -11,6 +11,10 @@ import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity
 import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalJpaRepository;
 import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioJpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -113,18 +117,51 @@ public class CorteCajaService {
     }
 
     @Transactional(readOnly = true)
-    public List<ResumenCorteCajaDto> listarHistorial(Long sucursalIdParam, Long usuarioId) {
-        Long sucursalId = resolverSucursalId(sucursalIdParam, usuarioId);
+    public Page<ResumenCorteCajaDto> listarHistorial(Long sucursalIdParam, Long usuarioId, Pageable pageable) {
+        Pageable ordenado = (pageable != null && pageable.getSort().isSorted())
+            ? pageable
+            : PageRequest.of(pageable != null ? pageable.getPageNumber() : 0,
+                             (pageable != null && pageable.getPageSize() > 0) ? pageable.getPageSize() : 20,
+                             Sort.by(Sort.Direction.DESC, "fechaHoraApertura"));
 
-        List<CorteCaja> cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalId);
+        UsuarioEntity usuario = usuarioJpaRepository.findById(usuarioId)
+            .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado o no encontrado."));
 
-        return cortes.stream().map(c -> {
+        String rol = usuario.getRol() != null ? usuario.getRol().getNombre() : "";
+
+        Page<CorteCaja> cortes;
+
+        if ("EMPLEADO".equalsIgnoreCase(rol)) {
+            if (usuario.getSucursal() == null) {
+                throw new AccessDeniedException("El empleado no tiene asignada una sucursal.");
+            }
+            Long sucursalEmpleadoId = usuario.getSucursal().getId();
+            if (sucursalIdParam != null && !sucursalIdParam.equals(sucursalEmpleadoId)) {
+                throw new AccessDeniedException("No tienes permiso para acceder a una sucursal distinta a la asignada.");
+            }
+            cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalEmpleadoId, ordenado);
+        } else if ("PROPIETARIO".equalsIgnoreCase(rol)) {
+            if (sucursalIdParam != null) {
+                if (sucursalContrato.negocioAutorizado(sucursalIdParam, usuarioId).isEmpty()) {
+                    throw new AccessDeniedException("No tienes permiso para acceder a esta sucursal.");
+                }
+                cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalIdParam, ordenado);
+            } else {
+                Long negocioId = usuario.getNegocio() != null ? usuario.getNegocio().getId() : null;
+                if (negocioId != null) {
+                    cortes = corteCajaRepository.findByCaja_Sucursal_Negocio_IdOrderByFechaHoraAperturaDesc(negocioId, ordenado);
+                } else {
+                    cortes = Page.empty(ordenado);
+                }
+            }
+        } else {
+            throw new AccessDeniedException("Rol no autorizado para operaciones de corte de caja.");
+        }
+
+        return cortes.map(c -> {
             boolean cerrado = c.getFechaHoraCierre() != null;
             BigDecimal diferencia = c.getTotalReal() != null && c.getTotalEstimado() != null
                 ? c.getTotalReal().subtract(c.getTotalEstimado())
-                : null;
-            String sucursalNombre = c.getCaja() != null && c.getCaja().getSucursal() != null
-                ? c.getCaja().getSucursal().getNombre()
                 : null;
             String usuarioNombre = c.getUsuario() != null ? c.getUsuario().getNombre() : null;
 
@@ -132,7 +169,6 @@ public class CorteCajaService {
                 c.getId(),
                 c.getCaja() != null ? c.getCaja().getId() : null,
                 c.getCaja() != null && c.getCaja().getSucursal() != null ? c.getCaja().getSucursal().getId() : null,
-                sucursalNombre,
                 c.getUsuario() != null ? c.getUsuario().getId() : null,
                 usuarioNombre,
                 c.getFechaHoraApertura(),
@@ -144,7 +180,7 @@ public class CorteCajaService {
                 c.getTotalReal(),
                 diferencia
             );
-        }).toList();
+        });
     }
 
     public Long resolverSucursalId(Long sucursalId, Long usuarioId) {
@@ -208,9 +244,6 @@ public class CorteCajaService {
             ? corte.getTotalReal().subtract(corte.getTotalEstimado())
             : null;
 
-        String sucursalNombre = corte.getCaja() != null && corte.getCaja().getSucursal() != null
-            ? corte.getCaja().getSucursal().getNombre()
-            : null;
         Long sucursalId = corte.getCaja() != null && corte.getCaja().getSucursal() != null
             ? corte.getCaja().getSucursal().getId()
             : null;
@@ -225,7 +258,6 @@ public class CorteCajaService {
             corte.getId(),
             corte.getCaja() != null ? corte.getCaja().getId() : null,
             sucursalId,
-            sucursalNombre,
             usuarioId,
             usuarioNombre,
             corte.getFechaHoraApertura(),
@@ -236,6 +268,7 @@ public class CorteCajaService {
             calculo.totalAnticipos(),
             calculo.totalLiquidaciones(),
             calculo.totalCancelaciones(),
+            calculo.totalNeto(),
             calculo.ventasEfectivo(),
             calculo.ventasTarjeta(),
             calculo.cancelacionesPedidos(),

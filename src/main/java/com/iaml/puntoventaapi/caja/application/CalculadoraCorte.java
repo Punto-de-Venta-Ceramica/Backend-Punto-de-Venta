@@ -51,6 +51,7 @@ public class CalculadoraCorte {
         BigDecimal totalAnticipos,
         BigDecimal totalLiquidaciones,
         BigDecimal totalCancelaciones,
+        BigDecimal totalNeto,
         DesgloseMetodoPagoDto ventasEfectivo,
         DesgloseMetodoPagoDto ventasTarjeta,
         SeccionCancelacionesDto cancelacionesPedidos,
@@ -208,6 +209,7 @@ public class CalculadoraCorte {
             detallesCancelaciones
         );
 
+        BigDecimal totalNeto = subtotalNetoEfectivo.add(subtotalNetoTarjeta);
         BigDecimal totalEfectivo = totalEsperadoEfectivo;
         BigDecimal totalTarjeta = totalEsperadoTarjeta;
         BigDecimal totalEstimado = totalEfectivo.add(totalTarjeta);
@@ -217,6 +219,7 @@ public class CalculadoraCorte {
             totalAnticipos,
             totalLiquidaciones,
             totalCancelaciones,
+            totalNeto,
             seccionEfectivo,
             seccionTarjeta,
             seccionCancelaciones,

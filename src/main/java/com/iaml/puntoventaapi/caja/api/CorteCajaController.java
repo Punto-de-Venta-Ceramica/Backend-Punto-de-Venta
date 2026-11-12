@@ -4,6 +4,10 @@ import com.iaml.puntoventaapi.caja.api.dto.*;
 import com.iaml.puntoventaapi.caja.application.CorteCajaService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -52,8 +56,13 @@ public class CorteCajaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResumenCorteCajaDto>> listarHistorial(@RequestParam(name = "sucursalId", required = false) Long sucursalId) {
-        List<ResumenCorteCajaDto> historial = corteCajaService.listarHistorial(sucursalId, usuarioActual.id());
+    public ResponseEntity<Page<ResumenCorteCajaDto>> listarHistorial(
+        @RequestParam(name = "sucursalId", required = false) Long sucursalId,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "size", defaultValue = "20") int size
+    ) {
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "fechaHoraApertura"));
+        Page<ResumenCorteCajaDto> historial = corteCajaService.listarHistorial(sucursalId, usuarioActual.id(), pageable);
         return ResponseEntity.ok(historial);
     }
 }

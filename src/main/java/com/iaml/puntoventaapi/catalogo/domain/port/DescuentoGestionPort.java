@@ -30,6 +30,12 @@ public interface DescuentoGestionPort {
     /** El destino existe, está activo y pertenece al negocio. */
     boolean destinoPerteneceAlNegocio(DestinoDescuento destino, Long destinoId, Long negocioId);
 
+    /**
+     * Descuentos activos asignados directamente a cada producto, categoría o área indicado, en una sola
+     * consulta. Los destinos sin descuentos no aparecen.
+     */
+    Map<Long, List<Descuento>> activosAsignadosA(DestinoDescuento destino, Collection<Long> destinoIds);
+
     /** Idempotente: asignar dos veces el mismo destino no duplica el vínculo. */
     void asignar(Long descuentoId, DestinoDescuento destino, Long destinoId);
 

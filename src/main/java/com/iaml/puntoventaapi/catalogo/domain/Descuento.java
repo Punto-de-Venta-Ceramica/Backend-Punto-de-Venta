@@ -51,6 +51,16 @@ public final class Descuento {
         this.porcentaje = porcentaje;
     }
 
+    /**
+     * Dos rangos se traslapan si alguna cantidad cae en ambos. Un mismo destino no puede tener dos
+     * descuentos activos traslapados: así cada cantidad cae como mucho en un escalón.
+     */
+    public boolean seTraslapaCon(Descuento otro) {
+        boolean otroEmpiezaAntesDeQueTermine = cantidadMaxima == null || otro.cantidadMinima <= cantidadMaxima;
+        boolean empiezaAntesDeQueOtroTermine = otro.cantidadMaxima == null || cantidadMinima <= otro.cantidadMaxima;
+        return otroEmpiezaAntesDeQueTermine && empiezaAntesDeQueOtroTermine;
+    }
+
     public Long getId() {
         return id;
     }

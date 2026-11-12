@@ -58,7 +58,7 @@ public class RegistrarPedidoService {
             var producto = catalogo.consultar(comando.sucursalId(), comando.usuarioId(), item.productoId());
             if (producto == null) throw new ProductoPedidoNoDisponibleException();
             return DetallePedido.desdeCatalogo(item.productoId(), item.cantidad(), producto.precio(),
-                producto.cantidadMinima(), producto.cantidadMaxima(), producto.descuento());
+                producto.escalones());
         }).toList();
         var pedido = new Pedido(detalles);
         if (comando.montoInicial().signum() > 0) {

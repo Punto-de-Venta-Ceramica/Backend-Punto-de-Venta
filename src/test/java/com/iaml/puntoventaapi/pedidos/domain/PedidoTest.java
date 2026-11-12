@@ -64,9 +64,24 @@ class PedidoTest {
 
     @Test
     void aplicaDescuentoSoloCuandoLaCantidadEstaEnElRango() {
-        var sinDescuento = DetallePedido.desdeCatalogo(1, 4, cantidad("25.00"), 5, 10, cantidad("15.00"));
-        var conDescuento = DetallePedido.desdeCatalogo(1, 5, cantidad("25.00"), 5, 10, cantidad("15.00"));
+        var escalon = List.of(new EscalonDescuento(5, 10, cantidad("15.00")));
+        var sinDescuento = DetallePedido.desdeCatalogo(1, 4, cantidad("25.00"), escalon);
+        var conDescuento = DetallePedido.desdeCatalogo(1, 5, cantidad("25.00"), escalon);
         assertEquals(cantidad("100.00"), sinDescuento.subtotal());
         assertEquals(cantidad("106.25"), conDescuento.subtotal());
+    }
+
+    @Test
+    void aplicaSoloElEscalonEnQueCaeLaCantidad() {
+        var escalones = List.of(
+            new EscalonDescuento(5, 10, cantidad("5.00")),
+            new EscalonDescuento(11, 20, cantidad("10.00")),
+            new EscalonDescuento(21, null, cantidad("15.00")));
+        assertEquals(0, DetallePedido.desdeCatalogo(1, 4, cantidad("100.00"), escalones).porcentajeDescuento().signum());
+        assertEquals(cantidad("5.00"), DetallePedido.desdeCatalogo(1, 5, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("5.00"), DetallePedido.desdeCatalogo(1, 10, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("10.00"), DetallePedido.desdeCatalogo(1, 11, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("15.00"), DetallePedido.desdeCatalogo(1, 50, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(0, DetallePedido.desdeCatalogo(1, 50, cantidad("100.00"), List.of()).porcentajeDescuento().signum());
     }
 }

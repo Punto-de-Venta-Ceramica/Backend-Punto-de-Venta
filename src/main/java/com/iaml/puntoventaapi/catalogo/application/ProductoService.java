@@ -129,8 +129,9 @@ public class ProductoService {
                 : negocios.negocioDeSucursal(sucursalId, usuarioId)
                     .flatMap(negocioId -> productos.buscarConClasificacionEnNegocio(id, negocioId)))
             .orElseThrow(() -> new ProductoNoEncontradoException());
-        return new ProductoDetalle(detalle.producto(), descuentos.buscarActivoPorProducto(id).orElse(null),
-            detalle.clasificacion());
+        // Una sola búsqueda: los escalones del nivel que aplica (producto > categoría > área).
+        return ProductoDetalle.conEscalones(detalle.producto(), detalle.clasificacion(),
+            descuentos.buscarEscalonesActivosPorProducto(id));
     }
 
     /**
@@ -164,7 +165,9 @@ public class ProductoService {
 
     private ProductoDetalle conClasificacion(Producto producto, Descuento descuento) {
         ClasificacionProducto clasificacion = productos.buscarClasificacion(producto.getCategoriaId()).orElse(null);
-        return new ProductoDetalle(producto, descuento, clasificacion);
+        // El descuento recién guardado se conserva; los escalones son los que realmente aplican.
+        List<Descuento> escalones = descuentos.buscarEscalonesActivosPorProducto(producto.getId());
+        return new ProductoDetalle(producto, descuento, clasificacion, escalones);
     }
 
     private Producto buscarProducto(Long id, Long usuarioId) {

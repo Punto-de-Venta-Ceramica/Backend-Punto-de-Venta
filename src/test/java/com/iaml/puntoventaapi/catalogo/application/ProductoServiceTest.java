@@ -566,6 +566,11 @@ class ProductoServiceTest {
         }
 
         @Override
+        public List<Descuento> buscarEscalonesActivosPorProducto(Long productoId) {
+            return buscarActivoPorProducto(productoId).map(List::of).orElse(List.of());
+        }
+
+        @Override
         public Optional<Descuento> buscarPropioActivoDeProducto(Long productoId) {
             Long descuentoId = vinculos.get(productoId);
             return descuentoId != null && esPropio(descuentoId)

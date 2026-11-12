@@ -20,11 +20,11 @@ public class CatalogoContratoService implements CatalogoContrato {
     @Transactional(readOnly = true)
     public Optional<ProductoPedido> productoParaPedido(long productoId, long negocioId) {
         return productos.productoParaPedido(productoId, negocioId).map(producto -> {
-            // Mismo criterio que la lista de productos del pedido: producto > categoría > área.
-            var descuento = descuentos.buscarActivoPorProducto(productoId).orElse(null);
-            return new ProductoPedido(producto.getPrecio(), descuento == null ? null : descuento.getCantidadMinima(),
-                descuento == null ? null : descuento.getCantidadMaxima(),
-                descuento == null ? null : descuento.getPorcentaje());
+            // Mismo criterio que la lista de productos del pedido: el nivel producto > categoría > área que tenga descuentos.
+            var escalones = descuentos.buscarEscalonesActivosPorProducto(productoId).stream()
+                .map(d -> new EscalonDescuento(d.getCantidadMinima(), d.getCantidadMaxima(), d.getPorcentaje()))
+                .toList();
+            return new ProductoPedido(producto.getPrecio(), escalones);
         });
     }
 }

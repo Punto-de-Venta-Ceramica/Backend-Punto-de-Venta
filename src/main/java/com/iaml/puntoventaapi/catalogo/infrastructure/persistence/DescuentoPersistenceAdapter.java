@@ -10,13 +10,16 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 @Component
 @RequiredArgsConstructor
@@ -65,6 +68,27 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         agregarPrimeros(resultado, descuentos.activosPorCategoriaDeProductos(productoIds));
         agregarPrimeros(resultado, descuentos.activosPorAreaDeProductos(productoIds));
         return resultado;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Descuento> buscarEscalonesActivosPorProducto(Long productoId) {
+        var ids = List.of(productoId);
+        // Perezoso: solo se consulta el siguiente nivel si el anterior no tiene descuentos.
+        List<Function<List<Long>, List<Object[]>>> niveles = List.of(
+            descuentos::activosDirectosPorProductos,
+            descuentos::activosPorCategoriaDeProductos,
+            descuentos::activosPorAreaDeProductos);
+        for (var consulta : niveles) {
+            List<Object[]> nivel = consulta.apply(ids);
+            if (!nivel.isEmpty()) {
+                return nivel.stream()
+                    .map(fila -> DescuentoMapper.toDomain((DescuentoEntity) fila[1]))
+                    .sorted(Comparator.comparing(Descuento::getCantidadMinima).thenComparing(Descuento::getId))
+                    .toList();
+            }
+        }
+        return List.of();
     }
 
     /** Las filas llegan ordenadas por id de descuento: el primero de cada producto, si aún no tiene, gana. */
@@ -144,6 +168,25 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
             case CATEGORIA -> descuentos.categoriaActivaDelNegocio(destinoId, negocioId);
             case AREA -> descuentos.areaActivaDelNegocio(destinoId, negocioId);
         };
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Descuento>> activosAsignadosA(DestinoDescuento destino, Collection<Long> destinoIds) {
+        if (destinoIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> filas = switch (destino) {
+            case PRODUCTO -> descuentos.activosAsignadosAProductos(destinoIds);
+            case CATEGORIA -> descuentos.activosAsignadosACategorias(destinoIds);
+            case AREA -> descuentos.activosAsignadosAAreas(destinoIds);
+        };
+        Map<Long, List<Descuento>> resultado = new HashMap<>();
+        for (Object[] fila : filas) {
+            resultado.computeIfAbsent(((Number) fila[0]).longValue(), k -> new ArrayList<>())
+                .add(DescuentoMapper.toDomain((DescuentoEntity) fila[1]));
+        }
+        return resultado;
     }
 
     @Override

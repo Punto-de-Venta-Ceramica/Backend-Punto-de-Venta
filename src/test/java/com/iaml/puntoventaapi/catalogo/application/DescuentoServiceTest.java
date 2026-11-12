@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.catalogo.domain.DescuentoConAsignaciones;
 import com.iaml.puntoventaapi.catalogo.domain.DestinoDescuento;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CatalogoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.DescuentoInvalidoException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.DescuentoTraslapadoException;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoGestionPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -179,6 +180,57 @@ class DescuentoServiceTest {
         assertTrue(service.consultar(NEGOCIO, id, PROPIETARIO).asignaciones().productoIds().isEmpty());
     }
 
+    private Long crear(String nombre, int minimo, Integer maximo, String porcentaje) {
+        return service.crear(NEGOCIO, new GuardarDescuentoCommand(nombre, minimo, maximo, new BigDecimal(porcentaje)),
+            PROPIETARIO).descuento().getId();
+    }
+
+    @Test
+    void permiteEscalonesSinTraslapeEnElMismoDestino() {
+        Long primero = crear("5 a 10", 5, 10, "5.00");
+        Long segundo = crear("11 a 20", 11, 20, "10.00");
+        Long tercero = crear("21 o mas", 21, null, "15.00");
+
+        service.asignar(NEGOCIO, primero, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+        service.asignar(NEGOCIO, segundo, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+        service.asignar(NEGOCIO, tercero, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+
+        assertEquals(3, gestion.activosAsignadosA(DestinoDescuento.PRODUCTO, List.of(PRODUCTO)).get(PRODUCTO).size());
+    }
+
+    @Test
+    void rechazaRangosTraslapadosEnElMismoDestino() {
+        Long primero = crear("5 a 10", 5, 10, "5.00");
+        Long cruzado = crear("8 a 15", 8, 15, "10.00");
+        service.asignar(NEGOCIO, primero, DestinoDescuento.CATEGORIA, CATEGORIA, PROPIETARIO);
+
+        var error = assertThrows(DescuentoTraslapadoException.class,
+            () -> service.asignar(NEGOCIO, cruzado, DestinoDescuento.CATEGORIA, CATEGORIA, PROPIETARIO));
+        assertEquals("Se cruza con «5 a 10» (5 a 10 piezas) en la misma categoría. Ajusta los rangos.",
+            error.getMessage());
+        // En otro destino no hay conflicto.
+        service.asignar(NEGOCIO, cruzado, DestinoDescuento.AREA, AREA, PROPIETARIO);
+    }
+
+    @Test
+    void rechazaEditarOActivarUnDescuentoSiSuRangoSeCruza() {
+        Long primero = crear("5 a 10", 5, 10, "5.00");
+        Long segundo = crear("11 a 20", 11, 20, "10.00");
+        service.asignar(NEGOCIO, primero, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+        service.asignar(NEGOCIO, segundo, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+
+        assertThrows(DescuentoInvalidoException.class, () -> service.editar(NEGOCIO, segundo,
+            new GuardarDescuentoCommand("9 a 20", 9, 20, new BigDecimal("10.00")), PROPIETARIO));
+        assertEquals(11, gestion.guardados.get(segundo).getCantidadMinima());
+
+        // Inactivo puede asignarse aunque se cruce, pero no activarse.
+        Long cruzado = crear("8 a 15", 8, 15, "1.00");
+        service.cambiarEstado(NEGOCIO, cruzado, false, PROPIETARIO);
+        service.asignar(NEGOCIO, cruzado, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+        assertThrows(DescuentoInvalidoException.class,
+            () -> service.cambiarEstado(NEGOCIO, cruzado, true, PROPIETARIO));
+    }
+
     /** Gestión de descuentos en memoria. Los destinos válidos del NEGOCIO son PRODUCTO, CATEGORIA y AREA. */
     private static final class FakeGestion implements DescuentoGestionPort {
 
@@ -237,6 +289,23 @@ class DescuentoServiceTest {
                 case CATEGORIA -> CATEGORIA.equals(destinoId);
                 case AREA -> AREA.equals(destinoId);
             };
+        }
+
+        @Override
+        public Map<Long, List<Descuento>> activosAsignadosA(DestinoDescuento destino, Collection<Long> destinoIds) {
+            Map<Long, List<Descuento>> resultado = new HashMap<>();
+            for (Long destinoId : destinoIds) {
+                List<Descuento> activos = asignaciones.entrySet().stream()
+                    .filter(e -> e.getValue().getOrDefault(destino, Set.of()).contains(destinoId))
+                    .map(e -> guardados.get(e.getKey()))
+                    .filter(d -> d != null && d.isActivo())
+                    .map(FakeGestion::copia)
+                    .toList();
+                if (!activos.isEmpty()) {
+                    resultado.put(destinoId, activos);
+                }
+            }
+            return resultado;
         }
 
         @Override

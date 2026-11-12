@@ -32,6 +32,7 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             entity = inventarios.findById(inventario.getId())
                 .orElseThrow(() -> new InventarioNoEncontradoException());
             entity.setExistencia(inventario.getExistencia());
+            entity.setActivo(inventario.isActivo());
         }
         return InventarioMapper.toDomain(inventarios.saveAndFlush(entity));
     }
@@ -59,8 +60,23 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existe(Long sucursalId, Long productoId) {
-        return inventarios.existe(sucursalId, productoId);
+    public Optional<Inventario> buscarPorSucursalYProducto(Long sucursalId, Long productoId) {
+        return inventarios.findBySucursalIdAndProductoId(sucursalId, productoId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Inventario> buscarParaQuitar(Long inventarioId, Long usuarioId) {
+        if (!inventarios.esDelPropietario(inventarioId, usuarioId)) {
+            return Optional.empty();
+        }
+        return inventarios.buscarConBloqueo(inventarioId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long contarActivosDeProducto(Long productoId) {
+        return inventarios.contarActivosDeProducto(productoId);
     }
 
     @Override

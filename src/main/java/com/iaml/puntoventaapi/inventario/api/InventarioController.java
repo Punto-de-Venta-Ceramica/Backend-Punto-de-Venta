@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -49,13 +50,21 @@ public class InventarioController {
             .map(InventarioPanelResponse::from).toList();
     }
 
-    /** Asigna un producto existente a una sucursal del mismo negocio. */
+    /** Asigna un producto existente a una sucursal del mismo negocio, o lo reactiva si se había quitado. */
     @PostMapping
     @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<ExistenciaResponse> asignar(@Valid @RequestBody AsignarProductoRequest request) {
         ExistenciaResponse creada = ExistenciaResponse.from(inventario.asignar(request.productoId(),
-            request.sucursalId(), request.existenciaInicial(), usuarioActual.id()));
+            request.sucursalId(), request.existencia(), usuarioActual.id()));
         return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+    }
+
+    /** Quita el producto de la sucursal; su existencia se conserva por si se vuelve a asignar. */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
+    public ResponseEntity<Void> quitar(@PathVariable Long id) {
+        inventario.quitar(id, usuarioActual.id());
+        return ResponseEntity.noContent().build();
     }
 
     /** Ajuste manual: cantidad positiva suma, negativa resta. */

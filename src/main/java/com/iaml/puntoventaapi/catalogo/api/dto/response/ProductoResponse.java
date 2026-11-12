@@ -5,18 +5,22 @@ import com.iaml.puntoventaapi.catalogo.domain.Descuento;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import java.math.BigDecimal;
+import java.util.List;
 
-/** Detalle de un producto: incluye imagen, categoría y área (null si no se pudieron resolver). */
+/**
+ * Detalle de un producto: incluye imagen, categoría y área (null si no se pudieron resolver) y sus
+ * descuentos por cantidad vigentes, ordenados por cantidad mínima (vacío si no tiene).
+ */
 public record ProductoResponse(Long id, String nombre, BigDecimal precio, Long categoriaId, String categoriaNombre,
                                Long areaId, String areaNombre,
                                String imagenUrl, String imagenPublicId,
-                               DescuentoResponse descuento) {
+                               List<DescuentoResponse> descuentos) {
 
     public record DescuentoResponse(Integer cantidadMinima, Integer cantidadMaxima, BigDecimal porcentaje) {
 
         static DescuentoResponse from(Descuento descuento) {
-            return descuento == null ? null : new DescuentoResponse(descuento.getCantidadMinima(),
-                descuento.getCantidadMaxima(), descuento.getPorcentaje());
+            return new DescuentoResponse(descuento.getCantidadMinima(), descuento.getCantidadMaxima(),
+                descuento.getPorcentaje());
         }
     }
 
@@ -28,6 +32,6 @@ public record ProductoResponse(Long id, String nombre, BigDecimal precio, Long c
             clasificacion == null ? null : clasificacion.areaId(),
             clasificacion == null ? null : clasificacion.areaNombre(),
             producto.getImagenUrl(), producto.getImagenPublicId(),
-            DescuentoResponse.from(detalle.descuento()));
+            detalle.escalones().stream().map(DescuentoResponse::from).toList());
     }
 }

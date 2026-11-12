@@ -72,7 +72,7 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
           and (:categoriaId is null or c.id = :categoriaId)
           and lower(p.nombre) like :texto escape '\\'
           and (:sucursalId is null or exists (
-                select 1 from InventarioEntity i where i.producto = p and i.sucursal.id = :sucursalId))
+                select 1 from InventarioEntity i where i.producto = p and i.sucursal.id = :sucursalId and i.activo = true))
           and (:precioMinimo is null or p.precio >= :precioMinimo)
           and (:precioMaximo is null or p.precio <= :precioMaximo)
         order by p.nombre, p.id
@@ -87,7 +87,7 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
           and (:categoriaId is null or c.id = :categoriaId)
           and lower(p.nombre) like :texto escape '\\'
           and (:sucursalId is null or exists (
-                select 1 from InventarioEntity i where i.producto = p and i.sucursal.id = :sucursalId))
+                select 1 from InventarioEntity i where i.producto = p and i.sucursal.id = :sucursalId and i.activo = true))
           and (:precioMinimo is null or p.precio >= :precioMinimo)
           and (:precioMaximo is null or p.precio <= :precioMaximo)
         """)

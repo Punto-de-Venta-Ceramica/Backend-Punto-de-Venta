@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.pedidos.infrastructure.adapters;
 
 import com.iaml.puntoventaapi.catalogo.CatalogoContrato;
+import com.iaml.puntoventaapi.pedidos.domain.EscalonDescuento;
 import com.iaml.puntoventaapi.pedidos.domain.port.CatalogoPort;
 import com.iaml.puntoventaapi.pedidos.domain.ProductoPedidoNoDisponibleException;
 import com.iaml.puntoventaapi.sucursal.SucursalContrato;
@@ -20,7 +21,9 @@ public class CatalogoAdapter implements CatalogoPort {
         long negocioId = sucursales.negocioAutorizado(sucursalId, usuarioId)
             .orElseThrow(() -> new AccessDeniedException("Sucursal no disponible."));
         return catalogo.productoParaPedido(productoId, negocioId)
-            .map(p -> new Producto(p.precio(), p.cantidadMinima(), p.cantidadMaxima(), p.descuento()))
+            .map(p -> new Producto(p.precio(), p.escalones().stream()
+                .map(e -> new EscalonDescuento(e.cantidadMinima(), e.cantidadMaxima(), e.porcentaje()))
+                .toList()))
             .orElseThrow(ProductoPedidoNoDisponibleException::new);
     }
 }

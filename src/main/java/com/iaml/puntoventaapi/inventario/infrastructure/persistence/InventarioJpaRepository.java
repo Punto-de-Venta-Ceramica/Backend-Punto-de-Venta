@@ -22,7 +22,7 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.producto p
         join i.sucursal s
         join s.negocio n
-        where i.id = :id and n.activo = true and p.activo = true
+        where i.id = :id and i.activo = true and n.activo = true and p.activo = true
           and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
                or exists (select e.id from UsuarioEntity e
                           where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
@@ -49,8 +49,22 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         """)
     Optional<Long> negocioDeSucursal(@Param("sucursalId") Long sucursalId, @Param("usuarioId") Long usuarioId);
 
-    @Query("select count(i) > 0 from InventarioEntity i where i.sucursal.id = :sucursalId and i.producto.id = :productoId")
-    boolean existe(@Param("sucursalId") Long sucursalId, @Param("productoId") Long productoId);
+    Optional<InventarioEntity> findBySucursalIdAndProductoId(Long sucursalId, Long productoId);
+
+    // Solo el propietario quita productos de una sucursal; el empleado asignado no.
+    @Query("""
+        select count(i) > 0
+        from InventarioEntity i
+        join i.producto p
+        join i.sucursal s
+        join s.negocio n
+        join n.usuarios u
+        where i.id = :id and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
+        """)
+    boolean esDelPropietario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
+
+    @Query("select count(i) from InventarioEntity i where i.producto.id = :productoId and i.activo = true")
+    long contarActivosDeProducto(@Param("productoId") Long productoId);
 
     @Query("""
         select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
@@ -59,7 +73,7 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.sucursal s
         join s.negocio n
         join n.usuarios u
-        where n.id = :negocioId and u.id = :usuarioId and n.activo = true and p.activo = true
+        where n.id = :negocioId and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
         order by s.nombre, p.nombre, i.id
         """)
     List<Object[]> panelPorNegocio(@Param("negocioId") Long negocioId, @Param("usuarioId") Long usuarioId);
@@ -71,7 +85,7 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.sucursal s
         join s.negocio n
         where n.id = :negocioId and s.id = :sucursalId
-          and n.activo = true and p.activo = true
+          and i.activo = true and n.activo = true and p.activo = true
           and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
                or exists (select e.id from UsuarioEntity e
                           where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
@@ -87,7 +101,7 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.sucursal s
         join s.negocio n
         join n.usuarios u
-        where p.id = :productoId and u.id = :usuarioId and n.activo = true and p.activo = true
+        where p.id = :productoId and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
         order by s.nombre, i.id
         """)
     List<Object[]> existenciasDeProducto(@Param("productoId") Long productoId, @Param("usuarioId") Long usuarioId);

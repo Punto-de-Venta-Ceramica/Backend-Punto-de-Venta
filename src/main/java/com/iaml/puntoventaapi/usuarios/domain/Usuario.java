@@ -9,7 +9,7 @@ public final class Usuario {
     private final Long id;
     private final Long rolId;
     private final Long negocioId;
-    private final Long sucursalId;
+    private final java.util.List<Long> sucursalIds;
     private final String nombre;
     private final String apellidoPaterno;
     private final String apellidoMaterno;
@@ -22,7 +22,7 @@ public final class Usuario {
         this(id, rolId, null, null, nombre, apellidoPaterno, apellidoMaterno, correo, telefono, passwordHash);
     }
 
-    public Usuario(Long id, Long rolId, Long negocioId, Long sucursalId, String nombre, String apellidoPaterno,
+    public Usuario(Long id, Long rolId, Long negocioId, java.util.List<Long> sucursalIds, String nombre, String apellidoPaterno,
                    String apellidoMaterno, String correo, String telefono, String passwordHash) {
         if (rolId == null) {
             throw new IllegalArgumentException("El usuario debe tener rol");
@@ -39,7 +39,7 @@ public final class Usuario {
         this.id = id;
         this.rolId = rolId;
         this.negocioId = negocioId;
-        this.sucursalId = sucursalId;
+        this.sucursalIds = sucursalIds == null ? java.util.List.of() : java.util.List.copyOf(sucursalIds);
         this.nombre = nombre;
         this.apellidoPaterno = apellidoPaterno;
         this.apellidoMaterno = apellidoMaterno;
@@ -60,8 +60,9 @@ public final class Usuario {
         return negocioId;
     }
 
-    public Long getSucursalId() {
-        return sucursalId;
+    /** Sucursales en las que trabaja el empleado (vacío si no tiene ninguna). */
+    public java.util.List<Long> getSucursalIds() {
+        return sucursalIds;
     }
 
     public String getNombre() {

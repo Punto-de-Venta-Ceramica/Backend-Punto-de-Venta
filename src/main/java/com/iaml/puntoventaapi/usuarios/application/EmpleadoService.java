@@ -7,6 +7,7 @@ import com.iaml.puntoventaapi.usuarios.domain.port.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -59,7 +60,7 @@ public class EmpleadoService {
             null,
             rolId,
             command.negocioId(),
-            command.sucursalId(),
+            command.sucursalId() != null ? List.of(command.sucursalId()) : List.of(),
             command.nombre().trim(),
             command.apellidoPaterno() != null ? command.apellidoPaterno().trim() : null,
             command.apellidoMaterno() != null ? command.apellidoMaterno().trim() : null,
@@ -78,23 +79,27 @@ public class EmpleadoService {
 
     @Transactional(readOnly = true)
     public List<EmpleadoDetalle> listarPorNegocio(Long negocioId, boolean incluirAsignacion) {
-        Long propietarioId = usuarioAutenticado.obtenerId();
-        verificarAccesoNegocio(negocioId, propietarioId);
-
-        List<Usuario> lista = empleados.listarPorNegocio(negocioId);
-
-        return lista.stream().map(emp -> {
-            if (!incluirAsignacion) {
-                return new EmpleadoDetalle(emp, null, null);
-            }
-            Long sucursalId = emp.getSucursalId();
-            String sucursalNombre = sucursalId != null
-                ? sucursales.obtenerNombrePorId(sucursalId).orElse(null)
-                : null;
-            return new EmpleadoDetalle(emp, sucursalNombre, sucursalId != null);
-        }).toList();
+        return listarPorNegocio(negocioId, incluirAsignacion, null);
     }
 
+    /** Con {@code sucursalId} solo devuelve a los empleados asignados a esa sucursal. */
+    @Transactional(readOnly = true)
+    public List<EmpleadoDetalle> listarPorNegocio(Long negocioId, boolean incluirAsignacion, Long sucursalId) {
+        Long propietarioId = usuarioAutenticado.obtenerId();
+        verificarAccesoNegocio(negocioId, propietarioId);
+        if (sucursalId != null) {
+            verificarSucursalPerteneceANegocio(sucursalId, negocioId);
+        }
+
+        return empleados.listarPorNegocio(negocioId).stream()
+            .filter(emp -> sucursalId == null || emp.getSucursalIds().contains(sucursalId))
+            .map(emp -> incluirAsignacion
+                ? detalle(emp)
+                : new EmpleadoDetalle(emp, List.of(), null))
+            .toList();
+    }
+
+    /** Compatibilidad: con sucursal la agrega a las del empleado; con {@code null} quita todas. */
     @Transactional
     public EmpleadoDetalle asignarSucursal(AsignarSucursalCommand command) {
         Long propietarioId = usuarioAutenticado.obtenerId();
@@ -103,35 +108,46 @@ public class EmpleadoService {
         Usuario empleado = empleados.buscarPorIdYNegocio(command.empleadoId(), command.negocioId())
             .orElseThrow(() -> new EmpleadoNoEncontradoException(command.empleadoId()));
 
+        List<Long> nuevas = new ArrayList<>();
         if (command.sucursalId() != null) {
             verificarSucursalPerteneceANegocio(command.sucursalId(), command.negocioId());
-
-            // Regla: "siempre y cuando no esté asignado a una sucursal"
-            if (empleado.getSucursalId() != null && !empleado.getSucursalId().equals(command.sucursalId())) {
-                throw new EmpleadoYaTieneSucursalException("El empleado ya está asignado a otra sucursal. Desasígnalo primero.");
+            nuevas.addAll(empleado.getSucursalIds());
+            if (!nuevas.contains(command.sucursalId())) {
+                nuevas.add(command.sucursalId());
             }
         }
+        return guardarSucursales(empleado, nuevas);
+    }
 
-        empleados.actualizarSucursal(command.empleadoId(), command.sucursalId());
+    /** Reemplaza todas las sucursales del empleado por las indicadas (lista vacía: ninguna). */
+    @Transactional
+    public EmpleadoDetalle actualizarSucursales(ActualizarSucursalesEmpleadoCommand command) {
+        Long propietarioId = usuarioAutenticado.obtenerId();
+        verificarAccesoNegocio(command.negocioId(), propietarioId);
 
-        String sucursalNombre = command.sucursalId() != null
-            ? sucursales.obtenerNombrePorId(command.sucursalId()).orElse(null)
-            : null;
+        Usuario empleado = empleados.buscarPorIdYNegocio(command.empleadoId(), command.negocioId())
+            .orElseThrow(() -> new EmpleadoNoEncontradoException(command.empleadoId()));
 
-        Usuario actualizado = new Usuario(
-            empleado.getId(),
-            empleado.getRolId(),
-            empleado.getNegocioId(),
-            command.sucursalId(),
-            empleado.getNombre(),
-            empleado.getApellidoPaterno(),
-            empleado.getApellidoMaterno(),
-            empleado.getCorreo(),
-            empleado.getTelefono(),
-            empleado.getPasswordHash()
-        );
+        List<Long> nuevas = command.sucursalIds().stream().distinct().toList();
+        nuevas.forEach(id -> verificarSucursalPerteneceANegocio(id, command.negocioId()));
+        return guardarSucursales(empleado, nuevas);
+    }
 
-        return new EmpleadoDetalle(actualizado, sucursalNombre, command.sucursalId() != null);
+    private EmpleadoDetalle guardarSucursales(Usuario empleado, List<Long> sucursalIds) {
+        empleados.actualizarSucursales(empleado.getId(), sucursalIds);
+        return detalle(conSucursales(empleado, sucursalIds));
+    }
+
+    private Usuario conSucursales(Usuario e, List<Long> sucursalIds) {
+        return new Usuario(e.getId(), e.getRolId(), e.getNegocioId(), sucursalIds, e.getNombre(),
+            e.getApellidoPaterno(), e.getApellidoMaterno(), e.getCorreo(), e.getTelefono(), e.getPasswordHash());
+    }
+
+    private EmpleadoDetalle detalle(Usuario emp) {
+        List<SucursalDetalle> sucursalesEmp = emp.getSucursalIds().stream()
+            .map(id -> new SucursalDetalle(id, sucursales.obtenerNombrePorId(id).orElse(null)))
+            .toList();
+        return new EmpleadoDetalle(emp, sucursalesEmp, !sucursalesEmp.isEmpty());
     }
 
     @Transactional
@@ -152,7 +168,7 @@ public class EmpleadoService {
             empleado.getId(),
             empleado.getRolId(),
             empleado.getNegocioId(),
-            empleado.getSucursalId(),
+            empleado.getSucursalIds(),
             nombreActualizado,
             paternoActualizado,
             maternoActualizado,
@@ -161,11 +177,7 @@ public class EmpleadoService {
             empleado.getPasswordHash()
         );
 
-        String sucursalNombre = empleado.getSucursalId() != null
-            ? sucursales.obtenerNombrePorId(empleado.getSucursalId()).orElse(null)
-            : null;
-
-        return new EmpleadoDetalle(actualizado, sucursalNombre, empleado.getSucursalId() != null);
+        return detalle(actualizado);
     }
 
     @Transactional

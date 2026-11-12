@@ -70,14 +70,15 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
     }
 
     @Override
-    public java.util.Optional<SucursalAsignada> sucursalAsignada(long usuarioId) {
+    public List<SucursalAsignada> sucursalesAsignadas(long usuarioId) {
         return jdbc.query("""
             select s.id, s.nombre, n.id, n.nombre from barrocontrol.usuario u
             join barrocontrol.rol r on r.id = u.id_rol
-            join barrocontrol.sucursal s on s.id = u.id_sucursal
+            join barrocontrol.empleado_sucursal es on es.id_usuario = u.id
+            join barrocontrol.sucursal s on s.id = es.id_sucursal
             join barrocontrol.negocio n on n.id = s.id_negocio and n.id = u.id_negocio
             where u.id = ? and r.nombre = 'EMPLEADO' and n.activo = true
-            """, (rs, row) -> new SucursalAsignada(rs.getLong(1), rs.getString(2), rs.getLong(3), rs.getString(4)), usuarioId)
-            .stream().findFirst();
+            order by s.nombre, s.id
+            """, (rs, row) -> new SucursalAsignada(rs.getLong(1), rs.getString(2), rs.getLong(3), rs.getString(4)), usuarioId);
     }
 }

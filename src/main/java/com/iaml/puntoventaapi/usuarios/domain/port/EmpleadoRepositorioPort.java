@@ -12,7 +12,8 @@ public interface EmpleadoRepositorioPort {
 
     Optional<Usuario> buscarPorIdYNegocio(Long empleadoId, Long negocioId);
 
-    void actualizarSucursal(Long empleadoId, Long sucursalId);
+    /** Reemplaza el conjunto de sucursales del empleado. */
+    void actualizarSucursales(Long empleadoId, java.util.Collection<Long> sucursalIds);
 
     void actualizarDatos(Long empleadoId, String nombre, String apellidoPaterno, String apellidoMaterno);
 

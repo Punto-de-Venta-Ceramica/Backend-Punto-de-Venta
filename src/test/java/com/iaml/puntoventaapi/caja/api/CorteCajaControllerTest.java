@@ -56,6 +56,7 @@ class CorteCajaControllerTest {
             new BigDecimal("200.00"),
             new BigDecimal("150.00"),
             new BigDecimal("100.00"),
+            new BigDecimal("1950.00"),
             new DesgloseMetodoPagoDto(
                 new BigDecimal("800.00"),
                 new BigDecimal("150.00"),

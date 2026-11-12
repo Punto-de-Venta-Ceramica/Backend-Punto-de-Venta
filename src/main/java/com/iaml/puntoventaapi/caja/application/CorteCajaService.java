@@ -132,13 +132,8 @@ public class CorteCajaService {
         Page<CorteCaja> cortes;
 
         if ("EMPLEADO".equalsIgnoreCase(rol)) {
-            if (usuario.getSucursal() == null) {
-                throw new AccessDeniedException("El empleado no tiene asignada una sucursal.");
-            }
-            Long sucursalEmpleadoId = usuario.getSucursal().getId();
-            if (sucursalIdParam != null && !sucursalIdParam.equals(sucursalEmpleadoId)) {
-                throw new AccessDeniedException("No tienes permiso para acceder a una sucursal distinta a la asignada.");
-            }
+            // El empleado puede trabajar en varias sucursales: misma validación que el resto de operaciones.
+            Long sucursalEmpleadoId = resolverSucursalId(sucursalIdParam, usuarioId);
             cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalEmpleadoId, ordenado);
         } else if ("PROPIETARIO".equalsIgnoreCase(rol)) {
             if (sucursalIdParam != null) {
@@ -190,14 +185,20 @@ public class CorteCajaService {
         String rol = usuario.getRol() != null ? usuario.getRol().getNombre() : "";
 
         if ("EMPLEADO".equalsIgnoreCase(rol)) {
-            if (usuario.getSucursal() == null) {
+            List<Long> asignadas = usuario.getSucursales().stream().map(SucursalEntity::getId).toList();
+            if (asignadas.isEmpty()) {
                 throw new AccessDeniedException("El empleado no tiene asignada una sucursal.");
             }
-            Long sucursalEmpleadoId = usuario.getSucursal().getId();
-            if (sucursalId != null && !sucursalId.equals(sucursalEmpleadoId)) {
-                throw new AccessDeniedException("No tienes permiso para acceder a una sucursal distinta a la asignada.");
+            if (sucursalId != null) {
+                if (!asignadas.contains(sucursalId)) {
+                    throw new AccessDeniedException("No tienes permiso para acceder a una sucursal distinta a la asignada.");
+                }
+                return sucursalId;
             }
-            return sucursalEmpleadoId;
+            if (asignadas.size() == 1) {
+                return asignadas.get(0);
+            }
+            throw new IllegalArgumentException("Debes especificar el ID de la sucursal para el corte de caja.");
         }
 
         if ("PROPIETARIO".equalsIgnoreCase(rol)) {

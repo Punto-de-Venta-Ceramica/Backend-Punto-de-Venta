@@ -15,15 +15,17 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
     @Query("select i from InventarioEntity i where i.id = :id")
     Optional<InventarioEntity> buscarConBloqueo(@Param("id") Long id);
 
-    // El registro es accesible si su producto está activo y su sucursal pertenece a un negocio activo del usuario.
+    // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.
     @Query("""
         select count(i) > 0
         from InventarioEntity i
         join i.producto p
         join i.sucursal s
         join s.negocio n
-        join n.usuarios u
-        where i.id = :id and u.id = :usuarioId and n.activo = true and p.activo = true
+        where i.id = :id and n.activo = true and p.activo = true
+          and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
+               or exists (select e.id from UsuarioEntity e
+                          where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
         """)
     boolean esAccesibleParaUsuario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
 
@@ -68,9 +70,11 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.producto p
         join i.sucursal s
         join s.negocio n
-        join n.usuarios u
-        where n.id = :negocioId and s.id = :sucursalId and u.id = :usuarioId
+        where n.id = :negocioId and s.id = :sucursalId
           and n.activo = true and p.activo = true
+          and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
+               or exists (select e.id from UsuarioEntity e
+                          where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
         order by p.nombre, i.id
         """)
     List<Object[]> panelPorSucursal(@Param("negocioId") Long negocioId, @Param("sucursalId") Long sucursalId,

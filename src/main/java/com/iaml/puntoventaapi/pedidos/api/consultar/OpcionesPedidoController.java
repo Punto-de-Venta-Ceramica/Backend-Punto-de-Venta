@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/pedidos/opciones")
@@ -28,8 +27,8 @@ public class OpcionesPedidoController {
     public List<OpcionesPedidoPort.Corte> cortes(@RequestParam long sucursalId) {
         return opciones.cortesAbiertos(sucursalId, usuario.id());
     }
-    @GetMapping("/sucursal-asignada")
-    public ResponseEntity<OpcionesPedidoPort.SucursalAsignada> sucursalAsignada() {
-        return ResponseEntity.of(opciones.sucursalAsignada(usuario.id()));
+    @GetMapping("/sucursales-asignadas")
+    public List<OpcionesPedidoPort.SucursalAsignada> sucursalesAsignadas() {
+        return opciones.sucursalesAsignadas(usuario.id());
     }
 }

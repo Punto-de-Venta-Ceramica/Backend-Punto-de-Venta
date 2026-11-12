@@ -24,13 +24,16 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/inventario")
-@PreAuthorize("hasRole('PROPIETARIO')")
+@PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
 public class InventarioController {
 
     private final InventarioService inventario;
     private final UsuarioActual usuarioActual;
 
-    /** Panel global: existencias de todas las sucursales del negocio, o de una si se envía sucursalId. */
+    /**
+     * Panel global: existencias de todas las sucursales del negocio (propietario), o de una si se envía
+     * sucursalId (propietario o empleado asignado a ella).
+     */
     @GetMapping(params = "negocioId")
     public List<InventarioPanelResponse> panel(@RequestParam Long negocioId,
                                                @RequestParam(required = false) Long sucursalId) {
@@ -40,6 +43,7 @@ public class InventarioController {
 
     /** Existencias de un solo producto en cada sucursal: lo que necesita el detalle del producto. */
     @GetMapping(params = "productoId")
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public List<InventarioPanelResponse> porProducto(@RequestParam Long productoId) {
         return inventario.consultarPorProducto(productoId, usuarioActual.id()).stream()
             .map(InventarioPanelResponse::from).toList();
@@ -47,6 +51,7 @@ public class InventarioController {
 
     /** Asigna un producto existente a una sucursal del mismo negocio. */
     @PostMapping
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<ExistenciaResponse> asignar(@Valid @RequestBody AsignarProductoRequest request) {
         ExistenciaResponse creada = ExistenciaResponse.from(inventario.asignar(request.productoId(),
             request.sucursalId(), request.existenciaInicial(), usuarioActual.id()));

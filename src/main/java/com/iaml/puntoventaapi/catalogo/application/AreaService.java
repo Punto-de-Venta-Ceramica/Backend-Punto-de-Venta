@@ -89,7 +89,8 @@ public class AreaService {
             .orElseThrow(() -> new CatalogoNoEncontradoException("El área no existe o no tienes acceso."));
     }
 
-    private void verificarLectura(Long negocioId, Long usuarioId, Long sucursalId) {
+    /** Puede leer el catálogo el propietario del negocio o, con sucursalId, un empleado asignado a ella. */
+    public void verificarLectura(Long negocioId, Long usuarioId, Long sucursalId) {
         boolean empleado = sucursalId != null && sucursales.negocioAutorizado(sucursalId, usuarioId)
             .filter(negocioId::equals).isPresent();
         if (!empleado) {

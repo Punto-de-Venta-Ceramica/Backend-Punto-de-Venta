@@ -31,6 +31,10 @@ public class RenovarSesionService {
         RefreshTokenPort.RefreshValido valido = refreshTokens.validar(refreshToken);
         Credencial credencial = credenciales.buscarPorUsuarioId(valido.usuarioId())
             .orElseThrow(CredencialesInvalidasException::new);
+        // Si la contraseña cambió después de emitir el token, esa sesión ya no se renueva.
+        if (!valido.vigentePara(credencial)) {
+            throw new CredencialesInvalidasException();
+        }
         return tokens.generar(credencial);
     }
 }

@@ -231,6 +231,57 @@ class DescuentoServiceTest {
             () -> service.cambiarEstado(NEGOCIO, cruzado, true, PROPIETARIO));
     }
 
+    private static LineaDescuentoCommand linea(Long id, int minimo, Integer maximo, boolean activo) {
+        return new LineaDescuentoCommand(id, "Escalón " + minimo, minimo, maximo, new BigDecimal("5.00"), activo);
+    }
+
+    @Test
+    void listarConProductoDevuelveSoloLosAsignadosAEse() {
+        Long asignado = crearDescuento();
+        crearDescuento();
+        service.asignar(NEGOCIO, asignado, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+
+        List<DescuentoConAsignaciones> lista = service.listar(NEGOCIO, PRODUCTO, PROPIETARIO);
+
+        assertEquals(List.of(asignado), lista.stream().map(d -> d.descuento().getId()).toList());
+        assertEquals(2, service.listar(NEGOCIO, PROPIETARIO).size());
+    }
+
+    @Test
+    void guardarDeProductoEliminaActualizaYCreaEnUnaSolaOperacion() {
+        Long aEliminar = crearDescuento();
+        Long aEditar = service.crear(NEGOCIO, new GuardarDescuentoCommand("Viejo", 20, null,
+            new BigDecimal("10.00")), PROPIETARIO).descuento().getId();
+        service.asignar(NEGOCIO, aEliminar, DestinoDescuento.PRODUCTO, PRODUCTO, PROPIETARIO);
+
+        // Los rangos se intercambian sin estados intermedios: solo cuenta el resultado final.
+        List<DescuentoConAsignaciones> resultado = service.guardarDeProducto(NEGOCIO, PRODUCTO,
+            List.of(aEliminar), List.of(linea(aEditar, 6, 11, true), linea(null, 12, null, false)), PROPIETARIO);
+
+        assertEquals(2, resultado.size());
+        assertFalse(gestion.guardados.containsKey(aEliminar));
+        assertEquals(6, gestion.guardados.get(aEditar).getCantidadMinima());
+        assertEquals(11, gestion.guardados.get(aEditar).getCantidadMaxima());
+        assertFalse(resultado.get(1).descuento().isActivo());
+        resultado.forEach(d -> assertEquals(Set.of(PRODUCTO), d.asignaciones().productoIds()));
+    }
+
+    @Test
+    void guardarDeProductoRechazaEscalonesActivosTraslapados() {
+        assertThrows(DescuentoTraslapadoException.class, () -> service.guardarDeProducto(NEGOCIO, PRODUCTO,
+            List.of(), List.of(linea(null, 5, 10, true), linea(null, 8, null, true)), PROPIETARIO));
+    }
+
+    @Test
+    void guardarDeProductoExigeProductoYDescuentosDelNegocio() {
+        assertThrows(CatalogoNoEncontradoException.class, () -> service.guardarDeProducto(NEGOCIO,
+            PRODUCTO_AJENO, List.of(), List.of(linea(null, 5, null, true)), PROPIETARIO));
+        assertThrows(CatalogoNoEncontradoException.class, () -> service.guardarDeProducto(NEGOCIO, PRODUCTO,
+            List.of(), List.of(linea(999L, 5, null, true)), PROPIETARIO));
+        assertThrows(CatalogoNoEncontradoException.class, () -> service.guardarDeProducto(NEGOCIO_AJENO,
+            PRODUCTO, List.of(), List.of(), PROPIETARIO));
+    }
+
     /** Gestión de descuentos en memoria. Los destinos válidos del NEGOCIO son PRODUCTO, CATEGORIA y AREA. */
     private static final class FakeGestion implements DescuentoGestionPort {
 
@@ -260,6 +311,12 @@ class DescuentoServiceTest {
         public List<Descuento> listarPorNegocio(Long negocioId) {
             return guardados.values().stream().filter(d -> negocioId.equals(negocioDe.get(d.getId())))
                 .sorted((x, y) -> x.getId().compareTo(y.getId())).map(FakeGestion::copia).toList();
+        }
+
+        @Override
+        public List<Descuento> listarPorProducto(Long negocioId, Long productoId) {
+            return listarPorNegocio(negocioId).stream()
+                .filter(d -> asignaciones(d.getId()).productoIds().contains(productoId)).toList();
         }
 
         @Override

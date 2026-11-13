@@ -59,4 +59,19 @@ class JwtTokenAdapterTest {
         assertThrows(CredencialesInvalidasException.class, () -> adapter.validar(inicial.token()));
         assertThrows(CredencialesInvalidasException.class, () -> adapter.validar("basura"));
     }
+
+    @Test
+    void elTokenDeRenovacionDejaDeServirSiCambiaLaPassword() {
+        Credencial original = new Credencial(7L, "dueno@barro.mx", "hash", new Rol(1L, Rol.PROPIETARIO, Set.of()));
+        Credencial conOtraPassword =
+            new Credencial(7L, "dueno@barro.mx", "hash-nuevo", new Rol(1L, Rol.PROPIETARIO, Set.of()));
+
+        RefreshValido valido = adapter.validar(adapter.generar(original).refreshToken());
+
+        org.junit.jupiter.api.Assertions.assertTrue(valido.vigentePara(original));
+        org.junit.jupiter.api.Assertions.assertFalse(valido.vigentePara(conOtraPassword));
+        // Los tokens emitidos antes de que existiera la huella se siguen aceptando hasta que venzan.
+        org.junit.jupiter.api.Assertions.assertTrue(
+            new RefreshValido(7L, valido.expiraEn()).vigentePara(conOtraPassword));
+    }
 }

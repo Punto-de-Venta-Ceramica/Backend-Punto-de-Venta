@@ -88,6 +88,12 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
             .map(f -> new ClasificacionProducto((Long) f[2], (String) f[3], (Long) f[0], (String) f[1]));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId) {
+        return productos.existsByImagenPublicIdAndActivoTrueAndIdNot(imagenPublicId, productoId);
+    }
+
     /** %texto% en minúsculas con los comodines del propio texto escapados; sin texto coincide con todo. */
     private static String patronBusqueda(String texto) {
         if (texto == null) {

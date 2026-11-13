@@ -442,6 +442,12 @@ class ProductoServiceTest {
     /** Repositorio en memoria. Solo el propietario de prueba ve sus productos activos. */
     private static final class FakeProductos implements ProductoRepositorioPort {
 
+        @Override
+        public boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId) {
+            return guardados.values().stream().anyMatch(p -> p.isActivo()
+                && !p.getId().equals(productoId) && imagenPublicId.equals(p.getImagenPublicId()));
+        }
+
         final Map<Long, Producto> guardados = new LinkedHashMap<>();
         private long siguienteId = 1;
 
@@ -495,6 +501,11 @@ class ProductoServiceTest {
 
     /** Categorías de prueba: solo resuelven el negocio de cada una. */
     private static final class FakeCategorias implements CategoriaRepositorioPort {
+
+        @Override
+        public List<Categoria> listarPorNegocio(Long negocioId) {
+            throw new UnsupportedOperationException();
+        }
 
         private static final Map<Long, Long> NEGOCIO_POR_CATEGORIA = Map.of(CATEGORIA, NEGOCIO,
             CATEGORIA_OTRO_NEGOCIO_PROPIO, 101L, CATEGORIA_AJENA, NEGOCIO_AJENO);

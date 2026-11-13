@@ -121,6 +121,12 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Descuento> listarPorProducto(Long negocioId, Long productoId) {
+        return descuentos.asignadosAProducto(negocioId, productoId).stream().map(DescuentoMapper::toDomain).toList();
+    }
+
+    @Override
     @Transactional
     public void eliminar(Long descuentoId) {
         // Las tablas de asignación pertenecen a DescuentoEntity: sus filas se borran con el descuento.

@@ -83,7 +83,7 @@ public class ProductoService {
         Producto guardado = productos.guardar(producto);
         Descuento descuento = aplicarDescuento(guardado, negocioId, command.descuento());
         if (cambioImagen(publicIdAnterior, urlAnterior, guardado) && publicIdAnterior != null) {
-            eliminarImagenSegura(publicIdAnterior);
+            eliminarImagenSegura(publicIdAnterior, guardado.getId());
         }
         return conClasificacion(guardado, descuento);
     }
@@ -96,12 +96,16 @@ public class ProductoService {
         producto.desactivar();
         productos.guardar(producto);
         if (publicIdAnterior != null) {
-            eliminarImagenSegura(publicIdAnterior);
+            eliminarImagenSegura(publicIdAnterior, id);
         }
     }
 
-    private void eliminarImagenSegura(String publicId) {
-        if (publicId == null || publicId.isBlank()) {
+    /**
+     * El identificador de la imagen lo envía el cliente: si otro producto la usa, no es (solo) de este y no
+     * se borra. Así nadie puede eliminar la imagen de un producto ajeno apuntando el suyo a ella.
+     */
+    private void eliminarImagenSegura(String publicId, Long productoId) {
+        if (publicId == null || publicId.isBlank() || productos.imagenUsadaPorOtroProducto(publicId, productoId)) {
             return;
         }
         try {

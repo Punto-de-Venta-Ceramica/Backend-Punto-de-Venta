@@ -71,6 +71,15 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
 
     List<DescuentoEntity> findByNegocioIdOrderById(Long negocioId);
 
+    /** Descuentos del negocio, activos e inactivos, asignados directamente al producto. */
+    @Query("""
+        select d from DescuentoEntity d join d.productos p
+        where d.negocio.id = :negocioId and p.id = :productoId
+        order by d.id
+        """)
+    List<DescuentoEntity> asignadosAProducto(@Param("negocioId") Long negocioId,
+                                             @Param("productoId") Long productoId);
+
     // Cada fila: [idDescuento, idDestino].
     @Query("select d.id, p.id from DescuentoEntity d join d.productos p where d.id in :ids")
     List<Object[]> productosAsignados(@Param("ids") Collection<Long> ids);

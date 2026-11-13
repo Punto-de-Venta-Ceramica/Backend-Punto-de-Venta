@@ -33,17 +33,18 @@ public class InventarioController {
 
     /**
      * Panel global: existencias de todas las sucursales del negocio (propietario), o de una si se envía
-     * sucursalId (propietario o empleado asignado a ella).
+     * sucursalId (propietario o empleado asignado a ella). Con productoId devuelve solo ese producto.
      */
     @GetMapping(params = "negocioId")
     public List<InventarioPanelResponse> panel(@RequestParam Long negocioId,
-                                               @RequestParam(required = false) Long sucursalId) {
-        return inventario.consultarPanel(negocioId, sucursalId, usuarioActual.id()).stream()
+                                               @RequestParam(required = false) Long sucursalId,
+                                               @RequestParam(required = false) Long productoId) {
+        return inventario.consultarPanel(negocioId, sucursalId, productoId, usuarioActual.id()).stream()
             .map(InventarioPanelResponse::from).toList();
     }
 
     /** Existencias de un solo producto en cada sucursal: lo que necesita el detalle del producto. */
-    @GetMapping(params = "productoId")
+    @GetMapping(params = {"productoId", "!negocioId"})
     @PreAuthorize("hasRole('PROPIETARIO')")
     public List<InventarioPanelResponse> porProducto(@RequestParam Long productoId) {
         return inventario.consultarPorProducto(productoId, usuarioActual.id()).stream()

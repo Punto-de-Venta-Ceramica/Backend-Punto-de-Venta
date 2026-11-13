@@ -19,6 +19,9 @@ public interface ProductoRepositorioPort {
     /** Productos activos del negocio, ordenados por nombre. */
     List<Producto> listarPorNegocio(Long negocioId);
 
+    /** Otro producto activo, de cualquier negocio, usa esa imagen de Cloudinary. */
+    boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId);
+
     /** Página de productos activos del negocio (pagina desde 0), ordenados por nombre, con filtros opcionales. */
     Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio);
 

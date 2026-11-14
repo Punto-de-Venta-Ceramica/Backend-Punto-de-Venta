@@ -1,5 +1,10 @@
 package com.iaml.puntoventaapi.autenticacion.domain;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
 import com.iaml.puntoventaapi.autenticacion.domain.port.PasswordHasherPort;
 
@@ -27,6 +32,24 @@ public final class Credencial {
     public void verificarPassword(String passwordPlano, PasswordHasherPort hasher) {
         if (passwordPlano == null || !hasher.coincide(passwordPlano, passwordHash)) {
             throw new CredencialesInvalidasException();
+        }
+    }
+
+    /**
+     * Huella corta del hash de la contraseña. Viaja en el token de renovación: si la contraseña cambia,
+     * la huella deja de coincidir y las sesiones abiertas ya no pueden renovarse.
+     */
+    public String huellaPassword() {
+        return huellaPassword("SHA-256");
+    }
+
+    // Separado para poder probar el caso de un algoritmo no disponible.
+    String huellaPassword(String algoritmo) {
+        try {
+            byte[] digest = MessageDigest.getInstance(algoritmo).digest(passwordHash.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest, 0, 8);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 no está disponible.", ex);
         }
     }
 

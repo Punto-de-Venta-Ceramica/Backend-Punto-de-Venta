@@ -34,8 +34,8 @@ public interface InventarioRepositorioPort {
     /** Sucursales en las que el producto sigue asignado. */
     long contarActivosDeProducto(Long productoId);
 
-    /** Existencias de los productos activos del negocio; sucursalId es opcional. */
-    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId);
+    /** Existencias de los productos activos del negocio; sucursalId y productoId son filtros opcionales. */
+    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId, Long usuarioId);
 
     /** Existencias de un producto activo del usuario en cada sucursal; vacía si no es accesible. */
     List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId);

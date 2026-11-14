@@ -81,10 +81,10 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
+    public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId, Long usuarioId) {
         List<Object[]> filas = sucursalId == null
-            ? inventarios.panelPorNegocio(negocioId, usuarioId)
-            : inventarios.panelPorSucursal(negocioId, sucursalId, usuarioId);
+            ? inventarios.panelPorNegocio(negocioId, productoId, usuarioId)
+            : inventarios.panelPorSucursal(negocioId, sucursalId, productoId, usuarioId);
         return filas.stream().map(InventarioMapper::toExistencia).toList();
     }
 

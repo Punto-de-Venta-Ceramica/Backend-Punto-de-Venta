@@ -12,6 +12,7 @@ import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +39,19 @@ public class DescuentoService {
     }
 
     public List<DescuentoConAsignaciones> listar(Long negocioId, Long usuarioId) {
+        return listar(negocioId, null, usuarioId);
+    }
+
+    /** Con productoId, solo los descuentos asignados directamente a ese producto. */
+    public List<DescuentoConAsignaciones> listar(Long negocioId, Long productoId, Long usuarioId) {
         verificarNegocio(negocioId, usuarioId);
-        List<Descuento> lista = descuentos.listarPorNegocio(negocioId);
+        return conAsignaciones(productoId == null
+            ? descuentos.listarPorNegocio(negocioId)
+            : descuentos.listarPorProducto(negocioId, productoId));
+    }
+
+    /** Una consulta por tipo de destino para toda la lista, no una por descuento. */
+    private List<DescuentoConAsignaciones> conAsignaciones(List<Descuento> lista) {
         Map<Long, AsignacionesDescuento> asignaciones =
             descuentos.asignacionesDe(lista.stream().map(Descuento::getId).toList());
         return lista.stream().map(d -> new DescuentoConAsignaciones(d, asignaciones.get(d.getId()))).toList();
@@ -110,6 +122,54 @@ public class DescuentoService {
         Descuento descuento = buscar(negocioId, descuentoId);
         descuentos.quitar(descuentoId, destino, destinoId);
         return new DescuentoConAsignaciones(descuento, descuentos.asignaciones(descuentoId));
+    }
+
+    /**
+     * Deja los descuentos propios de un producto como indican las líneas, en una sola transacción: elimina
+     * los indicados y crea o actualiza cada línea (datos y estado), asignándola al producto. Los traslapes
+     * se validan al final, con el estado definitivo, así que el orden de las líneas no importa. Si algo
+     * falla no se guarda nada.
+     */
+    @Transactional
+    public List<DescuentoConAsignaciones> guardarDeProducto(Long negocioId, Long productoId,
+                                                            Collection<Long> eliminar,
+                                                            List<LineaDescuentoCommand> lineas, Long usuarioId) {
+        verificarNegocio(negocioId, usuarioId);
+        if (!descuentos.destinoPerteneceAlNegocio(DestinoDescuento.PRODUCTO, productoId, negocioId)) {
+            throw new CatalogoNoEncontradoException(mensajeDestinoInexistente(DestinoDescuento.PRODUCTO));
+        }
+        for (Long id : eliminar) {
+            buscar(negocioId, id);
+            descuentos.eliminar(id);
+        }
+        List<Descuento> guardados = new ArrayList<>();
+        for (LineaDescuentoCommand linea : lineas) {
+            Descuento descuento = descuentos.guardar(aplicar(negocioId, linea));
+            descuentos.asignar(descuento.getId(), DestinoDescuento.PRODUCTO, productoId);
+            guardados.add(descuento);
+        }
+        List<DescuentoConAsignaciones> resultado = conAsignaciones(guardados);
+        resultado.forEach(d -> validarSinTraslape(d.descuento(), d.asignaciones()));
+        return resultado;
+    }
+
+    /** Descuento nuevo (sin id) o el existente del negocio con los datos y el estado de la línea. */
+    private Descuento aplicar(Long negocioId, LineaDescuentoCommand linea) {
+        if (linea.id() == null) {
+            return validando(() -> new Descuento(null, negocioId, linea.nombre(), linea.cantidadMinima(),
+                linea.cantidadMaxima(), linea.porcentaje(), linea.activo()));
+        }
+        Descuento existente = buscar(negocioId, linea.id());
+        return validando(() -> {
+            existente.setNombre(linea.nombre());
+            existente.modificar(linea.cantidadMinima(), linea.cantidadMaxima(), linea.porcentaje());
+            if (linea.activo()) {
+                existente.activar();
+            } else {
+                existente.desactivar();
+            }
+            return existente;
+        });
     }
 
     /**

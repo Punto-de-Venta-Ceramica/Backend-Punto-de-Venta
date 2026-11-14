@@ -121,6 +121,12 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Descuento> listarPorProducto(Long negocioId, Long productoId) {
+        return descuentos.asignadosAProducto(negocioId, productoId).stream().map(DescuentoMapper::toDomain).toList();
+    }
+
+    @Override
     @Transactional
     public void eliminar(Long descuentoId) {
         // Las tablas de asignación pertenecen a DescuentoEntity: sus filas se borran con el descuento.
@@ -198,7 +204,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
                 .add(entityManager.getReference(ProductoEntity.class, destinoId));
             case CATEGORIA -> entity.getCategorias()
                 .add(entityManager.getReference(CategoriaEntity.class, destinoId));
-            case AREA -> entity.getAreas()
+            default -> entity.getAreas()
                 .add(entityManager.getReference(AreaEntity.class, destinoId));
         }
         descuentos.saveAndFlush(entity);
@@ -211,7 +217,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         switch (destino) {
             case PRODUCTO -> entity.getProductos().removeIf(p -> destinoId.equals(p.getId()));
             case CATEGORIA -> entity.getCategorias().removeIf(c -> destinoId.equals(c.getId()));
-            case AREA -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
+            default -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
         }
         descuentos.saveAndFlush(entity);
     }

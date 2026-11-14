@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {ProductoController.class, AreaController.class, CategoriaController.class,
-    DescuentoController.class})
+    CategoriasNegocioController.class, DescuentoController.class})
 public class CatalogoExceptionHandler {
 
     @ExceptionHandler(ClasificacionConProductosException.class)

@@ -124,8 +124,7 @@ public final class Producto {
             return "https".equalsIgnoreCase(uri.getScheme())
                 && uri.getUserInfo() == null
                 && DOMINIO_CLOUDINARY.equalsIgnoreCase(uri.getHost())
-                && uri.getPath() != null
-                && uri.getPath().length() > 1;
+                && uri.getPath().length() > 1; // con host, el path de una URI jerárquica nunca es null
         } catch (URISyntaxException ex) {
             return false;
         }

@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.catalogo.api;
 
 import com.iaml.puntoventaapi.catalogo.api.dto.response.DescuentoResponse;
 import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarDescuentoRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarDescuentosProductoRequest;
 import com.iaml.puntoventaapi.catalogo.application.DescuentoService;
 import com.iaml.puntoventaapi.catalogo.domain.DestinoDescuento;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
@@ -32,9 +33,21 @@ public class DescuentoController {
             .body(descuento);
     }
 
+    /** Con ?productoId devuelve solo los descuentos asignados directamente a ese producto. */
     @GetMapping
-    public List<DescuentoResponse> listar(@PathVariable @Positive Long negocioId) {
-        return descuentos.listar(negocioId, usuarioActual.id()).stream().map(DescuentoResponse::from).toList();
+    public List<DescuentoResponse> listar(@PathVariable @Positive Long negocioId,
+                                          @RequestParam(required = false) @Positive Long productoId) {
+        return descuentos.listar(negocioId, productoId, usuarioActual.id()).stream()
+            .map(DescuentoResponse::from).toList();
+    }
+
+    /** Guarda de una vez (todo o nada) los descuentos propios de un producto. */
+    @PutMapping("/productos/{productoId}")
+    public List<DescuentoResponse> guardarDeProducto(@PathVariable @Positive Long negocioId,
+                                                     @PathVariable @Positive Long productoId,
+                                                     @Valid @RequestBody GuardarDescuentosProductoRequest request) {
+        return descuentos.guardarDeProducto(negocioId, productoId, request.idsAEliminar(), request.toCommands(),
+            usuarioActual.id()).stream().map(DescuentoResponse::from).toList();
     }
 
     @GetMapping("/{descuentoId}")

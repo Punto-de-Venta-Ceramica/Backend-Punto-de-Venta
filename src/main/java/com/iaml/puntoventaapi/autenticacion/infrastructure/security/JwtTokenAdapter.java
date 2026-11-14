@@ -35,6 +35,7 @@ public class JwtTokenAdapter implements TokenPort, RefreshTokenPort {
     static final String CLAIM_TIPO = "tipo";
     static final String TIPO_ACCESO = "acceso";
     static final String TIPO_RENOVACION = "renovacion";
+    static final String CLAIM_HUELLA = "huella";
 
     private final JwtEncoder encoder;
     private final JwtDecoder decoderRenovacion;
@@ -64,6 +65,7 @@ public class JwtTokenAdapter implements TokenPort, RefreshTokenPort {
             .issuedAt(ahora)
             .expiresAt(expiraRenovacion)
             .claim(CLAIM_TIPO, TIPO_RENOVACION)
+            .claim(CLAIM_HUELLA, credencial.huellaPassword())
             .build());
         return renovarAcceso(credencial, renovacion, expiraRenovacion);
     }
@@ -97,7 +99,8 @@ public class JwtTokenAdapter implements TokenPort, RefreshTokenPort {
             if (!TIPO_RENOVACION.equals(jwt.getClaimAsString(CLAIM_TIPO))) {
                 throw new CredencialesInvalidasException();
             }
-            return new RefreshValido(Long.valueOf(jwt.getSubject()), jwt.getExpiresAt());
+            return new RefreshValido(Long.valueOf(jwt.getSubject()), jwt.getExpiresAt(),
+                jwt.getClaimAsString(CLAIM_HUELLA));
         } catch (JwtException | NumberFormatException ex) {
             throw new CredencialesInvalidasException();
         }

@@ -218,7 +218,8 @@ class InventarioServiceTest {
         }
 
         @Override
-        public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
+        public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId,
+                                                    Long usuarioId) {
             return List.of(new ExistenciaProducto(1L, 20L, "Tarjeta", 10L, "Centro", 5));
         }
 

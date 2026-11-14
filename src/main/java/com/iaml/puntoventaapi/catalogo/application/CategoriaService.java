@@ -40,6 +40,12 @@ public class CategoriaService {
         return categorias.listarPorArea(areaId, negocioId);
     }
 
+    /** Todas las categorías del negocio en una sola consulta, para no pedirlas área por área. */
+    public List<Categoria> listarPorNegocio(Long negocioId, Long usuarioId, Long sucursalId) {
+        areas.verificarLectura(negocioId, usuarioId, sucursalId);
+        return categorias.listarPorNegocio(negocioId);
+    }
+
     public Categoria consultar(Long negocioId, Long areaId, Long categoriaId, Long usuarioId) {
         areas.consultar(negocioId, areaId, usuarioId);
         return buscarCategoria(negocioId, areaId, categoriaId);

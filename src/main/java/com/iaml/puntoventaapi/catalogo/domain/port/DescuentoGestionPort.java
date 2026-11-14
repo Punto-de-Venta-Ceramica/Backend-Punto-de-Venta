@@ -19,6 +19,9 @@ public interface DescuentoGestionPort {
     /** Todos los descuentos del negocio, activos e inactivos, ordenados por id. */
     List<Descuento> listarPorNegocio(Long negocioId);
 
+    /** Descuentos del negocio, activos e inactivos, asignados directamente al producto, ordenados por id. */
+    List<Descuento> listarPorProducto(Long negocioId, Long productoId);
+
     /** Elimina el descuento y todas sus asignaciones. */
     void eliminar(Long descuentoId);
 

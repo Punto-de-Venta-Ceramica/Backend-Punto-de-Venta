@@ -105,6 +105,8 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
 
     boolean existsByCategoria_Id(Long categoriaId);
 
+    boolean existsByImagenPublicIdAndActivoTrueAndIdNot(String imagenPublicId, Long id);
+
     boolean existsByCategoria_Area_Id(Long areaId);
 
     @Query("""

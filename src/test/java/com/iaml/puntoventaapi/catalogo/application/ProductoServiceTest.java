@@ -13,6 +13,7 @@ import com.iaml.puntoventaapi.catalogo.domain.Categoria;
 import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
+import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +116,65 @@ class ProductoServiceTest {
         sucursalesDelNegocio = List.of();
 
         assertThrows(ProductoInvalidoException.class, () -> service.crear(comando(null, null), PROPIETARIO));
+    }
+
+    private static final Long EMPLEADO = 55L;
+    private static final Long SUCURSAL_DEL_EMPLEADO = 10L;
+
+    /** El empleado no es propietario; solo está asignado a la sucursal 10 del negocio 100. */
+    private ProductoService servicioParaEmpleado() {
+        NegocioPort negocios = new NegocioPort() {
+            @Override
+            public boolean perteneceAUsuario(Long negocioId, Long usuarioId) {
+                return PROPIETARIO.equals(usuarioId) && NEGOCIO.equals(negocioId);
+            }
+
+            @Override
+            public Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId) {
+                return EMPLEADO.equals(usuarioId) && SUCURSAL_DEL_EMPLEADO.equals(sucursalId)
+                    ? Optional.of(NEGOCIO) : Optional.empty();
+            }
+        };
+        return new ProductoService(productos, new FakeCategorias(), descuentos, negocios,
+            (negocioId, usuarioId) -> List.of(), inventarioRegistrado::put, almacenImagenes);
+    }
+
+    @Test
+    void elEmpleadoRegistraElProductoSoloEnSuSucursal() {
+        sucursalesDelNegocio = List.of(10L, 11L);
+
+        ProductoDetalle detalle = servicioParaEmpleado().crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 4))), EMPLEADO);
+
+        assertEquals(Map.of(SUCURSAL_DEL_EMPLEADO, 4), inventarioRegistrado.get(detalle.producto().getId()));
+    }
+
+    @Test
+    void elEmpleadoNoPuedeRegistrarEnOtraSucursalNiSinIndicarla() {
+        ProductoService empleado = servicioParaEmpleado();
+
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(11L, 1))), EMPLEADO));
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null, null), EMPLEADO));
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1), new ExistenciaInicialCommand(11L, 1))),
+            EMPLEADO));
+        assertTrue(productos.guardados.isEmpty());
+    }
+
+    @Test
+    void elEmpleadoNoPuedeUsarCategoriaDeOtroNegocioNiCrearDescuentos() {
+        ProductoService empleado = servicioParaEmpleado();
+        CrearProductoCommand ajena = new CrearProductoCommand("A", BigDecimal.TEN, CATEGORIA_AJENA, null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1)));
+        DescuentoProductoCommand descuento = new DescuentoProductoCommand(5, 10, new BigDecimal("10"));
+
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(ajena, EMPLEADO));
+        assertThrows(ProductoInvalidoException.class, () -> empleado.crear(comando(descuento,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1))), EMPLEADO));
+        assertThrows(ProductoInvalidoException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, -1))), EMPLEADO));
+        assertTrue(productos.guardados.isEmpty());
     }
 
     @Test

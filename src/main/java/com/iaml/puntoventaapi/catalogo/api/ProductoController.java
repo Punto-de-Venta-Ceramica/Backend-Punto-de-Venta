@@ -38,7 +38,9 @@ public class ProductoController {
     private final ProductoService productos;
     private final UsuarioActual usuarioActual;
 
+    /** El empleado registra solo en su sucursal y sin descuento (se valida en el servicio). */
     @PostMapping
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public ResponseEntity<ProductoResponse> crear(@Valid @RequestBody CrearProductoRequest request) {
         ProductoResponse producto = ProductoResponse.from(productos.crear(request.toCommand(), usuarioActual.id()));
         return ResponseEntity.created(URI.create("/api/productos/" + producto.id())).body(producto);

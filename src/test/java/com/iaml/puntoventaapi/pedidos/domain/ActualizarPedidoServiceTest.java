@@ -52,6 +52,8 @@ class ActualizarPedidoServiceTest {
         repo.propietario = true;
         service.cambiar(1, 2, EstadoPedido.PRODUCCION);
         repo.propietario = false;
+        assertThrows(SecurityException.class, () -> service.cambiar(1, 2, EstadoPedido.ENTREGADO));
+        repo.propietario = true;
         service.cambiar(1, 2, EstadoPedido.ENTREGADO);
         service.cambiar(1, 2, EstadoPedido.ENTREGADO);
         assertEquals(1, avisos.get());

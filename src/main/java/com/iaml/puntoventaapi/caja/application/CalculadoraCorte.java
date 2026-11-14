@@ -64,14 +64,21 @@ public class CalculadoraCorte {
     public ResultadoCalculo calcular(Long corteId, BigDecimal montoInicial) {
         List<ItemVenta> ventas = consultarVentas(corteId);
         List<ItemPago> pagos = consultarPagos(corteId);
+        List<ItemPago> cancelaciones = consultarCancelaciones(corteId);
         List<ItemPedidoProducto> productosPedido = consultarProductosPedido(corteId);
-        return procesarCalculo(montoInicial, ventas, pagos, productosPedido);
+        return procesarCalculo(montoInicial, ventas, pagos, cancelaciones, productosPedido);
     }
 
+    /**
+     * @param pagos         pagos de pedidos cobrados en este corte (entran a caja).
+     * @param cancelaciones pagos de los pedidos cancelados en este corte, sin importar en
+     *                      qué corte se cobraron (salen de caja como devolución).
+     */
     public ResultadoCalculo procesarCalculo(
         BigDecimal montoInicial,
         List<ItemVenta> ventas,
         List<ItemPago> pagos,
+        List<ItemPago> cancelaciones,
         List<ItemPedidoProducto> productosPedido
     ) {
         BigDecimal seguroMontoInicial = montoInicial != null ? montoInicial.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
@@ -110,7 +117,6 @@ public class CalculadoraCorte {
         for (ItemPago p : pagos) {
             BigDecimal monto = p.monto() != null ? p.monto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
             boolean esTarjeta = "TARJETA".equalsIgnoreCase(p.metodoPago());
-            boolean esCancelado = "CANCELADO".equalsIgnoreCase(p.estadoPedido());
 
             if ("ANTICIPO".equalsIgnoreCase(p.tipoPago())) {
                 if (esTarjeta) {
@@ -125,23 +131,25 @@ public class CalculadoraCorte {
                     liquidacionesEfectivo = liquidacionesEfectivo.add(monto);
                 }
             }
+        }
 
-            if (esCancelado) {
-                // Al cancelar un pedido, se descuenta automáticamente el anticipo/pago realizado
-                if (esTarjeta) {
-                    cancelacionesTarjeta = cancelacionesTarjeta.add(monto);
-                } else {
-                    cancelacionesEfectivo = cancelacionesEfectivo.add(monto);
-                }
-                detallesCancelaciones.add(new CancelacionPedidoDto(
-                    p.pedidoId(),
-                    p.folio(),
-                    monto,
-                    p.metodoPago(),
-                    p.tipoPago(),
-                    p.fechaHora()
-                ));
+        // Al cancelar un pedido se devuelve lo pagado, con el mismo método de cada pago.
+        for (ItemPago p : cancelaciones != null ? cancelaciones : List.<ItemPago>of()) {
+            BigDecimal monto = p.monto() != null ? p.monto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+            boolean esTarjeta = "TARJETA".equalsIgnoreCase(p.metodoPago());
+            if (esTarjeta) {
+                cancelacionesTarjeta = cancelacionesTarjeta.add(monto);
+            } else {
+                cancelacionesEfectivo = cancelacionesEfectivo.add(monto);
             }
+            detallesCancelaciones.add(new CancelacionPedidoDto(
+                p.pedidoId(),
+                p.folio(),
+                monto,
+                p.metodoPago(),
+                p.tipoPago(),
+                p.fechaHora()
+            ));
         }
 
         // Incorporar productos de pedidos no cancelados
@@ -254,7 +262,7 @@ public class CalculadoraCorte {
             select pp.id, pp.id_pedido, p.folio, p.estado, pp.monto, pp.metodo_pago, pp.tipo_pago, pp.fecha_hora
             from barrocontrol.pago_pedido pp
             join barrocontrol.pedido p on p.id = pp.id_pedido
-            where pp.id_corte_caja = ?
+            where pp.id_corte_caja = ? and pp.tipo_pago <> 'DEVOLUCION'
             order by pp.fecha_hora asc
             """;
         return jdbc.query(sql, (rs, i) -> new ItemPago(
@@ -269,6 +277,40 @@ public class CalculadoraCorte {
         ), corteId);
     }
 
+    /**
+     * Lo devuelto en este corte por pedidos cancelados. Al cancelar, el módulo de pedidos
+     * inserta en el corte abierto una fila 'DEVOLUCION' por cada pago, aunque el cobro sea
+     * de un corte anterior. Los pedidos cancelados antes de existir esas filas se
+     * descuentan, como antes, en el corte donde se cobró cada pago.
+     */
+    private List<ItemPago> consultarCancelaciones(Long corteId) {
+        String sql = """
+            select pp.id, pp.id_pedido, p.folio, p.estado, pp.monto, pp.metodo_pago, pp.tipo_pago, pp.fecha_hora
+            from barrocontrol.pago_pedido pp
+            join barrocontrol.pedido p on p.id = pp.id_pedido
+            where pp.id_corte_caja = ?
+              and (pp.tipo_pago = 'DEVOLUCION'
+                   or (p.estado = 'CANCELADO'
+                       and not exists (select 1 from barrocontrol.pago_pedido dv
+                                       where dv.id_pedido = p.id and dv.tipo_pago = 'DEVOLUCION')))
+            order by pp.fecha_hora asc
+            """;
+        return jdbc.query(sql, (rs, i) -> new ItemPago(
+            rs.getLong(1),
+            rs.getLong(2),
+            rs.getString(3),
+            rs.getString(4),
+            rs.getBigDecimal(5),
+            rs.getString(6),
+            rs.getString(7),
+            rs.getTimestamp(8).toInstant()
+        ), corteId);
+    }
+
+    /**
+     * Productos de los pedidos no cancelados cuyo primer pago se cobró en este corte,
+     * sea anticipo o liquidación completa. Así cada pedido se cuenta una sola vez.
+     */
     private List<ItemPedidoProducto> consultarProductosPedido(Long corteId) {
         String sql = """
             select dp.id_producto, p.nombre, dp.cantidad, dp.precio_unitario, dp.subtotal
@@ -276,7 +318,9 @@ public class CalculadoraCorte {
             join barrocontrol.pedido ped on ped.id = pp.id_pedido
             join barrocontrol.detalle_pedido dp on dp.id_pedido = ped.id
             join barrocontrol.producto p on p.id = dp.id_producto
-            where pp.id_corte_caja = ? and pp.tipo_pago = 'ANTICIPO' and ped.estado <> 'CANCELADO'
+            where pp.id_corte_caja = ? and ped.estado <> 'CANCELADO'
+              and pp.id = (select min(primero.id) from barrocontrol.pago_pedido primero
+                           where primero.id_pedido = ped.id)
             order by p.nombre asc
             """;
         return jdbc.query(sql, (rs, i) -> new ItemPedidoProducto(

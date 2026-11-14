@@ -68,7 +68,9 @@ public final class Pedido {
         if (estado == EstadoPedido.CANCELADO) {
             throw new IllegalStateException("Un pedido cancelado no puede cambiar de estado.");
         }
-        if ((nuevo == EstadoPedido.PRODUCCION || nuevo == EstadoPedido.CANCELADO) && !propietario) {
+        // El empleado solo puede terminar un pedido entregado; el resto es del propietario.
+        if ((nuevo == EstadoPedido.PRODUCCION || nuevo == EstadoPedido.ENTREGADO
+                || nuevo == EstadoPedido.CANCELADO) && !propietario) {
             throw new SecurityException("Solo el propietario puede realizar esta acción.");
         }
         if (nuevo == estado) return;

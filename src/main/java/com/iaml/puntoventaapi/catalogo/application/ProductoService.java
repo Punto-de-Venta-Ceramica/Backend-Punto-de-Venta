@@ -47,8 +47,12 @@ public class ProductoService {
     /** Producto, descuento (opcional) e inventario por sucursal se guardan en una sola transacción. */
     @Transactional
     public ProductoDetalle crear(CrearProductoCommand command, Long usuarioId) {
-        Long negocioId = resolverNegocioDeCategoria(command.categoriaId(), usuarioId);
-        Map<Long, Integer> existencias = resolverExistencias(negocioId, command.existencias(), usuarioId);
+        Long negocioId = categorias.buscarNegocioIdParaActualizar(command.categoriaId())
+            .orElseThrow(() -> new CategoriaNoEncontradaException());
+        // El propietario elige las sucursales; un empleado solo registra en la suya y sin descuento.
+        Map<Long, Integer> existencias = negocios.perteneceAUsuario(negocioId, usuarioId)
+            ? resolverExistencias(negocioId, command.existencias(), usuarioId)
+            : resolverExistenciasEmpleado(negocioId, command, usuarioId);
 
         Producto producto = productos.guardar(new Producto(null, command.categoriaId(), command.nombre(),
             command.precio(), command.imagenUrl(), command.imagenPublicId(), true));
@@ -186,6 +190,32 @@ public class ProductoService {
             throw new CategoriaNoEncontradaException();
         }
         return negocioId;
+    }
+
+    /**
+     * Registro por un empleado: debe indicar exactamente una sucursal, la suya (asignada a él y del mismo negocio
+     * que la categoría). No puede crear descuentos: son exclusivos del propietario. Cualquier otro caso (categoría
+     * de otro negocio, sucursal ajena) produce la misma respuesta pública que una categoría inexistente.
+     */
+    private Map<Long, Integer> resolverExistenciasEmpleado(Long negocioId, CrearProductoCommand command,
+                                                           Long usuarioId) {
+        List<ExistenciaInicialCommand> solicitadas = command.existencias();
+        if (solicitadas == null || solicitadas.size() != 1 || solicitadas.get(0).sucursalId() == null) {
+            throw new CategoriaNoEncontradaException();
+        }
+        ExistenciaInicialCommand solicitada = solicitadas.get(0);
+        boolean sucursalPropia = negocios.negocioDeSucursal(solicitada.sucursalId(), usuarioId)
+            .filter(negocioId::equals).isPresent();
+        if (!sucursalPropia) {
+            throw new CategoriaNoEncontradaException();
+        }
+        if (command.descuento() != null) {
+            throw new ProductoInvalidoException("Solo el propietario puede asignar descuentos a un producto.");
+        }
+        if (solicitada.existencia() == null || solicitada.existencia() < 0) {
+            throw new ProductoInvalidoException("La existencia inicial no puede ser negativa.");
+        }
+        return Map.of(solicitada.sucursalId(), solicitada.existencia());
     }
 
     /**

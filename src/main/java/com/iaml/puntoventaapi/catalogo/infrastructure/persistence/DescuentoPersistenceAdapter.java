@@ -204,7 +204,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
                 .add(entityManager.getReference(ProductoEntity.class, destinoId));
             case CATEGORIA -> entity.getCategorias()
                 .add(entityManager.getReference(CategoriaEntity.class, destinoId));
-            case AREA -> entity.getAreas()
+            default -> entity.getAreas()
                 .add(entityManager.getReference(AreaEntity.class, destinoId));
         }
         descuentos.saveAndFlush(entity);
@@ -217,7 +217,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         switch (destino) {
             case PRODUCTO -> entity.getProductos().removeIf(p -> destinoId.equals(p.getId()));
             case CATEGORIA -> entity.getCategorias().removeIf(c -> destinoId.equals(c.getId()));
-            case AREA -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
+            default -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
         }
         descuentos.saveAndFlush(entity);
     }

@@ -43,3 +43,7 @@ documentacion.md
 !.env.example
 application-local.properties
 *.local.ps1
+
+# SonarQube local
+.sonar/
+.sonar-token

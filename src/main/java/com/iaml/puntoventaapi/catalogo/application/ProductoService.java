@@ -105,7 +105,7 @@ public class ProductoService {
      * se borra. Así nadie puede eliminar la imagen de un producto ajeno apuntando el suyo a ella.
      */
     private void eliminarImagenSegura(String publicId, Long productoId) {
-        if (publicId == null || publicId.isBlank() || productos.imagenUsadaPorOtroProducto(publicId, productoId)) {
+        if (productos.imagenUsadaPorOtroProducto(publicId, productoId)) {
             return;
         }
         try {

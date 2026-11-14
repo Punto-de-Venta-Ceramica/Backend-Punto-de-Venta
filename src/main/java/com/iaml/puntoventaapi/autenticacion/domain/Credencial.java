@@ -40,8 +40,13 @@ public final class Credencial {
      * la huella deja de coincidir y las sesiones abiertas ya no pueden renovarse.
      */
     public String huellaPassword() {
+        return huellaPassword("SHA-256");
+    }
+
+    // Separado para poder probar el caso de un algoritmo no disponible.
+    String huellaPassword(String algoritmo) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(passwordHash.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = MessageDigest.getInstance(algoritmo).digest(passwordHash.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest, 0, 8);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 no está disponible.", ex);

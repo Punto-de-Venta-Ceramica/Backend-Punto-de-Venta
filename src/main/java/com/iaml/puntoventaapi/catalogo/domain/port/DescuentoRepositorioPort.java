@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.catalogo.domain.port;
 
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,6 +22,15 @@ public interface DescuentoRepositorioPort {
 
     /** Igual que {@link #buscarActivoPorProducto} para varios productos (los que no tienen no aparecen). */
     Map<Long, Descuento> buscarActivosPorProductos(Collection<Long> productoIds);
+
+    /**
+     * Escalones por cantidad que aplican al producto: todos los descuentos activos del nivel que gana
+     * (producto, si no categoría, si no área), ordenados por cantidad mínima. Lista vacía si no hay.
+     */
+    List<Descuento> buscarEscalonesActivosPorProducto(Long productoId);
+
+    /** Escalones del nivel ganador para cada producto que tiene descuentos activos. */
+    Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds);
 
     /**
      * Descuento activo propio del producto: el que solo está asignado a ese producto (no a otros

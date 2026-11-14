@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,26 +25,47 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/inventario")
-@PreAuthorize("hasRole('PROPIETARIO')")
+@PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
 public class InventarioController {
 
     private final InventarioService inventario;
     private final UsuarioActual usuarioActual;
 
-    /** Panel global: existencias de todas las sucursales del negocio, o de una si se envía sucursalId. */
-    @GetMapping
+    /**
+     * Panel global: existencias de todas las sucursales del negocio (propietario), o de una si se envía
+     * sucursalId (propietario o empleado asignado a ella). Con productoId devuelve solo ese producto.
+     */
+    @GetMapping(params = "negocioId")
     public List<InventarioPanelResponse> panel(@RequestParam Long negocioId,
-                                               @RequestParam(required = false) Long sucursalId) {
-        return inventario.consultarPanel(negocioId, sucursalId, usuarioActual.id()).stream()
+                                               @RequestParam(required = false) Long sucursalId,
+                                               @RequestParam(required = false) Long productoId) {
+        return inventario.consultarPanel(negocioId, sucursalId, productoId, usuarioActual.id()).stream()
             .map(InventarioPanelResponse::from).toList();
     }
 
-    /** Asigna un producto existente a una sucursal del mismo negocio. */
+    /** Existencias de un solo producto en cada sucursal: lo que necesita el detalle del producto. */
+    @GetMapping(params = {"productoId", "!negocioId"})
+    @PreAuthorize("hasRole('PROPIETARIO')")
+    public List<InventarioPanelResponse> porProducto(@RequestParam Long productoId) {
+        return inventario.consultarPorProducto(productoId, usuarioActual.id()).stream()
+            .map(InventarioPanelResponse::from).toList();
+    }
+
+    /** Asigna un producto existente a una sucursal del mismo negocio, o lo reactiva si se había quitado. */
     @PostMapping
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<ExistenciaResponse> asignar(@Valid @RequestBody AsignarProductoRequest request) {
         ExistenciaResponse creada = ExistenciaResponse.from(inventario.asignar(request.productoId(),
-            request.sucursalId(), request.existenciaInicial(), usuarioActual.id()));
+            request.sucursalId(), request.existencia(), usuarioActual.id()));
         return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+    }
+
+    /** Quita el producto de la sucursal; su existencia se conserva por si se vuelve a asignar. */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
+    public ResponseEntity<Void> quitar(@PathVariable Long id) {
+        inventario.quitar(id, usuarioActual.id());
+        return ResponseEntity.noContent().build();
     }
 
     /** Ajuste manual: cantidad positiva suma, negativa resta. */

@@ -47,7 +47,10 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .cors(Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable())
+            // CSRF se desactiva a propósito: la API es stateless (sin sesión ni cookies de autenticación);
+            // cada petición se autentica con un JWT en el encabezado Authorization, que el navegador no
+            // envía automáticamente, por lo que no hay vector CSRF. NOSONAR (java:S4502)
+            .csrf(csrf -> csrf.disable()) // NOSONAR
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()

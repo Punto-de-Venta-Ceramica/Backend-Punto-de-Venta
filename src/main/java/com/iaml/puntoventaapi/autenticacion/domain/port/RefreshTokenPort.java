@@ -6,8 +6,20 @@ import java.time.Instant;
 
 public interface RefreshTokenPort {
 
-    /** Token de renovación válido: a quién pertenece y cuándo vence. */
-    record RefreshValido(Long usuarioId, Instant expiraEn) {
+    /**
+     * Token de renovación válido: a quién pertenece, cuándo vence y la huella de la contraseña con la que
+     * se emitió (null en los tokens emitidos antes de que existiera la huella).
+     */
+    record RefreshValido(Long usuarioId, Instant expiraEn, String huellaPassword) {
+
+        public RefreshValido(Long usuarioId, Instant expiraEn) {
+            this(usuarioId, expiraEn, null);
+        }
+
+        /** La contraseña no ha cambiado desde que se emitió el token. */
+        public boolean vigentePara(Credencial credencial) {
+            return huellaPassword == null || huellaPassword.equals(credencial.huellaPassword());
+        }
     }
 
     /**

@@ -19,6 +19,9 @@ public interface DescuentoGestionPort {
     /** Todos los descuentos del negocio, activos e inactivos, ordenados por id. */
     List<Descuento> listarPorNegocio(Long negocioId);
 
+    /** Descuentos del negocio, activos e inactivos, asignados directamente al producto, ordenados por id. */
+    List<Descuento> listarPorProducto(Long negocioId, Long productoId);
+
     /** Elimina el descuento y todas sus asignaciones. */
     void eliminar(Long descuentoId);
 
@@ -29,6 +32,12 @@ public interface DescuentoGestionPort {
 
     /** El destino existe, está activo y pertenece al negocio. */
     boolean destinoPerteneceAlNegocio(DestinoDescuento destino, Long destinoId, Long negocioId);
+
+    /**
+     * Descuentos activos asignados directamente a cada producto, categoría o área indicado, en una sola
+     * consulta. Los destinos sin descuentos no aparecen.
+     */
+    Map<Long, List<Descuento>> activosAsignadosA(DestinoDescuento destino, Collection<Long> destinoIds);
 
     /** Idempotente: asignar dos veces el mismo destino no duplica el vínculo. */
     void asignar(Long descuentoId, DestinoDescuento destino, Long destinoId);

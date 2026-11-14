@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.CategoriaResponse;
-import com.iaml.puntoventaapi.catalogo.api.dto.GuardarCategoriaRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.CategoriaResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarCategoriaRequest;
 import com.iaml.puntoventaapi.catalogo.application.CategoriaService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
@@ -36,8 +36,9 @@ public class CategoriaController {
 
     @GetMapping
     public List<CategoriaResponse> listar(@PathVariable @Positive Long negocioId,
-                                        @PathVariable @Positive Long areaId) {
-        return categorias.listar(negocioId, areaId, usuarioActual.id()).stream()
+                                        @PathVariable @Positive Long areaId,
+                                        @RequestParam(required = false) Long sucursalId) {
+        return categorias.listar(negocioId, areaId, usuarioActual.id(), sucursalId).stream()
             .map(CategoriaResponse::from).toList();
     }
 

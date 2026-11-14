@@ -8,6 +8,7 @@ import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.infrastructure.persistence.ProductoJpaRepository;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +33,11 @@ public class CatalogoContratoService implements CatalogoContrato {
     @Transactional(readOnly = true)
     public Optional<ProductoPedido> productoParaPedido(long productoId, long negocioId) {
         return productos.productoParaPedido(productoId, negocioId).map(producto -> {
-            // Mismo criterio que la lista de productos del pedido: producto > categoría > área.
-            var descuento = descuentos.buscarActivoPorProducto(productoId).orElse(null);
-            return new ProductoPedido(producto.getPrecio(), descuento == null ? null : descuento.getCantidadMinima(),
-                descuento == null ? null : descuento.getCantidadMaxima(),
-                descuento == null ? null : descuento.getPorcentaje());
+            // Mismo criterio que la lista de productos del pedido: el nivel producto > categoría > área que tenga descuentos.
+            var escalones = descuentos.buscarEscalonesActivosPorProducto(productoId).stream()
+                .map(d -> new EscalonDescuento(d.getCantidadMinima(), d.getCantidadMaxima(), d.getPorcentaje()))
+                .toList();
+            return new ProductoPedido(producto.getPrecio(), escalones);
         });
     }
 
@@ -47,14 +48,17 @@ public class CatalogoContratoService implements CatalogoContrato {
             return Map.of();
         }
         List<Producto> activos = productosVenta.listarActivosPorIds(negocioId, cantidadesPorProducto.keySet());
-        Map<Long, Descuento> porProducto = descuentos.buscarActivosPorProductos(
+        Map<Long, List<Descuento>> porProducto = descuentos.buscarEscalonesActivosPorProductos(
             activos.stream().map(Producto::getId).toList());
         Map<Long, ProductoParaVenta> resultado = new HashMap<>();
         for (Producto producto : activos) {
             Long productoId = producto.getId();
-            Descuento descuento = porProducto.get(productoId);
-            BigDecimal porcentaje = descuento == null ? BigDecimal.ZERO
-                : descuento.porcentajeParaCantidad(cantidadesPorProducto.get(productoId));
+            int cantidad = cantidadesPorProducto.get(productoId);
+            BigDecimal porcentaje = porProducto.getOrDefault(productoId, List.of()).stream()
+                .filter(descuento -> descuento.aplicaA(cantidad))
+                .max(Comparator.comparing(Descuento::getCantidadMinima))
+                .map(Descuento::getPorcentaje)
+                .orElse(BigDecimal.ZERO);
             resultado.put(productoId,
                 new ProductoParaVenta(productoId, producto.getNombre(), producto.getPrecio(), porcentaje));
         }

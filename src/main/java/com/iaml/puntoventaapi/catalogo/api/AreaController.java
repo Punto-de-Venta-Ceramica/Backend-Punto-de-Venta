@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.AreaResponse;
-import com.iaml.puntoventaapi.catalogo.api.dto.GuardarAreaRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.AreaResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarAreaRequest;
 import com.iaml.puntoventaapi.catalogo.application.AreaService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
@@ -32,8 +32,9 @@ public class AreaController {
     }
 
     @GetMapping
-    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId) {
-        return areas.listar(negocioId, usuarioActual.id()).stream().map(AreaResponse::from).toList();
+    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId,
+                                     @RequestParam(required = false) Long sucursalId) {
+        return areas.listar(negocioId, usuarioActual.id(), sucursalId).stream().map(AreaResponse::from).toList();
     }
 
     @GetMapping("/{areaId}")

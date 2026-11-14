@@ -26,7 +26,7 @@ public class InventarioContratoService implements InventarioContrato {
     @Transactional(readOnly = true)
     public Map<Long, Integer> consultarExistencias(Long negocioId, Long sucursalId, Long usuarioId) {
         Map<Long, Integer> existencias = new HashMap<>();
-        inventarios.listarPanel(negocioId, sucursalId, usuarioId)
+        inventarios.listarPanel(negocioId, sucursalId, null, usuarioId)
             .forEach(fila -> existencias.put(fila.productoId(), fila.existencia()));
         return Map.copyOf(existencias);
     }

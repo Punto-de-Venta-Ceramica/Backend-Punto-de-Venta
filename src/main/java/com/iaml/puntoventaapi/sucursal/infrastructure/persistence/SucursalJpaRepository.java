@@ -17,13 +17,12 @@ public interface SucursalJpaRepository extends JpaRepository<SucursalEntity, Lon
     @Query("""
         select s.negocio.id from Sucursal s, UsuarioEntity actor
         left join actor.negocio negocioEmpleado
-        left join actor.sucursal sucursalEmpleado
         where s.id = :sucursalId and actor.id = :usuarioId and s.negocio.activo = true
           and ((actor.rol.nombre = 'PROPIETARIO' and exists
                 (select n.id from Negocio n join n.usuarios propietario
                  where n.id = s.negocio.id and propietario.id = actor.id))
             or (actor.rol.nombre = 'EMPLEADO' and negocioEmpleado.id = s.negocio.id
-                and sucursalEmpleado.id = s.id))
+                and s member of actor.sucursales))
         """)
     Optional<Long> negocioAutorizado(@Param("sucursalId") Long sucursalId, @Param("usuarioId") Long usuarioId);
 
@@ -33,6 +32,6 @@ public interface SucursalJpaRepository extends JpaRepository<SucursalEntity, Lon
         """)
     List<Long> propietariosDeSucursal(@Param("sucursalId") Long sucursalId);
 
-    @Query("select u.id from UsuarioEntity u where u.sucursal.id = :sucursalId and u.rol.nombre = 'EMPLEADO'")
+    @Query("select u.id from UsuarioEntity u join u.sucursales s where s.id = :sucursalId and u.rol.nombre = 'EMPLEADO'")
     List<Long> empleadosDeSucursal(@Param("sucursalId") Long sucursalId);
 }

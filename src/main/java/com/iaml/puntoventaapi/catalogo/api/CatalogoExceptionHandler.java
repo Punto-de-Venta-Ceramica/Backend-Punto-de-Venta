@@ -3,6 +3,7 @@ package com.iaml.puntoventaapi.catalogo.api;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.DescuentoInvalidoException;
+import com.iaml.puntoventaapi.catalogo.domain.exception.DescuentoTraslapadoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {ProductoController.class, AreaController.class, CategoriaController.class,
-    DescuentoController.class})
+    CategoriasNegocioController.class, DescuentoController.class})
 public class CatalogoExceptionHandler {
 
     @ExceptionHandler(ClasificacionConProductosException.class)
@@ -30,6 +31,13 @@ public class CatalogoExceptionHandler {
         NegocioNoEncontradoException.class, CatalogoNoEncontradoException.class})
     public ProblemDetail noEncontrado(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(DescuentoTraslapadoException.class)
+    public ProblemDetail descuentoTraslapado(DescuentoTraslapadoException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("codigo", DescuentoTraslapadoException.CODIGO);
+        return problem;
     }
 
     @ExceptionHandler({ProductoInvalidoException.class, DescuentoInvalidoException.class})

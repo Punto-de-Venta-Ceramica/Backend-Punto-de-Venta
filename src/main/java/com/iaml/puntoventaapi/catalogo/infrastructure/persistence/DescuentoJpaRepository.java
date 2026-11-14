@@ -57,9 +57,28 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
         """)
     List<DescuentoEntity> propiosDeProducto(@Param("productoId") Long productoId);
 
+    // Validación de traslapes, en lote. Cada fila: [idDestino, DescuentoEntity activo asignado a él].
+    @Query("select p.id, d from DescuentoEntity d join d.productos p where p.id in :ids and d.activo = true")
+    List<Object[]> activosAsignadosAProductos(@Param("ids") Collection<Long> ids);
+
+    @Query("select c.id, d from DescuentoEntity d join d.categorias c where c.id in :ids and d.activo = true")
+    List<Object[]> activosAsignadosACategorias(@Param("ids") Collection<Long> ids);
+
+    @Query("select a.id, d from DescuentoEntity d join d.areas a where a.id in :ids and d.activo = true")
+    List<Object[]> activosAsignadosAAreas(@Param("ids") Collection<Long> ids);
+
     Optional<DescuentoEntity> findByIdAndNegocioId(Long id, Long negocioId);
 
     List<DescuentoEntity> findByNegocioIdOrderById(Long negocioId);
+
+    /** Descuentos del negocio, activos e inactivos, asignados directamente al producto. */
+    @Query("""
+        select d from DescuentoEntity d join d.productos p
+        where d.negocio.id = :negocioId and p.id = :productoId
+        order by d.id
+        """)
+    List<DescuentoEntity> asignadosAProducto(@Param("negocioId") Long negocioId,
+                                             @Param("productoId") Long productoId);
 
     // Cada fila: [idDescuento, idDestino].
     @Query("select d.id, p.id from DescuentoEntity d join d.productos p where d.id in :ids")

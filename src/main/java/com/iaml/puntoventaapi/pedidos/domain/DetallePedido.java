@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.pedidos.domain;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Objects;
 
 /** Precio y descuento son una fotografía calculada por el servidor al registrar el pedido. */
@@ -24,18 +25,12 @@ public record DetallePedido(long productoId, int cantidad, BigDecimal precioUnit
             .setScale(2, RoundingMode.HALF_UP);
     }
 
-    /** Aplica el descuento vigente del catálogo únicamente al alcanzar su rango de piezas. */
+    /** Aplica solo el escalón del catálogo en cuyo rango de piezas cae la cantidad; si no cae en ninguno, 0 %. */
     public static DetallePedido desdeCatalogo(long productoId, int cantidad, BigDecimal precio,
-                                               Integer minimo, Integer maximo, BigDecimal porcentaje) {
-        if (minimo == null && maximo == null && porcentaje == null) {
-            return new DetallePedido(productoId, cantidad, precio, BigDecimal.ZERO);
-        }
-        if (minimo == null || minimo < 1 || (maximo != null && maximo < minimo)
-                || porcentaje == null || porcentaje.signum() < 0
-                || porcentaje.compareTo(new BigDecimal("100")) > 0 || porcentaje.scale() > 2) {
-            throw new IllegalArgumentException("El descuento del catálogo no es válido.");
-        }
-        boolean aplica = cantidad >= minimo && (maximo == null || cantidad <= maximo);
-        return new DetallePedido(productoId, cantidad, precio, aplica ? porcentaje : BigDecimal.ZERO);
+                                               List<EscalonDescuento> escalones) {
+        BigDecimal porcentaje = EscalonDescuento.paraCantidad(escalones == null ? List.of() : escalones, cantidad)
+            .map(EscalonDescuento::porcentaje)
+            .orElse(BigDecimal.ZERO);
+        return new DetallePedido(productoId, cantidad, precio, porcentaje);
     }
 }

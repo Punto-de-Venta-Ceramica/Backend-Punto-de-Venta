@@ -1,4 +1,4 @@
-package com.iaml.puntoventaapi.catalogo.api.dto;
+package com.iaml.puntoventaapi.catalogo.api.dto.request;
 
 import com.iaml.puntoventaapi.catalogo.application.GuardarCategoriaCommand;
 import com.iaml.puntoventaapi.catalogo.domain.DatosClasificacion;

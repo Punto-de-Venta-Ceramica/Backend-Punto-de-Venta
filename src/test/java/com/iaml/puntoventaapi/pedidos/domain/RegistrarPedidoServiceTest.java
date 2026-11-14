@@ -29,7 +29,8 @@ class RegistrarPedidoServiceTest {
                 return 7;
             }
         };
-        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), 2, null, new BigDecimal("10.00"));
+        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"),
+            List.of(new EscalonDescuento(2, null, new BigDecimal("10.00"))));
         var service = new RegistrarPedidoService(repo, catalogo, cliente -> 5, new NotificacionPort() {
             public void pedidoRegistrado(long pedido, long sucursal, long usuario) {
                 assertEquals(1, escrituras.get());
@@ -55,7 +56,7 @@ class RegistrarPedidoServiceTest {
             public long guardar(DatosRegistro datos, long cliente, Pedido pedido) { escrituras.incrementAndGet(); return 1; }
         };
         var service = new RegistrarPedidoService(repo,
-            (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), null, null, null),
+            (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), List.of()),
             cliente -> { escrituras.incrementAndGet(); return 1; }, new NotificacionPort() {
                 public void pedidoRegistrado(long p, long s, long u) { escrituras.incrementAndGet(); }
                 public void pedidoEntregado(long p) { escrituras.incrementAndGet(); }

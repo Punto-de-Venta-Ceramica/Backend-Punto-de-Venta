@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.autenticacion.api.dto.RefreshRequest;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionService;
 import com.iaml.puntoventaapi.autenticacion.application.RenovarSesionService;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
+import com.iaml.puntoventaapi.autenticacion.domain.exception.DemasiadosIntentosException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +38,11 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return LoginResponse.from(iniciarSesionService.iniciarSesion(request.toCommand()));
+    }
+
+    @ExceptionHandler(DemasiadosIntentosException.class)
+    public ProblemDetail demasiadosIntentos(DemasiadosIntentosException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
     }
 
     @ExceptionHandler(CredencialesInvalidasException.class)

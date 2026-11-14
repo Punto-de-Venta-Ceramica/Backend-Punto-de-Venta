@@ -50,7 +50,7 @@ class EmpleadoServiceTest {
         when(sucursales.obtenerNombrePorId(sucursalId)).thenReturn(Optional.of("Sucursal Centro"));
         when(empleados.guardar(any())).thenAnswer(invocation -> {
             Usuario u = invocation.getArgument(0);
-            return new Usuario(empleadoId, u.getRolId(), u.getNegocioId(), u.getSucursalId(),
+            return new Usuario(empleadoId, u.getRolId(), u.getNegocioId(), u.getSucursalIds(),
                 u.getNombre(), u.getApellidoPaterno(), u.getApellidoMaterno(), u.getCorreo(), u.getTelefono(), u.getPasswordHash());
         });
 
@@ -110,8 +110,8 @@ class EmpleadoServiceTest {
 
     @Test
     void listarEmpleadosConYSinAsignacion() {
-        Usuario emp1 = new Usuario(101L, 2L, negocioId, sucursalId, "Ana", "Ruiz", null, "ana@test.com", null, "h");
-        Usuario emp2 = new Usuario(102L, 2L, negocioId, null, "Beto", "Diaz", null, "beto@test.com", null, "h");
+        Usuario emp1 = new Usuario(101L, 2L, negocioId, List.of(sucursalId), "Ana", "Ruiz", null, "ana@test.com", null, "h");
+        Usuario emp2 = new Usuario(102L, 2L, negocioId, List.of(), "Beto", "Diaz", null, "beto@test.com", null, "h");
         when(empleados.listarPorNegocio(negocioId)).thenReturn(List.of(emp1, emp2));
         when(sucursales.obtenerNombrePorId(sucursalId)).thenReturn(Optional.of("Sucursal Norte"));
 
@@ -119,60 +119,102 @@ class EmpleadoServiceTest {
         List<EmpleadoDetalle> sinAsignacion = service.listarPorNegocio(negocioId, false);
         assertThat(sinAsignacion).hasSize(2);
         assertThat(sinAsignacion.get(0).asignado()).isNull();
-        assertThat(sinAsignacion.get(0).sucursalNombre()).isNull();
+        assertThat(sinAsignacion.get(0).sucursales()).isEmpty();
 
         // Con asignación
         List<EmpleadoDetalle> conAsignacion = service.listarPorNegocio(negocioId, true);
         assertThat(conAsignacion).hasSize(2);
         assertThat(conAsignacion.get(0).asignado()).isTrue();
-        assertThat(conAsignacion.get(0).sucursalNombre()).isEqualTo("Sucursal Norte");
+        assertThat(conAsignacion.get(0).sucursales()).extracting(SucursalDetalle::nombre).containsExactly("Sucursal Norte");
         assertThat(conAsignacion.get(1).asignado()).isFalse();
-        assertThat(conAsignacion.get(1).sucursalNombre()).isNull();
+        assertThat(conAsignacion.get(1).sucursales()).isEmpty();
     }
 
     @Test
     void asignarSucursalAEmpleadoSinSucursal() {
-        Usuario empleadoSinSucursal = new Usuario(empleadoId, 2L, negocioId, null, "Carlos", null, null, "c@test.com", null, "h");
+        Usuario empleadoSinSucursal = new Usuario(empleadoId, 2L, negocioId, List.of(), "Carlos", null, null, "c@test.com", null, "h");
         when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(empleadoSinSucursal));
         when(sucursales.perteneceANegocio(sucursalId, negocioId)).thenReturn(true);
         when(sucursales.obtenerNombrePorId(sucursalId)).thenReturn(Optional.of("Sucursal Sur"));
 
         EmpleadoDetalle resultado = service.asignarSucursal(new AsignarSucursalCommand(negocioId, empleadoId, sucursalId));
 
-        assertThat(resultado.usuario().getSucursalId()).isEqualTo(sucursalId);
+        assertThat(resultado.usuario().getSucursalIds()).containsExactly(sucursalId);
         assertThat(resultado.asignado()).isTrue();
-        assertThat(resultado.sucursalNombre()).isEqualTo("Sucursal Sur");
-        verify(empleados).actualizarSucursal(empleadoId, sucursalId);
+        assertThat(resultado.sucursales()).extracting(SucursalDetalle::nombre).containsExactly("Sucursal Sur");
+        verify(empleados).actualizarSucursales(empleadoId, List.of(sucursalId));
     }
 
     @Test
-    void asignarSucursalFallaSiEmpleadoYaTieneOtraSucursal() {
+    void asignarSucursalConservaLasQueYaTenia() {
         Long otraSucursal = 99L;
-        Usuario empleadoConSucursal = new Usuario(empleadoId, 2L, negocioId, otraSucursal, "Carlos", null, null, "c@test.com", null, "h");
+        Usuario empleadoConSucursal = new Usuario(empleadoId, 2L, negocioId, List.of(otraSucursal), "Carlos", null, null, "c@test.com", null, "h");
         when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(empleadoConSucursal));
         when(sucursales.perteneceANegocio(sucursalId, negocioId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.asignarSucursal(new AsignarSucursalCommand(negocioId, empleadoId, sucursalId)))
-            .isInstanceOf(EmpleadoYaTieneSucursalException.class);
-        verify(empleados, never()).actualizarSucursal(any(), any());
+        EmpleadoDetalle resultado = service.asignarSucursal(new AsignarSucursalCommand(negocioId, empleadoId, sucursalId));
+
+        assertThat(resultado.usuario().getSucursalIds()).containsExactly(otraSucursal, sucursalId);
+        verify(empleados).actualizarSucursales(empleadoId, List.of(otraSucursal, sucursalId));
+    }
+
+    @Test
+    void actualizarSucursalesAsignaYDesasignaVarias() {
+        Usuario emp = new Usuario(empleadoId, 2L, negocioId, List.of(sucursalId), "Carlos", null, null, "c@test.com", null, "h");
+        when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(emp));
+        when(sucursales.perteneceANegocio(30L, negocioId)).thenReturn(true);
+        when(sucursales.perteneceANegocio(31L, negocioId)).thenReturn(true);
+
+        EmpleadoDetalle resultado = service.actualizarSucursales(
+            new ActualizarSucursalesEmpleadoCommand(negocioId, empleadoId, List.of(30L, 31L, 30L)));
+
+        assertThat(resultado.usuario().getSucursalIds()).containsExactly(30L, 31L);
+        assertThat(resultado.asignado()).isTrue();
+        verify(empleados).actualizarSucursales(empleadoId, List.of(30L, 31L));
+    }
+
+    @Test
+    void actualizarSucursalesRechazaSucursalAjenaAlNegocio() {
+        Usuario emp = new Usuario(empleadoId, 2L, negocioId, List.of(), "Carlos", null, null, "c@test.com", null, "h");
+        when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(emp));
+        when(sucursales.perteneceANegocio(77L, negocioId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.actualizarSucursales(
+            new ActualizarSucursalesEmpleadoCommand(negocioId, empleadoId, List.of(77L))))
+            .isInstanceOf(SucursalNoEncontradaException.class);
+        verify(empleados, never()).actualizarSucursales(any(), any());
+    }
+
+    @Test
+    void listarPorSucursalSoloDevuelveSusEmpleados() {
+        Usuario emp1 = new Usuario(101L, 2L, negocioId, List.of(sucursalId, 30L), "Ana", "Ruiz", null, "ana@test.com", null, "h");
+        Usuario emp2 = new Usuario(102L, 2L, negocioId, List.of(30L), "Beto", "Diaz", null, "beto@test.com", null, "h");
+        when(empleados.listarPorNegocio(negocioId)).thenReturn(List.of(emp1, emp2));
+        when(sucursales.perteneceANegocio(sucursalId, negocioId)).thenReturn(true);
+        when(sucursales.obtenerNombrePorId(any())).thenReturn(Optional.of("S"));
+
+        List<EmpleadoDetalle> lista = service.listarPorNegocio(negocioId, true, sucursalId);
+
+        assertThat(lista).extracting(d -> d.usuario().getId()).containsExactly(101L);
+        assertThat(lista.get(0).sucursales()).hasSize(2);
     }
 
     @Test
     void desasignarSucursalPasandoNull() {
-        Usuario empleadoConSucursal = new Usuario(empleadoId, 2L, negocioId, sucursalId, "Carlos", null, null, "c@test.com", null, "h");
+        Usuario empleadoConSucursal = new Usuario(empleadoId, 2L, negocioId, List.of(sucursalId), "Carlos", null, null, "c@test.com", null, "h");
         when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(empleadoConSucursal));
 
         EmpleadoDetalle resultado = service.asignarSucursal(new AsignarSucursalCommand(negocioId, empleadoId, null));
 
-        assertThat(resultado.usuario().getSucursalId()).isNull();
+        assertThat(resultado.usuario().getSucursalIds()).isEmpty();
         assertThat(resultado.asignado()).isFalse();
-        assertThat(resultado.sucursalNombre()).isNull();
-        verify(empleados).actualizarSucursal(empleadoId, null);
+        assertThat(resultado.sucursales()).isEmpty();
+        verify(empleados).actualizarSucursales(empleadoId, List.of());
     }
 
     @Test
     void eliminarEmpleadoExitoso() {
-        Usuario emp = new Usuario(empleadoId, 2L, negocioId, sucursalId, "Carlos", null, null, "c@test.com", null, "h");
+        Usuario emp = new Usuario(empleadoId, 2L, negocioId, List.of(sucursalId), "Carlos", null, null, "c@test.com", null, "h");
         when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(emp));
 
         service.eliminar(new EliminarEmpleadoCommand(negocioId, empleadoId));
@@ -191,7 +233,7 @@ class EmpleadoServiceTest {
 
     @Test
     void editarDatosEmpleadoExitoso() {
-        Usuario emp = new Usuario(empleadoId, 2L, negocioId, sucursalId, "Carlos", "Lopez", "Gomez", "c@test.com", null, "h");
+        Usuario emp = new Usuario(empleadoId, 2L, negocioId, List.of(sucursalId), "Carlos", "Lopez", "Gomez", "c@test.com", null, "h");
         when(empleados.buscarPorIdYNegocio(empleadoId, negocioId)).thenReturn(Optional.of(emp));
 
         EditarEmpleadoCommand command = new EditarEmpleadoCommand(negocioId, empleadoId, "Carlos Alberto", "López", "Gómez");

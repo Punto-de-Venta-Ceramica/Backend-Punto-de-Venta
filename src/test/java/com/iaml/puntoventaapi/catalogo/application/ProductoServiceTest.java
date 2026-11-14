@@ -1,6 +1,8 @@
 package com.iaml.puntoventaapi.catalogo.application;
 
+import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
@@ -11,7 +13,9 @@ import com.iaml.puntoventaapi.catalogo.domain.Categoria;
 import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
+import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -112,6 +116,65 @@ class ProductoServiceTest {
         sucursalesDelNegocio = List.of();
 
         assertThrows(ProductoInvalidoException.class, () -> service.crear(comando(null, null), PROPIETARIO));
+    }
+
+    private static final Long EMPLEADO = 55L;
+    private static final Long SUCURSAL_DEL_EMPLEADO = 10L;
+
+    /** El empleado no es propietario; solo está asignado a la sucursal 10 del negocio 100. */
+    private ProductoService servicioParaEmpleado() {
+        NegocioPort negocios = new NegocioPort() {
+            @Override
+            public boolean perteneceAUsuario(Long negocioId, Long usuarioId) {
+                return PROPIETARIO.equals(usuarioId) && NEGOCIO.equals(negocioId);
+            }
+
+            @Override
+            public Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId) {
+                return EMPLEADO.equals(usuarioId) && SUCURSAL_DEL_EMPLEADO.equals(sucursalId)
+                    ? Optional.of(NEGOCIO) : Optional.empty();
+            }
+        };
+        return new ProductoService(productos, new FakeCategorias(), descuentos, negocios,
+            (negocioId, usuarioId) -> List.of(), inventarioRegistrado::put, almacenImagenes);
+    }
+
+    @Test
+    void elEmpleadoRegistraElProductoSoloEnSuSucursal() {
+        sucursalesDelNegocio = List.of(10L, 11L);
+
+        ProductoDetalle detalle = servicioParaEmpleado().crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 4))), EMPLEADO);
+
+        assertEquals(Map.of(SUCURSAL_DEL_EMPLEADO, 4), inventarioRegistrado.get(detalle.producto().getId()));
+    }
+
+    @Test
+    void elEmpleadoNoPuedeRegistrarEnOtraSucursalNiSinIndicarla() {
+        ProductoService empleado = servicioParaEmpleado();
+
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(11L, 1))), EMPLEADO));
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null, null), EMPLEADO));
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1), new ExistenciaInicialCommand(11L, 1))),
+            EMPLEADO));
+        assertTrue(productos.guardados.isEmpty());
+    }
+
+    @Test
+    void elEmpleadoNoPuedeUsarCategoriaDeOtroNegocioNiCrearDescuentos() {
+        ProductoService empleado = servicioParaEmpleado();
+        CrearProductoCommand ajena = new CrearProductoCommand("A", BigDecimal.TEN, CATEGORIA_AJENA, null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1)));
+        DescuentoProductoCommand descuento = new DescuentoProductoCommand(5, 10, new BigDecimal("10"));
+
+        assertThrows(CategoriaNoEncontradaException.class, () -> empleado.crear(ajena, EMPLEADO));
+        assertThrows(ProductoInvalidoException.class, () -> empleado.crear(comando(descuento,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, 1))), EMPLEADO));
+        assertThrows(ProductoInvalidoException.class, () -> empleado.crear(comando(null,
+            List.of(new ExistenciaInicialCommand(SUCURSAL_DEL_EMPLEADO, -1))), EMPLEADO));
+        assertTrue(productos.guardados.isEmpty());
     }
 
     @Test
@@ -305,19 +368,32 @@ class ProductoServiceTest {
     }
 
     @Test
-    void listaSoloProductosActivosConSuDescuento() {
-        Long conDescuento = service.crear(comando(
-            new DescuentoProductoCommand(6, null, new BigDecimal("10.00")), null), PROPIETARIO).producto().getId();
+    void listaSoloProductosActivosEnUnaPagina() {
+        service.crear(comando(null, null), PROPIETARIO);
         Long baja = service.crear(comando(null, null), PROPIETARIO).producto().getId();
         service.crear(comando(null, null), PROPIETARIO);
         service.eliminar(baja, PROPIETARIO);
 
-        List<ProductoDetalle> lista = service.listar(NEGOCIO, PROPIETARIO);
+        Pagina<Producto> pagina = service.listar(NEGOCIO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 0, 30);
 
-        assertEquals(2, lista.size());
-        assertNotNull(lista.stream().filter(d -> d.producto().getId().equals(conDescuento)).findFirst()
-            .orElseThrow().descuento());
-        assertThrows(NegocioNoEncontradoException.class, () -> service.listar(NEGOCIO_AJENO, PROPIETARIO));
+        assertEquals(2, pagina.contenido().size());
+        assertEquals(2, pagina.totalElementos());
+        assertThrows(NegocioNoEncontradoException.class,
+            () -> service.listar(NEGOCIO_AJENO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 0, 30));
+    }
+
+    @Test
+    void listaPaginaDeAcuerdoAlTamanioSolicitado() {
+        for (int i = 0; i < 5; i++) {
+            service.crear(comando(null, null), PROPIETARIO);
+        }
+
+        Pagina<Producto> segunda = service.listar(NEGOCIO, PROPIETARIO, FiltroProductos.SIN_FILTROS, 1, 2);
+
+        assertEquals(2, segunda.contenido().size());
+        assertEquals(5, segunda.totalElementos());
+        assertEquals(3, segunda.totalPaginas());
+        assertEquals(false, segunda.ultima());
     }
 
     @Test
@@ -426,6 +502,12 @@ class ProductoServiceTest {
     /** Repositorio en memoria. Solo el propietario de prueba ve sus productos activos. */
     private static final class FakeProductos implements ProductoRepositorioPort {
 
+        @Override
+        public boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId) {
+            return guardados.values().stream().anyMatch(p -> p.isActivo()
+                && !p.getId().equals(productoId) && imagenPublicId.equals(p.getImagenPublicId()));
+        }
+
         final Map<Long, Producto> guardados = new LinkedHashMap<>();
         private long siguienteId = 1;
 
@@ -462,6 +544,19 @@ class ProductoServiceTest {
         }
 
         @Override
+        public Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio) {
+            List<Producto> activos = guardados.values().stream().filter(Producto::isActivo).toList();
+            int desde = Math.min(pagina * tamanio, activos.size());
+            int hasta = Math.min(desde + tamanio, activos.size());
+            return new Pagina<>(activos.subList(desde, hasta), pagina, tamanio, activos.size());
+        }
+
+        @Override
+        public Optional<ClasificacionProducto> buscarClasificacion(Long categoriaId) {
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existenPorCategoria(Long categoriaId) {
             return guardados.values().stream().anyMatch(p -> p.getCategoriaId().equals(categoriaId));
         }
@@ -474,6 +569,11 @@ class ProductoServiceTest {
 
     /** Categorías de prueba: solo resuelven el negocio de cada una. */
     private static final class FakeCategorias implements CategoriaRepositorioPort {
+
+        @Override
+        public List<Categoria> listarPorNegocio(Long negocioId) {
+            throw new UnsupportedOperationException();
+        }
 
         private static final Map<Long, Long> NEGOCIO_POR_CATEGORIA = Map.of(CATEGORIA, NEGOCIO,
             CATEGORIA_OTRO_NEGOCIO_PROPIO, 101L, CATEGORIA_AJENA, NEGOCIO_AJENO);
@@ -542,6 +642,23 @@ class ProductoServiceTest {
             Map<Long, Descuento> resultado = new HashMap<>();
             productoIds.forEach(id -> buscarActivoPorProducto(id).ifPresent(d -> resultado.put(id, d)));
             return resultado;
+        }
+
+        @Override
+        public Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds) {
+            Map<Long, List<Descuento>> escalones = new HashMap<>();
+            for (Long productoId : productoIds) {
+                List<Descuento> nivel = buscarEscalonesActivosPorProducto(productoId);
+                if (!nivel.isEmpty()) {
+                    escalones.put(productoId, nivel);
+                }
+            }
+            return Map.copyOf(escalones);
+        }
+
+        @Override
+        public List<Descuento> buscarEscalonesActivosPorProducto(Long productoId) {
+            return buscarActivoPorProducto(productoId).map(List::of).orElse(List.of());
         }
 
         @Override

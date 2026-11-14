@@ -7,7 +7,9 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontrado
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteException;
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
+import com.iaml.puntoventaapi.inventario.domain.exception.UltimaSucursalException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
+import com.iaml.puntoventaapi.inventario.domain.port.NegocioPort;
 import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +17,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class InventarioServiceTest {
@@ -23,9 +27,23 @@ class InventarioServiceTest {
     private static final Long NEGOCIO = 100L;
 
     private final FakeInventarios repositorio = new FakeInventarios();
-    // Puerto de negocio sustituido por lambda: solo el negocio 100 es del usuario 7.
-    private final InventarioService service = new InventarioService(repositorio,
-        (negocioId, usuarioId) -> NEGOCIO.equals(negocioId) && PROPIETARIO.equals(usuarioId));
+    private static final Long EMPLEADO = 8L;
+    private static final Long SUCURSAL_EMPLEADO = 10L;
+
+    // Solo el negocio 100 es del usuario 7; el empleado 8 solo opera la sucursal 10 de ese negocio.
+    private final InventarioService service = new InventarioService(repositorio, new NegocioPort() {
+        @Override
+        public boolean perteneceAUsuario(Long negocioId, Long usuarioId) {
+            return NEGOCIO.equals(negocioId) && PROPIETARIO.equals(usuarioId);
+        }
+
+        @Override
+        public boolean puedeOperarSucursal(Long negocioId, Long sucursalId, Long usuarioId) {
+            return perteneceAUsuario(negocioId, usuarioId)
+                || (NEGOCIO.equals(negocioId) && EMPLEADO.equals(usuarioId)
+                    && SUCURSAL_EMPLEADO.equals(sucursalId));
+        }
+    });
 
     @Test
     void ajustaSumandoYRestando() {
@@ -50,6 +68,14 @@ class InventarioServiceTest {
 
         assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(1L, 1, 999L));
         assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(2L, 1, PROPIETARIO));
+    }
+
+    @Test
+    void empleadoSoloConsultaElPanelDeSuSucursal() {
+        assertThrows(NegocioNoEncontradoException.class, () -> service.consultarPanel(NEGOCIO, null, EMPLEADO));
+        assertThrows(NegocioNoEncontradoException.class, () -> service.consultarPanel(NEGOCIO, 11L, EMPLEADO));
+
+        service.consultarPanel(NEGOCIO, SUCURSAL_EMPLEADO, EMPLEADO);
     }
 
     @Test
@@ -82,6 +108,51 @@ class InventarioServiceTest {
         assertThrows(ProductoOSucursalNoEncontradoException.class, () -> service.asignar(77L, 11L, 0, PROPIETARIO));
     }
 
+    @Test
+    void quitaDeUnaSucursalConservandoLaExistencia() {
+        repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
+        repositorio.registrar(new Inventario(2L, 11L, 20L, 3));
+
+        service.quitar(2L, PROPIETARIO);
+
+        assertFalse(repositorio.guardados.get(2L).isActivo());
+        assertEquals(3, repositorio.guardados.get(2L).getExistencia());
+        assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(2L, 1, PROPIETARIO));
+    }
+
+    @Test
+    void noQuitaLaUltimaSucursalNiRegistrosAjenos() {
+        repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
+        repositorio.registrar(new Inventario(2L, 11L, 20L, 3));
+
+        assertThrows(InventarioNoEncontradoException.class, () -> service.quitar(2L, 999L));
+        service.quitar(2L, PROPIETARIO);
+        assertThrows(InventarioNoEncontradoException.class, () -> service.quitar(2L, PROPIETARIO));
+        assertThrows(UltimaSucursalException.class, () -> service.quitar(1L, PROPIETARIO));
+        assertTrue(repositorio.guardados.get(1L).isActivo());
+    }
+
+    @Test
+    void reasignarReactivaElRegistroYConservaOReemplazaLaExistencia() {
+        repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
+        repositorio.registrar(new Inventario(2L, 11L, 20L, 3, false));
+
+        Inventario conservado = service.asignar(20L, 11L, null, PROPIETARIO);
+        assertEquals(2L, conservado.getId());
+        assertTrue(conservado.isActivo());
+        assertEquals(3, conservado.getExistencia());
+
+        service.quitar(2L, PROPIETARIO);
+        assertEquals(9, service.asignar(20L, 11L, 9, PROPIETARIO).getExistencia());
+    }
+
+    @Test
+    void asignacionNuevaSinExistenciaEmpiezaEnCero() {
+        repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
+
+        assertEquals(0, service.asignar(20L, 11L, null, PROPIETARIO).getExistencia());
+    }
+
     /** Repositorio en memoria; "buscarParaAjuste" solo entrega registros del propietario de prueba. */
     private static final class FakeInventarios implements InventarioRepositorioPort {
 
@@ -100,12 +171,27 @@ class InventarioServiceTest {
         @Override
         public Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId) {
             Inventario original = guardados.get(inventarioId);
-            if (original == null || !PROPIETARIO.equals(usuarioId)) {
+            if (original == null || !original.isActivo() || !PROPIETARIO.equals(usuarioId)) {
                 return Optional.empty();
             }
-            // Copia: el dominio muta la copia y solo "guardar" confirma el cambio, como con la BD.
-            return Optional.of(new Inventario(original.getId(), original.getSucursalId(),
-                original.getProductoId(), original.getExistencia()));
+            return Optional.of(copia(original));
+        }
+
+        // Copia: el dominio muta la copia y solo "guardar" confirma el cambio, como con la BD.
+        private static Inventario copia(Inventario original) {
+            return new Inventario(original.getId(), original.getSucursalId(), original.getProductoId(),
+                original.getExistencia(), original.isActivo());
+        }
+
+        @Override
+        public Optional<Inventario> buscarParaQuitar(Long inventarioId, Long usuarioId) {
+            return buscarParaAjuste(inventarioId, usuarioId);
+        }
+
+        @Override
+        public long contarActivosDeProducto(Long productoId) {
+            return guardados.values().stream()
+                .filter(i -> i.getProductoId().equals(productoId) && i.isActivo()).count();
         }
 
         @Override
@@ -125,14 +211,21 @@ class InventarioServiceTest {
         }
 
         @Override
-        public boolean existe(Long sucursalId, Long productoId) {
+        public Optional<Inventario> buscarPorSucursalYProducto(Long sucursalId, Long productoId) {
             return guardados.values().stream()
-                .anyMatch(i -> i.getSucursalId().equals(sucursalId) && i.getProductoId().equals(productoId));
+                .filter(i -> i.getSucursalId().equals(sucursalId) && i.getProductoId().equals(productoId))
+                .findFirst().map(FakeInventarios::copia);
         }
 
         @Override
-        public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
+        public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId,
+                                                    Long usuarioId) {
             return List.of(new ExistenciaProducto(1L, 20L, "Tarjeta", 10L, "Centro", 5));
+        }
+
+        @Override
+        public List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId) {
+            return List.of(new ExistenciaProducto(1L, productoId, "Tarjeta", 10L, "Centro", 5));
         }
     }
 }

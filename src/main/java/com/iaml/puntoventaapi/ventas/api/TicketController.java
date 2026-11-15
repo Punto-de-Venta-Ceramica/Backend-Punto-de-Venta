@@ -4,13 +4,16 @@ import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaConfirmadaResponse;
 import com.iaml.puntoventaapi.ventas.application.GenerarTicketService;
 import jakarta.validation.constraints.Positive;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** HU-05: quien registra la venta (propietario o empleado) puede consultar su ticket. */
 @RestController
 @RequestMapping("/api/ventas/{ventaId}/ticket")
+@PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
 public class TicketController {
     private final GenerarTicketService tickets;
     private final UsuarioActual usuarioActual;

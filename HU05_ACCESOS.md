@@ -7,6 +7,7 @@ del JWT. Al cambiar de rol se requiere iniciar sesión de nuevo.
 
 | Función | Propietario | Empleado |
 | --- | --- | --- |
+| Registrar ventas y consultar su ticket (HU-08) | Sí | Sí, en la asignada |
 | Registrar un pedido en sucursal autorizada | Sí | Sí, en la asignada |
 | Consultar y registrar pagos de un pedido autorizado | Sí | Sí, en la asignada |
 | Pasar un pedido a producción o cancelarlo | Sí | No |
@@ -38,7 +39,8 @@ registrar cobros. La decisión no autoriza informes financieros generales.
 Las rutas `/api/reportes/**` y `/api/contabilidad/**` están reservadas al
 propietario; no sustituyen la revisión de autorización de cualquier ruta nueva.
 
-La HU-08 de ventas, los reportes financieros y una operación para modificar los
-artículos de pedidos aún no están implementados en esta rama. Sus permisos
-deben verificarse cuando existan esos casos de uso. No se agregó un endpoint
-ficticio de ventas ni se alteró el esquema de la base de datos.
+Las ventas (HU-08) se registran desde la Caja, con un corte abierto, por el
+propietario o el empleado de la sucursal; el servicio valida que la sucursal sea
+suya. Los reportes financieros y una operación para modificar los artículos de
+pedidos aún no existen: sus permisos deben verificarse cuando se implementen.
+No se alteró el esquema de la base de datos.

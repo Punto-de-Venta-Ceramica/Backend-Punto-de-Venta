@@ -155,6 +155,11 @@ class InventarioServiceTest {
 
     /** Repositorio en memoria; "buscarParaAjuste" solo entrega registros del propietario de prueba. */
     private static final class FakeInventarios implements InventarioRepositorioPort {
+        @Override
+        public List<Inventario> bloquearActivosParaVenta(Long sucursalId, java.util.Collection<Long> productoIds) {
+            throw new UnsupportedOperationException();
+        }
+
 
         final Map<Long, Inventario> guardados = new HashMap<>();
 

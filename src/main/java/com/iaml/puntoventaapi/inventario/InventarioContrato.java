@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.inventario;
 
 import java.util.Map;
+import java.util.Optional;
 
 public interface InventarioContrato {
 
@@ -14,4 +15,9 @@ public interface InventarioContrato {
 
     /** Consulta disponibilidad sin reservar ni modificar las existencias. */
     Map<Long, Integer> consultarExistencias(Long negocioId, Long sucursalId, Long usuarioId);
+
+    /** Operación interna para una sucursal ya autorizada por el caso de uso de ventas. */
+    Optional<FaltanteVenta> descontarParaVenta(Long sucursalId, Map<Long, Integer> cantidades);
+
+    record FaltanteVenta(Long productoId, int solicitada, int disponible) { }
 }

@@ -39,6 +39,10 @@ public class PrepararVentaService {
         SolicitudVenta solicitud = new SolicitudVenta(
             command.sucursalId(), command.metodoPago(), command.productos(), command.montoRecibido());
         Long negocioId = resolverNegocio(solicitud.sucursalId(), usuarioId);
+        return calcular(solicitud, negocioId, usuarioId);
+    }
+
+    Venta calcular(SolicitudVenta solicitud, Long negocioId, Long usuarioId) {
         Map<Long, Integer> existencias = inventario.consultarExistencias(negocioId, solicitud.sucursalId(), usuarioId);
         Map<Long, ProductoCotizado> productos = catalogo.cotizarProductos(negocioId, solicitud.cantidadesPorProducto());
         List<DetalleVenta> detalles = solicitud.productos().stream()
@@ -61,7 +65,7 @@ public class PrepararVentaService {
             .toList();
     }
 
-    private Long resolverNegocio(Long sucursalId, Long usuarioId) {
+    Long resolverNegocio(Long sucursalId, Long usuarioId) {
         if (sucursalId == null || sucursalId <= 0) {
             throw new DatosVentaInvalidosException(Map.of("sucursalId", "Selecciona una sucursal válida."));
         }

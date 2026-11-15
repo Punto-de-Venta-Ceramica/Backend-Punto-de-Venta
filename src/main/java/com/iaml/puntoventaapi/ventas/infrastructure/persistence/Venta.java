@@ -9,10 +9,14 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CurrentTimestamp;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
-@Table(name = "venta", check = {
+@Table(name = "venta", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_venta_caja_operacion", columnNames = {"id_caja", "clave_operacion"})
+}, check = {
     @CheckConstraint(name = "ck_venta_1", constraint = "btrim(metodo_pago) <> ''")
 }, indexes = {
     @Index(name = "ix_venta_usuario", columnList = "id_usuario"),
@@ -44,5 +48,11 @@ public class Venta extends EntidadConId {
     @Size(max = 50)
     @Column(name = "metodo_pago", nullable = false, length = 50)
     private String metodoPago;
+
+    @Column(name = "monto_recibido", precision = 18, scale = 2, updatable = false)
+    private BigDecimal montoRecibido;
+
+    @Column(name = "clave_operacion", updatable = false)
+    private UUID claveOperacion;
 }
 

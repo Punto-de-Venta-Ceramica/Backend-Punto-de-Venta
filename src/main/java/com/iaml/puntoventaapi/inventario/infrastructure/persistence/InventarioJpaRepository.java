@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,16 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from InventarioEntity i where i.id = :id")
     Optional<InventarioEntity> buscarConBloqueo(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select i from InventarioEntity i
+        where i.sucursal.id = :sucursalId and i.producto.id in :productoIds and i.activo = true
+          and exists (select p.id from ProductoEntity p where p.id = i.producto.id and p.activo = true)
+        order by i.id
+        """)
+    List<InventarioEntity> bloquearActivosParaVenta(@Param("sucursalId") Long sucursalId,
+                                                   @Param("productoIds") Collection<Long> productoIds);
 
     // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.
     @Query("""

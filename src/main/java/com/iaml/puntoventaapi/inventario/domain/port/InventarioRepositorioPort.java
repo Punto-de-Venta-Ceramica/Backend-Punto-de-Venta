@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.inventario.domain.port;
 
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,8 @@ public interface InventarioRepositorioPort {
      * para que dos ajustes simultáneos no se pisen. Debe llamarse dentro de una transacción.
      */
     Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId);
+
+    List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds);
 
     /** Negocio activo del usuario al que pertenece el producto activo; vacío si no es accesible. */
     Optional<Long> negocioDeProducto(Long productoId, Long usuarioId);

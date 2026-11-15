@@ -86,7 +86,7 @@ public class CorteCajaService {
 
     @Transactional
     public CorteCajaResponse cerrarCorte(Long corteId, CerrarCorteRequest request, Long usuarioId) {
-        CorteCaja corte = corteCajaRepository.findById(corteId)
+        CorteCaja corte = corteCajaRepository.buscarConBloqueo(corteId)
             .orElseThrow(() -> new CorteCajaNoEncontradoException(corteId));
 
         resolverSucursalId(corte.getCaja().getSucursal().getId(), usuarioId);

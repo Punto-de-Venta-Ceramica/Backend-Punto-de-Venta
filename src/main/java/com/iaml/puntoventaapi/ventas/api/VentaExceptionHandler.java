@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.ventas.api;
 
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
+import com.iaml.puntoventaapi.ventas.domain.exception.ConflictoConfirmacionVentaException;
 import com.iaml.puntoventaapi.ventas.domain.exception.DatosVentaInvalidosException;
 import com.iaml.puntoventaapi.ventas.domain.exception.ExistenciaVentaInsuficienteException;
 import com.iaml.puntoventaapi.ventas.domain.exception.RecursoVentaNoEncontradoException;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = VentaController.class)
+@RestControllerAdvice(assignableTypes = {VentaController.class, TicketController.class})
 public class VentaExceptionHandler {
 
     @ExceptionHandler(DatosVentaInvalidosException.class)
@@ -25,6 +26,11 @@ public class VentaExceptionHandler {
     @ExceptionHandler(RecursoVentaNoEncontradoException.class)
     public ProblemDetail noEncontrado(RecursoVentaNoEncontradoException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictoConfirmacionVentaException.class)
+    public ProblemDetail confirmacionEnConflicto(ConflictoConfirmacionVentaException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(ExistenciaVentaInsuficienteException.class)

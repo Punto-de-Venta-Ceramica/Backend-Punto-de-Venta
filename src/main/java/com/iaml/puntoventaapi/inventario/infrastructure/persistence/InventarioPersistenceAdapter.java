@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,6 +45,12 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             return Optional.empty();
         }
         return inventarios.buscarConBloqueo(inventarioId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    public List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds) {
+        return inventarios.bloquearActivosParaVenta(sucursalId, productoIds).stream()
+            .map(InventarioMapper::toDomain).toList();
     }
 
     @Override

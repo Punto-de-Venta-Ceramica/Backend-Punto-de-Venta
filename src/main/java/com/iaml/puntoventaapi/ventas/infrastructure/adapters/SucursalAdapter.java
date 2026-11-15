@@ -16,6 +16,6 @@ public class SucursalAdapter implements SucursalPort {
 
     @Override
     public Optional<Long> obtenerNegocioIdAccesible(Long sucursalId, Long usuarioId) {
-        return sucursales.obtenerNegocioIdAccesible(sucursalId, usuarioId);
+        return sucursales.negocioAutorizado(sucursalId, usuarioId);
     }
 }

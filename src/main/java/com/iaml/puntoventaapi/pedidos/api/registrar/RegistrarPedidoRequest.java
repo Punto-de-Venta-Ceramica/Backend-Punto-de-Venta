@@ -56,9 +56,15 @@ public record RegistrarPedidoRequest(
         }
     }
 
+    /** aplicarDescuento: opcional; si se omite se aplica el descuento vigente del producto. */
     public record Producto(
             @NotNull(message = "El producto es obligatorio.") @Positive Long productoId,
-            @NotNull(message = "La cantidad es obligatoria.") @Positive(message = "La cantidad debe ser mayor a cero.") Integer cantidad) { }
+            @NotNull(message = "La cantidad es obligatoria.") @Positive(message = "La cantidad debe ser mayor a cero.") Integer cantidad,
+            Boolean aplicarDescuento) {
+        public Producto(Long productoId, Integer cantidad) {
+            this(productoId, cantidad, null);
+        }
+    }
 
     public record PagoInicial(
             @NotNull(message = "La cantidad pagada es obligatoria.")
@@ -70,7 +76,8 @@ public record RegistrarPedidoRequest(
         var datosCliente = new ClientePedido(cliente.nombre(), cliente.telefono(), cliente.ciudad(),
             cliente.colonia(), cliente.calle());
         var lineas = productos.stream().map(producto ->
-            new RegistrarPedidoCommand.ProductoSolicitado(producto.productoId(), producto.cantidad())).toList();
+            new RegistrarPedidoCommand.ProductoSolicitado(producto.productoId(), producto.cantidad(),
+                !Boolean.FALSE.equals(producto.aplicarDescuento()))).toList();
         return new RegistrarPedidoCommand(sucursalId, usuarioId, descripcion, datosCliente, lineas,
             tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago());
     }

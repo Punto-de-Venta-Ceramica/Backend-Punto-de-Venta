@@ -198,11 +198,11 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         var cliente = new Cliente(rs.getString("cliente_nombre"), rs.getString("telefono"), rs.getString("ciudad"),
             rs.getString("colonia"), rs.getString("calle"));
         var productos = jdbc.query("""
-            select d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal
+            select d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal, p.imagen_url
             from barrocontrol.detalle_pedido d join barrocontrol.producto p on p.id = d.id_producto
             where d.id_pedido = ? order by d.id_producto
             """, (r, i) -> new Detalle(r.getLong(1), r.getString(2), r.getInt(3), r.getBigDecimal(4),
-                r.getBigDecimal(5), r.getBigDecimal(6)), id);
+                r.getBigDecimal(5), r.getBigDecimal(6), r.getString(7)), id);
         var pagos = jdbc.query("""
             select id, monto, metodo_pago, tipo_pago, fecha_hora from barrocontrol.pago_pedido
             where id_pedido = ? order by id

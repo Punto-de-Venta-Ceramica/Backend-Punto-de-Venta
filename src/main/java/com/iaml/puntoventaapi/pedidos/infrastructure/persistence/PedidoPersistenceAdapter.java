@@ -57,6 +57,14 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         }
     }
 
+    /**
+     * Folio que ve el cliente: "PED-" y el id con al menos 6 dígitos (PED-000123). Es único porque el id lo
+     * es. Los pedidos registrados antes de este cambio conservan su folio UUID.
+     */
+    static String folio(long pedidoId) {
+        return String.format("PED-%06d", pedidoId);
+    }
+
     @Override
     public long guardar(DatosRegistro datos, long clienteId, com.iaml.puntoventaapi.pedidos.domain.Pedido pedido) {
         Long id = jdbc.queryForObject("""
@@ -66,6 +74,8 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             """, Long.class, datos.sucursalId(), datos.usuarioId(), clienteId, UUID.randomUUID().toString(),
             datos.descripcion(), datos.tipoEntrega(), pedido.estado().name(), datos.descripcionEnvio());
         if (id == null) throw new IllegalStateException("No se pudo guardar el pedido.");
+        // El UUID solo ocupa el campo obligatorio mientras se conoce el id; el folio visible es corto.
+        jdbc.update("update barrocontrol.pedido set folio = ? where id = ?", folio(id), id);
         for (var detalle : pedido.detalles()) {
             jdbc.update("""
                 insert into barrocontrol.detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, desc_aplicado)
@@ -104,6 +114,14 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             where u.id = ? and p.id = ? and r.nombre = 'PROPIETARIO'
             for share of u
             """, Long.class, usuarioId, pedidoId).isEmpty();
+    }
+
+    @Override
+    public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) {
+        jdbc.update("""
+            update barrocontrol.pedido set id_cliente = ?, descripcion = ?, tipo_entrega = ?, descripcion_envio = ?
+            where id = ?
+            """, clienteId, datos.descripcion(), datos.tipoEntrega(), datos.descripcionEnvio(), pedidoId);
     }
 
     @Override

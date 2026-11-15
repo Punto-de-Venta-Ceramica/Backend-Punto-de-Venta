@@ -8,6 +8,8 @@ import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.infrastructure.persistence.ProductoJpaRepository;
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.stream.Collectors;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +41,16 @@ public class CatalogoContratoService implements CatalogoContrato {
                 .toList();
             return new ProductoPedido(producto.getPrecio(), escalones);
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<EscalonDescuento>> descuentosParaVenta(Collection<Long> productoIds) {
+        return descuentos.buscarEscalonesActivosPorProductos(productoIds).entrySet().stream()
+            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, entrada -> entrada.getValue().stream()
+                .filter(d -> d.getPorcentaje().signum() > 0)
+                .map(d -> new EscalonDescuento(d.getCantidadMinima(), d.getCantidadMaxima(), d.getPorcentaje()))
+                .toList()));
     }
 
     @Override

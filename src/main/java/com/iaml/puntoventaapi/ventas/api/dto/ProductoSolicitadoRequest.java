@@ -9,9 +9,10 @@ public record ProductoSolicitadoRequest(
         @NotNull(message = "El producto es obligatorio.")
         @Positive(message = "El identificador del producto debe ser positivo.") Long productoId,
         @NotNull(message = "La cantidad es obligatoria.")
-        @Min(value = 1, message = "La cantidad debe ser mayor que cero.") Integer cantidad) {
+        @Min(value = 1, message = "La cantidad debe ser mayor que cero.") Integer cantidad,
+        Boolean aplicarDescuento) {
 
     public ProductoSolicitado toDomain() {
-        return new ProductoSolicitado(productoId, cantidad);
+        return new ProductoSolicitado(productoId, cantidad, Boolean.TRUE.equals(aplicarDescuento));
     }
 }

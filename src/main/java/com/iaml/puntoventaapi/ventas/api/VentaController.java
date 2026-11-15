@@ -2,14 +2,16 @@ package com.iaml.puntoventaapi.ventas.api;
 
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.ventas.api.dto.PrepararVentaRequest;
-import com.iaml.puntoventaapi.ventas.api.dto.ProductoDisponibleResponse;
+import com.iaml.puntoventaapi.ventas.api.dto.PaginaProductosVentaResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaConfirmadaResponse;
 import com.iaml.puntoventaapi.ventas.application.ConfirmarVentaService;
 import com.iaml.puntoventaapi.ventas.application.PrepararVentaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import java.util.List;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -37,9 +39,12 @@ public class VentaController {
     }
 
     @GetMapping("/productos")
-    public List<ProductoDisponibleResponse> listarProductos(@RequestParam @Positive Long sucursalId) {
-        return ventas.listarProductos(sucursalId, usuarioActual.id()).stream()
-            .map(ProductoDisponibleResponse::from).toList();
+    public PaginaProductosVentaResponse listarProductos(
+            @RequestParam @Positive Long sucursalId,
+            @RequestParam(defaultValue = "") @Size(max = 150) String buscar,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
+        return PaginaProductosVentaResponse.from(ventas.listarProductos(sucursalId, usuarioActual.id(), buscar, page, size));
     }
 
     @PostMapping("/preparar")

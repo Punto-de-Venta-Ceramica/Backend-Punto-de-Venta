@@ -2,6 +2,8 @@ package com.iaml.puntoventaapi.inventario.domain.port;
 
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +20,9 @@ public interface InventarioRepositorioPort {
     Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId);
 
     List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds);
+
+    Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                         String buscar, int pagina, int tamanio);
 
     /** Negocio activo del usuario al que pertenece el producto activo; vacío si no es accesible. */
     Optional<Long> negocioDeProducto(Long productoId, Long usuarioId);

@@ -1,21 +1,22 @@
 package com.iaml.puntoventaapi.ventas.application;
 
 import com.iaml.puntoventaapi.ventas.domain.DetalleVenta;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import com.iaml.puntoventaapi.ventas.domain.ProductoCotizado;
 import com.iaml.puntoventaapi.ventas.domain.ProductoDisponible;
 import com.iaml.puntoventaapi.ventas.domain.ProductoSolicitado;
 import com.iaml.puntoventaapi.ventas.domain.SolicitudVenta;
 import com.iaml.puntoventaapi.ventas.domain.Venta;
 import com.iaml.puntoventaapi.ventas.domain.exception.DatosVentaInvalidosException;
+import com.iaml.puntoventaapi.ventas.domain.exception.DescuentoVentaNoDisponibleException;
+import java.math.BigDecimal;
 import com.iaml.puntoventaapi.ventas.domain.exception.ExistenciaVentaInsuficienteException;
 import com.iaml.puntoventaapi.ventas.domain.exception.RecursoVentaNoEncontradoException;
 import com.iaml.puntoventaapi.ventas.domain.port.CatalogoPort;
 import com.iaml.puntoventaapi.ventas.domain.port.InventarioPort;
 import com.iaml.puntoventaapi.ventas.domain.port.SucursalPort;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,17 +53,17 @@ public class PrepararVentaService {
     }
 
     /** Incluye existencia cero para que el cliente pueda mostrar los productos agotados. */
-    public List<ProductoDisponible> listarProductos(Long sucursalId, Long usuarioId) {
+    public Pagina<ProductoDisponible> listarProductos(Long sucursalId, Long usuarioId, String buscar,
+                                                        int pagina, int tamanio) {
         Long negocioId = resolverNegocio(sucursalId, usuarioId);
-        Map<Long, Integer> existencias = inventario.consultarExistencias(negocioId, sucursalId, usuarioId);
-        Map<Long, Integer> cantidades = existencias.keySet().stream()
-            .collect(Collectors.toUnmodifiableMap(id -> id, id -> 1));
-        return catalogo.cotizarProductos(negocioId, cantidades).values().stream()
-            .map(p -> new ProductoDisponible(p.productoId(), p.nombre(), p.precioUnitario(),
-                existencias.get(p.productoId())))
-            .sorted(Comparator.comparing(ProductoDisponible::nombre, String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(ProductoDisponible::productoId))
-            .toList();
+        if ((long) pagina * tamanio > Integer.MAX_VALUE) {
+            throw new DatosVentaInvalidosException(Map.of("page", "La página supera el máximo permitido."));
+        }
+        var productos = inventario.listarProductos(negocioId, sucursalId, buscar, pagina, tamanio);
+        var descuentos = catalogo.descuentosDisponibles(
+            productos.contenido().stream().map(ProductoDisponible::productoId).toList());
+        return productos.mapear(producto ->
+            producto.conDescuentos(descuentos.getOrDefault(producto.productoId(), List.of())));
     }
 
     Long resolverNegocio(Long sucursalId, Long usuarioId) {
@@ -84,7 +85,11 @@ public class PrepararVentaService {
         if (seleccion.cantidad() > existencia) {
             throw new ExistenciaVentaInsuficienteException(seleccion.productoId(), seleccion.cantidad(), existencia);
         }
+        BigDecimal porcentaje = producto.porcentajeDescuento();
+        if (seleccion.aplicarDescuento() && porcentaje.signum() <= 0) {
+            throw new DescuentoVentaNoDisponibleException(producto.productoId());
+        }
         return new DetalleVenta(producto.productoId(), producto.nombre(), seleccion.cantidad(),
-            producto.precioUnitario(), producto.porcentajeDescuento());
+            producto.precioUnitario(), seleccion.aplicarDescuento() ? porcentaje : BigDecimal.ZERO);
     }
 }

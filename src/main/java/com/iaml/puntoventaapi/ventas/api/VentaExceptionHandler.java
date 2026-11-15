@@ -3,6 +3,7 @@ package com.iaml.puntoventaapi.ventas.api;
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
 import com.iaml.puntoventaapi.ventas.domain.exception.ConflictoConfirmacionVentaException;
 import com.iaml.puntoventaapi.ventas.domain.exception.DatosVentaInvalidosException;
+import com.iaml.puntoventaapi.ventas.domain.exception.DescuentoVentaNoDisponibleException;
 import com.iaml.puntoventaapi.ventas.domain.exception.ExistenciaVentaInsuficienteException;
 import com.iaml.puntoventaapi.ventas.domain.exception.RecursoVentaNoEncontradoException;
 import org.springframework.core.Ordered;
@@ -31,6 +32,14 @@ public class VentaExceptionHandler {
     @ExceptionHandler(ConflictoConfirmacionVentaException.class)
     public ProblemDetail confirmacionEnConflicto(ConflictoConfirmacionVentaException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(DescuentoVentaNoDisponibleException.class)
+    public ProblemDetail descuentoNoDisponible(DescuentoVentaNoDisponibleException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("codigo", "DESCUENTO_VENTA_NO_DISPONIBLE");
+        problem.setProperty("productoId", ex.getProductoId());
+        return problem;
     }
 
     @ExceptionHandler(ExistenciaVentaInsuficienteException.class)

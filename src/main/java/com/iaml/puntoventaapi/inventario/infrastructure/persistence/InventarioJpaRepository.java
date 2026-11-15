@@ -1,6 +1,9 @@
 package com.iaml.puntoventaapi.inventario.infrastructure.persistence;
 
 import jakarta.persistence.LockModeType;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -25,6 +28,24 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         """)
     List<InventarioEntity> bloquearActivosParaVenta(@Param("sucursalId") Long sucursalId,
                                                    @Param("productoIds") Collection<Long> productoIds);
+
+    @Query("""
+        select new com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal(
+            p.id, p.nombre, p.precio, i.existencia, p.imagenUrl, a.id, a.nombre, c.id, c.nombre)
+        from InventarioEntity i
+        join i.producto p
+        join p.categoria c
+        join c.area a
+        where i.sucursal.id = :sucursalId and i.sucursal.negocio.id = :negocioId and a.negocio.id = :negocioId
+          and i.activo = true and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
+          and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId)
+        order by lower(p.nombre), p.id
+        """)
+    Page<ProductoEnSucursal> listarProductosParaVenta(@Param("negocioId") Long negocioId,
+                                                       @Param("sucursalId") Long sucursalId,
+                                                       @Param("texto") String texto,
+                                                       @Param("productoId") Long productoId,
+                                                       Pageable pageable);
 
     // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.
     @Query("""

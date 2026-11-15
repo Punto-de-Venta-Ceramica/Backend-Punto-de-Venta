@@ -1,9 +1,12 @@
 package com.iaml.puntoventaapi.ventas.infrastructure.adapters;
 
 import com.iaml.puntoventaapi.inventario.InventarioContrato;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
+import com.iaml.puntoventaapi.ventas.domain.ProductoDisponible;
 import com.iaml.puntoventaapi.ventas.domain.exception.ExistenciaVentaInsuficienteException;
 import com.iaml.puntoventaapi.ventas.domain.port.InventarioPort;
 import java.util.Map;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component("ventasInventarioAdapter")
@@ -18,6 +21,14 @@ public class InventarioAdapter implements InventarioPort {
     @Override
     public Map<Long, Integer> consultarExistencias(Long negocioId, Long sucursalId, Long usuarioId) {
         return inventario.consultarExistencias(negocioId, sucursalId, usuarioId);
+    }
+
+    @Override
+    public Pagina<ProductoDisponible> listarProductos(Long negocioId, Long sucursalId, String buscar,
+                                                       int pagina, int tamanio) {
+        return inventario.listarProductosParaVenta(negocioId, sucursalId, buscar, pagina, tamanio)
+            .mapear(p -> new ProductoDisponible(p.id(), p.nombre(), p.precio(), p.existencia(),
+                p.imagenUrl(), p.areaId(), p.areaNombre(), p.categoriaId(), p.categoriaNombre(), List.of()));
     }
 
     @Override

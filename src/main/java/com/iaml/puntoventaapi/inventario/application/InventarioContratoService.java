@@ -3,6 +3,8 @@ package com.iaml.puntoventaapi.inventario.application;
 import com.iaml.puntoventaapi.inventario.InventarioContrato;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -33,6 +35,13 @@ public class InventarioContratoService implements InventarioContrato {
         inventarios.listarPanel(negocioId, sucursalId, null, usuarioId)
             .forEach(fila -> existencias.put(fila.productoId(), fila.existencia()));
         return Map.copyOf(existencias);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                                String buscar, int pagina, int tamanio) {
+        return inventarios.listarProductosParaVenta(negocioId, sucursalId, buscar, pagina, tamanio);
     }
 
     @Override

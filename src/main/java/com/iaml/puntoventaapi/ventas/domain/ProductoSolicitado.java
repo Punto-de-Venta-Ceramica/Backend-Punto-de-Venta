@@ -3,7 +3,7 @@ package com.iaml.puntoventaapi.ventas.domain;
 import com.iaml.puntoventaapi.ventas.domain.exception.DatosVentaInvalidosException;
 import java.util.Map;
 
-public record ProductoSolicitado(Long productoId, int cantidad) {
+public record ProductoSolicitado(Long productoId, int cantidad, boolean aplicarDescuento) {
 
     public ProductoSolicitado {
         if (productoId == null || productoId <= 0) {

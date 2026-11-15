@@ -19,9 +19,6 @@ public record SolicitudVenta(Long sucursalId, MetodoPago metodoPago,
         if (sucursalId == null || sucursalId <= 0) {
             errores.put("sucursalId", "Selecciona una sucursal válida.");
         }
-        if (metodoPago == null) {
-            errores.put("metodoPago", "Selecciona EFECTIVO o TARJETA.");
-        }
         if (productos == null || productos.isEmpty() || productos.size() > MAX_PRODUCTOS) {
             errores.put("productos", "La venta debe contener entre 1 y " + MAX_PRODUCTOS + " productos.");
         } else {

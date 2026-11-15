@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.ventas.application;
 
 import com.iaml.puntoventaapi.ventas.domain.DetalleVenta;
 import com.iaml.puntoventaapi.ventas.domain.MetodoPago;
+import com.iaml.puntoventaapi.ventas.domain.ProductoSolicitado;
 import com.iaml.puntoventaapi.ventas.domain.SolicitudVenta;
 import com.iaml.puntoventaapi.ventas.domain.VentaConfirmada;
 import com.iaml.puntoventaapi.ventas.domain.exception.ConflictoConfirmacionVentaException;
@@ -12,6 +13,7 @@ import com.iaml.puntoventaapi.ventas.domain.port.VentaRepositorioPort;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,9 @@ public class ConfirmarVentaService {
 
         var solicitud = new SolicitudVenta(comando.sucursalId(), comando.metodoPago(),
             comando.productos(), comando.montoRecibido());
+        if (solicitud.metodoPago() == null) {
+            throw new DatosVentaInvalidosException(Map.of("metodoPago", "Selecciona EFECTIVO o TARJETA."));
+        }
         if (solicitud.metodoPago() == MetodoPago.EFECTIVO && solicitud.montoRecibido() == null) {
             throw new DatosVentaInvalidosException(Map.of("montoRecibido", "Indica el efectivo recibido."));
         }
@@ -71,9 +76,18 @@ public class ConfirmarVentaService {
             var venta = anterior.venta();
             Map<Long, Integer> cantidades = venta.detalles().stream()
                 .collect(Collectors.toMap(DetalleVenta::productoId, DetalleVenta::cantidad));
+            Set<Long> descuentosSolicitados = solicitud.productos().stream()
+                .filter(ProductoSolicitado::aplicarDescuento)
+                .map(ProductoSolicitado::productoId)
+                .collect(Collectors.toSet());
+            Set<Long> descuentosAplicados = venta.detalles().stream()
+                .filter(detalle -> detalle.porcentajeDescuento().signum() > 0)
+                .map(DetalleVenta::productoId)
+                .collect(Collectors.toSet());
             if (!usuarioId.equals(venta.usuarioId()) || solicitud.metodoPago() != venta.metodoPago()
                     || !mismoMonto(solicitud.montoRecibido(), venta.montoRecibido())
-                    || !solicitud.cantidadesPorProducto().equals(cantidades)) {
+                    || !solicitud.cantidadesPorProducto().equals(cantidades)
+                    || !descuentosSolicitados.equals(descuentosAplicados)) {
                 throw new ConflictoConfirmacionVentaException("La clave de operación ya se usó para otra venta.");
             }
             return anterior;

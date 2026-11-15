@@ -2,6 +2,9 @@ package com.iaml.puntoventaapi.ventas.infrastructure.adapters;
 
 import com.iaml.puntoventaapi.catalogo.CatalogoContrato;
 import com.iaml.puntoventaapi.ventas.domain.ProductoCotizado;
+import com.iaml.puntoventaapi.ventas.domain.RangoDescuentoVenta;
+import java.util.Collection;
+import java.util.List;
 import com.iaml.puntoventaapi.ventas.domain.port.CatalogoPort;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -14,6 +17,14 @@ public class CatalogoAdapter implements CatalogoPort {
 
     public CatalogoAdapter(CatalogoContrato catalogo) {
         this.catalogo = catalogo;
+    }
+
+    @Override
+    public Map<Long, List<RangoDescuentoVenta>> descuentosDisponibles(Collection<Long> productos) {
+        return catalogo.descuentosParaVenta(productos).entrySet().stream()
+            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, entrada -> entrada.getValue().stream()
+                .map(rango -> new RangoDescuentoVenta(rango.cantidadMinima(), rango.cantidadMaxima(), rango.porcentaje()))
+                .toList()));
     }
 
     @Override

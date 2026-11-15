@@ -6,7 +6,6 @@ import com.iaml.puntoventaapi.ventas.domain.SolicitudVenta;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -18,7 +17,6 @@ import java.util.List;
 public record PrepararVentaRequest(
         @NotNull(message = "Selecciona una sucursal.")
         @Positive(message = "El identificador de la sucursal debe ser positivo.") Long sucursalId,
-        @NotBlank(message = "Selecciona un método de pago.")
         @Pattern(regexp = "EFECTIVO|TARJETA", message = "Los métodos admitidos son EFECTIVO y TARJETA.") String metodoPago,
         @NotEmpty(message = "Agrega al menos un producto.")
         @Size(max = SolicitudVenta.MAX_PRODUCTOS, message = "Se admiten máximo 200 productos por venta.")
@@ -28,7 +26,7 @@ public record PrepararVentaRequest(
         BigDecimal montoRecibido) {
 
     public PrepararVentaCommand toCommand() {
-        return new PrepararVentaCommand(sucursalId, MetodoPago.valueOf(metodoPago),
+        return new PrepararVentaCommand(sucursalId, metodoPago == null ? null : MetodoPago.valueOf(metodoPago),
             productos.stream().map(ProductoSolicitadoRequest::toDomain).toList(), montoRecibido);
     }
 }

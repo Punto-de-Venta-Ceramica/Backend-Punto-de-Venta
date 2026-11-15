@@ -14,14 +14,14 @@ public record Venta(Long usuarioId, Long negocioId, Long sucursalId, MetodoPago 
 
     public Venta {
         if (usuarioId == null || usuarioId <= 0 || negocioId == null || negocioId <= 0
-                || sucursalId == null || sucursalId <= 0 || metodoPago == null
+                || sucursalId == null || sucursalId <= 0
                 || detalles == null || detalles.isEmpty()) {
             throw new DatosVentaInvalidosException(Map.of("venta", "Los datos de la venta no son válidos."));
         }
         detalles = List.copyOf(detalles);
         // Reutiliza las reglas del carrito para evitar estados inválidos al construir el dominio directamente.
         new SolicitudVenta(sucursalId, metodoPago,
-            detalles.stream().map(d -> new ProductoSolicitado(d.productoId(), d.cantidad())).toList(), montoRecibido);
+            detalles.stream().map(d -> new ProductoSolicitado(d.productoId(), d.cantidad(), d.porcentajeDescuento().signum() > 0)).toList(), montoRecibido);
         BigDecimal total = detalles.stream().map(DetalleVenta::subtotal).reduce(CERO, BigDecimal::add);
         if (total.compareTo(TOTAL_MAXIMO) > 0) {
             throw new DatosVentaInvalidosException(Map.of("productos", "El total de la venta supera el máximo permitido."));

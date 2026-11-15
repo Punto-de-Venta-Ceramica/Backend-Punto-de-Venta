@@ -21,6 +21,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.iaml.puntoventaapi.autenticacion.domain.port.AutoridadesVigentesPort;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import static org.hamcrest.Matchers.*;
@@ -37,6 +38,7 @@ class ErroresApiTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean SucursalService sucursales;
+    @MockitoBean AutoridadesVigentesPort autoridades;
     @MockitoBean IniciarSesionService sesiones;
     @MockitoBean RenovarSesionService renovaciones;
     @MockitoBean PropietarioService propietarios;

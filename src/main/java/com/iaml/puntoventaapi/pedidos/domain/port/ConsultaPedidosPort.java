@@ -8,13 +8,16 @@ import java.util.List;
 
 public interface ConsultaPedidosPort {
     record Cliente(String nombre, String telefono, String ciudad, String colonia, String calle) { }
+    /** imagenUrl: imagen actual del producto en el catálogo; null si no tiene. */
     record Detalle(long productoId, String nombre, int cantidad, BigDecimal precioUnitario,
-                   BigDecimal porcentajeDescuento, BigDecimal subtotal) { }
+                   BigDecimal porcentajeDescuento, BigDecimal subtotal, String imagenUrl) { }
     record Pago(long id, BigDecimal monto, String metodoPago, String tipoPago, Instant fecha) { }
+    /** negocioEslogan: frase del negocio para el pie del ticket; null si no tiene. */
     record Vista(long id, long sucursalId, String folio, String descripcion,
                  String tipoEntrega, String descripcionEnvio, String estado, Instant fechaCreacion,
                  Cliente cliente, List<Detalle> productos, List<Pago> pagos,
-                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }
+                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado,
+                 String negocioEslogan) { }
 
     Vista consultar(long pedidoId, long usuarioId);
     /** Línea del listado: solo lo necesario para la tarjeta. */

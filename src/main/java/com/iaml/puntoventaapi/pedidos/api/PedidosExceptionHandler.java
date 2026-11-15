@@ -5,10 +5,12 @@ import com.iaml.puntoventaapi.pedidos.api.cambiarestado.CambiarEstadoController;
 import com.iaml.puntoventaapi.pedidos.api.cancelar.CancelarPedidoController;
 import com.iaml.puntoventaapi.pedidos.api.consultar.ConsultarPedidosController;
 import com.iaml.puntoventaapi.pedidos.api.registrar.RegistrarPedidoController;
+import com.iaml.puntoventaapi.pedidos.api.editar.EditarDatosPedidoController;
 import com.iaml.puntoventaapi.pedidos.infrastructure.persistence.PedidoNoEncontradoException;
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
 import com.iaml.puntoventaapi.pedidos.domain.PagoExcedeSaldoException;
 import com.iaml.puntoventaapi.pedidos.domain.ProductoPedidoNoDisponibleException;
+import com.iaml.puntoventaapi.pedidos.domain.exception.TransicionEstadoInvalidaException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {RegistrarPedidoController.class, ConsultarPedidosController.class,
-    RegistrarPagoController.class, CambiarEstadoController.class, CancelarPedidoController.class})
+    RegistrarPagoController.class, CambiarEstadoController.class, CancelarPedidoController.class, EditarDatosPedidoController.class})
 public class PedidosExceptionHandler {
     @ExceptionHandler(CorteCajaInvalidoException.class)
     public ProblemDetail corteInvalido(CorteCajaInvalidoException ex) {
@@ -50,6 +52,15 @@ public class PedidosExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     public ProblemDetail prohibido(SecurityException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
+    }
+
+    /** Dice en qué estado está el pedido y a cuál puede pasar. */
+    @ExceptionHandler(TransicionEstadoInvalidaException.class)
+    public ProblemDetail transicionInvalida(TransicionEstadoInvalidaException ex) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("codigo", "TRANSICION_ESTADO_INVALIDA");
+        problem.setProperty("estadoActual", ex.getEstadoActual().name());
+        return problem;
     }
 
     @ExceptionHandler(IllegalStateException.class)

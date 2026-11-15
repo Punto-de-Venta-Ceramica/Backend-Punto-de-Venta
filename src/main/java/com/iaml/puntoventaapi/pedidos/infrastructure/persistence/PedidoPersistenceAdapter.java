@@ -57,6 +57,14 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         }
     }
 
+    /**
+     * Folio que ve el cliente: "PED-" y el id con al menos 6 dígitos (PED-000123). Es único porque el id lo
+     * es. Los pedidos registrados antes de este cambio conservan su folio UUID.
+     */
+    static String folio(long pedidoId) {
+        return String.format("PED-%06d", pedidoId);
+    }
+
     @Override
     public long guardar(DatosRegistro datos, long clienteId, com.iaml.puntoventaapi.pedidos.domain.Pedido pedido) {
         Long id = jdbc.queryForObject("""
@@ -66,6 +74,8 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             """, Long.class, datos.sucursalId(), datos.usuarioId(), clienteId, UUID.randomUUID().toString(),
             datos.descripcion(), datos.tipoEntrega(), pedido.estado().name(), datos.descripcionEnvio());
         if (id == null) throw new IllegalStateException("No se pudo guardar el pedido.");
+        // El UUID solo ocupa el campo obligatorio mientras se conoce el id; el folio visible es corto.
+        jdbc.update("update barrocontrol.pedido set folio = ? where id = ?", folio(id), id);
         for (var detalle : pedido.detalles()) {
             jdbc.update("""
                 insert into barrocontrol.detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, desc_aplicado)
@@ -104,6 +114,14 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             where u.id = ? and p.id = ? and r.nombre = 'PROPIETARIO'
             for share of u
             """, Long.class, usuarioId, pedidoId).isEmpty();
+    }
+
+    @Override
+    public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) {
+        jdbc.update("""
+            update barrocontrol.pedido set id_cliente = ?, descripcion = ?, tipo_entrega = ?, descripcion_envio = ?
+            where id = ?
+            """, clienteId, datos.descripcion(), datos.tipoEntrega(), datos.descripcionEnvio(), pedidoId);
     }
 
     @Override
@@ -185,9 +203,12 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             select p.id, p.id_sucursal, p.folio, p.descripcion, p.tipo_entrega,
                    p.descripcion_envio, p.estado, p.fecha_creacion,
                    c.nombre as cliente_nombre, c.telefono, c.ciudad, c.colonia, c.calle,
-                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo
+                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo,
+                   n.eslogan as negocio_eslogan
             from barrocontrol.pedido p
             join barrocontrol.cliente c on c.id = p.id_cliente
+            join barrocontrol.sucursal s on s.id = p.id_sucursal
+            join barrocontrol.negocio n on n.id = s.id_negocio
             """ + TOTALES + "where p.id = ?", (rs, i) -> cabecera(rs), pedidoId);
         if (cabeceras.isEmpty()) throw new PedidoNoEncontradoException();
         return cabeceras.get(0);
@@ -198,11 +219,11 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         var cliente = new Cliente(rs.getString("cliente_nombre"), rs.getString("telefono"), rs.getString("ciudad"),
             rs.getString("colonia"), rs.getString("calle"));
         var productos = jdbc.query("""
-            select d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal
+            select d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal, p.imagen_url
             from barrocontrol.detalle_pedido d join barrocontrol.producto p on p.id = d.id_producto
             where d.id_pedido = ? order by d.id_producto
             """, (r, i) -> new Detalle(r.getLong(1), r.getString(2), r.getInt(3), r.getBigDecimal(4),
-                r.getBigDecimal(5), r.getBigDecimal(6)), id);
+                r.getBigDecimal(5), r.getBigDecimal(6), r.getString(7)), id);
         var pagos = jdbc.query("""
             select id, monto, metodo_pago, tipo_pago, fecha_hora from barrocontrol.pago_pedido
             where id_pedido = ? order by id
@@ -212,7 +233,8 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         return new Vista(id, rs.getLong("id_sucursal"), rs.getString("folio"),
             rs.getString("descripcion"), rs.getString("tipo_entrega"), rs.getString("descripcion_envio"),
             rs.getString("estado"), rs.getTimestamp("fecha_creacion").toInstant(), cliente, productos, pagos,
-            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0);
+            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0,
+            rs.getString("negocio_eslogan"));
     }
 
     private record FilaResumen(long id, long sucursalId, String tipoEntrega, String estado, Instant fechaCreacion,

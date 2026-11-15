@@ -49,6 +49,30 @@ class RegistrarPedidoServiceTest {
     }
 
     @Test
+    void sinAplicarDescuentoCobraPrecioDeLista() {
+        var repo = new RepoRegistro() {
+            public void comprobarAcceso(long sucursal, long usuario) { }
+            public long guardar(DatosRegistro datos, long cliente, Pedido pedido) {
+                // 2 × 100 sin el 10 % de descuento vigente.
+                assertEquals(new BigDecimal("200.00"), pedido.total());
+                assertEquals(0, pedido.detalles().get(0).porcentajeDescuento().signum());
+                return 8;
+            }
+        };
+        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"),
+            List.of(new EscalonDescuento(2, null, new BigDecimal("10.00"))));
+        var service = new RegistrarPedidoService(repo, catalogo, cliente -> 5, new NotificacionPort() {
+            public void pedidoRegistrado(long pedido, long sucursal, long usuario) { }
+            public void pedidoEntregado(long pedidoId) { }
+        });
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
+        var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
+            List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2, false)), "LOCAL", null,
+            BigDecimal.ZERO, PagoPedido.MetodoPago.EFECTIVO);
+        assertEquals(new BigDecimal("200.00"), service.registrar(comando).saldoPendiente());
+    }
+
+    @Test
     void rechazaSobrepagoAntesDeGuardarClienteOPedido() {
         var escrituras = new AtomicInteger();
         var repo = new RepoRegistro() {

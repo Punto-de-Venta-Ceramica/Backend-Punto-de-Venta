@@ -4,10 +4,11 @@ import com.iaml.puntoventaapi.autenticacion.domain.Sesion;
 import java.time.Instant;
 
 public record LoginResponse(String token, String tipo, Instant expiraEn, String refreshToken,
-                            Instant refreshExpiraEn, Long usuarioId, String rol) {
+                            Instant refreshExpiraEn, Long usuarioId, String rol,
+                            boolean forcePasswordChange) {
 
     public static LoginResponse from(Sesion sesion) {
         return new LoginResponse(sesion.token(), "Bearer", sesion.expiraEn(), sesion.refreshToken(),
-            sesion.refreshExpiraEn(), sesion.usuarioId(), sesion.rol());
+            sesion.refreshExpiraEn(), sesion.usuarioId(), sesion.rol(), sesion.forcePasswordChange());
     }
 }

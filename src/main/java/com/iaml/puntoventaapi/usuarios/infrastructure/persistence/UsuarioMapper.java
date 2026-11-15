@@ -15,7 +15,7 @@ public final class UsuarioMapper {
         java.util.List<Long> sucursalIds = entity.getSucursales().stream().map(SucursalEntity::getId).sorted().toList();
         return new Usuario(entity.getId(), entity.getRol().getId(), negocioId, sucursalIds, entity.getNombre(),
             entity.getApellidoPaterno(), entity.getApellidoMaterno(), entity.getCorreo(),
-            entity.getTelefono(), entity.getPasswordHash());
+            entity.getTelefono(), entity.getPasswordHash(), entity.isPasswordMustChange());
     }
 
     public static UsuarioEntity toEntity(Usuario usuario, RolEntity rol) {
@@ -33,6 +33,7 @@ public final class UsuarioMapper {
         entity.setCorreo(usuario.getCorreo());
         entity.setTelefono(usuario.getTelefono());
         entity.setPasswordHash(usuario.getPasswordHash());
+        entity.setPasswordMustChange(usuario.isPasswordMustChange());
         return entity;
     }
 }

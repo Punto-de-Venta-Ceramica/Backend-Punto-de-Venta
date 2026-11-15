@@ -134,17 +134,17 @@ public class CorteCajaService {
         if ("EMPLEADO".equalsIgnoreCase(rol)) {
             // El empleado puede trabajar en varias sucursales: misma validación que el resto de operaciones.
             Long sucursalEmpleadoId = resolverSucursalId(sucursalIdParam, usuarioId);
-            cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalEmpleadoId, ordenado);
+            cortes = corteCajaRepository.findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(sucursalEmpleadoId, ordenado);
         } else if ("PROPIETARIO".equalsIgnoreCase(rol)) {
             if (sucursalIdParam != null) {
                 if (sucursalContrato.negocioAutorizado(sucursalIdParam, usuarioId).isEmpty()) {
                     throw new AccessDeniedException("No tienes permiso para acceder a esta sucursal.");
                 }
-                cortes = corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(sucursalIdParam, ordenado);
+                cortes = corteCajaRepository.findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(sucursalIdParam, ordenado);
             } else {
                 Long negocioId = usuario.getNegocio() != null ? usuario.getNegocio().getId() : null;
                 if (negocioId != null) {
-                    cortes = corteCajaRepository.findByCaja_Sucursal_Negocio_IdOrderByFechaHoraAperturaDesc(negocioId, ordenado);
+                    cortes = corteCajaRepository.findByCaja_Sucursal_Negocio_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(negocioId, ordenado);
                 } else {
                     cortes = Page.empty(ordenado);
                 }

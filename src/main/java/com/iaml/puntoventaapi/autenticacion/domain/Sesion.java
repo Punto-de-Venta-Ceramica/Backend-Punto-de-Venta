@@ -7,5 +7,10 @@ import java.time.Instant;
  * y token de renovación (largo).
  */
 public record Sesion(String token, Instant expiraEn, String refreshToken, Instant refreshExpiraEn,
-                     Long usuarioId, String rol) {
+                     Long usuarioId, String rol, boolean forcePasswordChange) {
+
+    public Sesion(String token, Instant expiraEn, String refreshToken, Instant refreshExpiraEn,
+                  Long usuarioId, String rol) {
+        this(token, expiraEn, refreshToken, refreshExpiraEn, usuarioId, rol, false);
+    }
 }

@@ -185,7 +185,7 @@ class CorteCajaServiceTest {
         corteAbierto.setMontoInicial(new BigDecimal("200.00"));
         corteAbierto.setFechaHoraApertura(Instant.now().minusSeconds(3600));
 
-        when(corteCajaRepository.findById(500L)).thenReturn(Optional.of(corteAbierto));
+        when(corteCajaRepository.buscarConBloqueo(500L)).thenReturn(Optional.of(corteAbierto));
         when(corteCajaRepository.save(any(CorteCaja.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var request = new CerrarCorteRequest(new BigDecimal("750.00"));
@@ -206,7 +206,7 @@ class CorteCajaServiceTest {
         corteCerrado.setCaja(caja);
         corteCerrado.setFechaHoraCierre(Instant.now());
 
-        when(corteCajaRepository.findById(500L)).thenReturn(Optional.of(corteCerrado));
+        when(corteCajaRepository.buscarConBloqueo(500L)).thenReturn(Optional.of(corteCerrado));
 
         var request = new CerrarCorteRequest(new BigDecimal("500.00"));
 

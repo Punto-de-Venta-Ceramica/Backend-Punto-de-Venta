@@ -29,6 +29,9 @@ public interface DescuentoRepositorioPort {
      */
     List<Descuento> buscarEscalonesActivosPorProducto(Long productoId);
 
+    /** Escalones del nivel ganador para cada producto que tiene descuentos activos. */
+    Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds);
+
     /**
      * Descuento activo propio del producto: el que solo está asignado a ese producto (no a otros
      * productos, ni a categorías o áreas). Es el único que se edita en sitio al guardar un producto con un

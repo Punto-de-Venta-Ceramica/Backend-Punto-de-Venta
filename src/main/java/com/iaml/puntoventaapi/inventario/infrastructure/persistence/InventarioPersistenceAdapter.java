@@ -6,11 +6,16 @@ import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Component
@@ -44,6 +49,29 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             return Optional.empty();
         }
         return inventarios.buscarConBloqueo(inventarioId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                                String buscar, int pagina, int tamanio) {
+        String texto = buscar.strip().toLowerCase(Locale.ROOT);
+        var resultado = inventarios.listarProductosParaVenta(negocioId, sucursalId, texto,
+            idBuscado(texto), PageRequest.of(pagina, tamanio));
+        return new Pagina<>(resultado.getContent(), pagina, tamanio, resultado.getTotalElements());
+    }
+
+    private static Long idBuscado(String texto) {
+        try {
+            return Long.valueOf(texto);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @Override
+    public List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds) {
+        return inventarios.bloquearActivosParaVenta(sucursalId, productoIds).stream()
+            .map(InventarioMapper::toDomain).toList();
     }
 
     @Override

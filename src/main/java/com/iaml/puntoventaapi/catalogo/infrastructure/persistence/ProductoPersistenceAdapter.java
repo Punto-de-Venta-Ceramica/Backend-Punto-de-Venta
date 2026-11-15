@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 @Component
@@ -68,6 +69,15 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
     @Transactional(readOnly = true)
     public List<Producto> listarPorNegocio(Long negocioId) {
         return productos.listarActivosPorNegocio(negocioId).stream().map(ProductoMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Producto> listarActivosPorIds(Long negocioId, Collection<Long> productoIds) {
+        if (productoIds.isEmpty()) {
+            return List.of();
+        }
+        return productos.listarActivosPorIds(negocioId, productoIds).stream().map(ProductoMapper::toDomain).toList();
     }
 
     @Override

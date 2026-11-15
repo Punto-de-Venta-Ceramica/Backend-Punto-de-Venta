@@ -1,10 +1,14 @@
 package com.iaml.puntoventaapi.inventario.infrastructure.persistence;
 
 import jakarta.persistence.LockModeType;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +18,34 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from InventarioEntity i where i.id = :id")
     Optional<InventarioEntity> buscarConBloqueo(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select i from InventarioEntity i
+        where i.sucursal.id = :sucursalId and i.producto.id in :productoIds and i.activo = true
+          and exists (select p.id from ProductoEntity p where p.id = i.producto.id and p.activo = true)
+        order by i.id
+        """)
+    List<InventarioEntity> bloquearActivosParaVenta(@Param("sucursalId") Long sucursalId,
+                                                   @Param("productoIds") Collection<Long> productoIds);
+
+    @Query("""
+        select new com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal(
+            p.id, p.nombre, p.precio, i.existencia, p.imagenUrl, a.id, a.nombre, c.id, c.nombre)
+        from InventarioEntity i
+        join i.producto p
+        join p.categoria c
+        join c.area a
+        where i.sucursal.id = :sucursalId and i.sucursal.negocio.id = :negocioId and a.negocio.id = :negocioId
+          and i.activo = true and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
+          and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId)
+        order by lower(p.nombre), p.id
+        """)
+    Page<ProductoEnSucursal> listarProductosParaVenta(@Param("negocioId") Long negocioId,
+                                                       @Param("sucursalId") Long sucursalId,
+                                                       @Param("texto") String texto,
+                                                       @Param("productoId") Long productoId,
+                                                       Pageable pageable);
 
     // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.
     @Query("""

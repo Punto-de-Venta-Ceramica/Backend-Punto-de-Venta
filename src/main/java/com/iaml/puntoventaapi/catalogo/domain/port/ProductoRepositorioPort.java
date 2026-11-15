@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface ProductoRepositorioPort {
@@ -18,6 +19,8 @@ public interface ProductoRepositorioPort {
 
     /** Productos activos del negocio, ordenados por nombre. */
     List<Producto> listarPorNegocio(Long negocioId);
+
+    List<Producto> listarActivosPorIds(Long negocioId, Collection<Long> productoIds);
 
     /** Otro producto activo, de cualquier negocio, usa esa imagen de Cloudinary. */
     boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId);

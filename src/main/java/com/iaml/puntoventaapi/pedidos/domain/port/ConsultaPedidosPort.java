@@ -12,12 +12,10 @@ public interface ConsultaPedidosPort {
     record Detalle(long productoId, String nombre, int cantidad, BigDecimal precioUnitario,
                    BigDecimal porcentajeDescuento, BigDecimal subtotal, String imagenUrl) { }
     record Pago(long id, BigDecimal monto, String metodoPago, String tipoPago, Instant fecha) { }
-    /** negocioEslogan: frase del negocio para el pie del ticket; null si no tiene. */
     record Vista(long id, long sucursalId, String folio, String descripcion,
                  String tipoEntrega, String descripcionEnvio, String estado, Instant fechaCreacion,
                  Cliente cliente, List<Detalle> productos, List<Pago> pagos,
-                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado,
-                 String negocioEslogan) { }
+                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }
 
     Vista consultar(long pedidoId, long usuarioId);
     /** Línea del listado: solo lo necesario para la tarjeta. */

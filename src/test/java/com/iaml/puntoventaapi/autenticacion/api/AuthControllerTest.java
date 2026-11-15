@@ -7,10 +7,12 @@ import com.iaml.puntoventaapi.autenticacion.api.dto.RestablecerPasswordRequest;
 import com.iaml.puntoventaapi.autenticacion.api.dto.SolicitarCodigoRequest;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionCommand;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionService;
+import com.iaml.puntoventaapi.autenticacion.application.RecuperarPasswordService;
 import com.iaml.puntoventaapi.autenticacion.application.RenovarSesionService;
 import com.iaml.puntoventaapi.autenticacion.domain.Sesion;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.DemasiadosIntentosException;
+import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -35,7 +37,11 @@ class AuthControllerTest {
     void preparar() {
         iniciar = mock(IniciarSesionService.class);
         renovar = mock(RenovarSesionService.class);
-        controller = new AuthController(iniciar, renovar);
+        controller = new AuthController(
+            iniciar,
+            renovar,
+            mock(RecuperarPasswordService.class),
+            mock(UsuarioActual.class));
     }
 
     @Test

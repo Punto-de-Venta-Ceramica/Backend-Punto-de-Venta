@@ -53,4 +53,12 @@ public class NegocioPersistenceAdapter implements NegocioRepositorioPort {
     public boolean perteneceAUsuario(Long negocioId, Long usuarioId) {
         return negocios.existsByIdAndUsuarios_IdAndActivoTrue(negocioId, usuarioId);
     }
+
+    @Override
+    public Optional<String> eslogan(Long negocioId) {
+        return negocios.findById(negocioId)
+            .filter(NegocioEntity::isActivo)
+            .map(NegocioEntity::getEslogan)
+            .filter(eslogan -> !eslogan.isBlank());
+    }
 }

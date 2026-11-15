@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.ventas.api;
 
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaConfirmadaResponse;
+import com.iaml.puntoventaapi.ventas.application.EsloganTicketService;
 import com.iaml.puntoventaapi.ventas.application.GenerarTicketService;
 import jakarta.validation.constraints.Positive;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,15 +17,19 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
 public class TicketController {
     private final GenerarTicketService tickets;
+    private final EsloganTicketService eslogan;
     private final UsuarioActual usuarioActual;
 
-    public TicketController(GenerarTicketService tickets, UsuarioActual usuarioActual) {
+    public TicketController(GenerarTicketService tickets, EsloganTicketService eslogan,
+                            UsuarioActual usuarioActual) {
         this.tickets = tickets;
+        this.eslogan = eslogan;
         this.usuarioActual = usuarioActual;
     }
 
     @GetMapping
     public VentaConfirmadaResponse consultar(@PathVariable @Positive Long ventaId) {
-        return VentaConfirmadaResponse.from(tickets.consultar(ventaId, usuarioActual.id()));
+        var confirmada = tickets.consultar(ventaId, usuarioActual.id());
+        return VentaConfirmadaResponse.from(confirmada, eslogan.de(confirmada));
     }
 }

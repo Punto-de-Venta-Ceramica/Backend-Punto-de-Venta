@@ -13,7 +13,7 @@ final class VentaMapper {
             entity.getUsuario().getId(), sucursal.getNegocio().getId(), sucursal.getId(),
             MetodoPago.valueOf(entity.getMetodoPago()), detalles.stream().map(VentaMapper::toDomain).toList(),
             entity.getMontoRecibido());
-        return new VentaConfirmada(entity.getId(), entity.getCaja().getId(), entity.getCorteCaja().getId(),
+        return new VentaConfirmada(entity.getId(), entity.getFolio(), entity.getCaja().getId(), entity.getCorteCaja().getId(),
             entity.getFechaHora(), venta);
     }
 

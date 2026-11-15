@@ -3,6 +3,7 @@ package com.iaml.puntoventaapi.ventas.infrastructure.persistence;
 import com.iaml.puntoventaapi.caja.domain.Caja;
 import com.iaml.puntoventaapi.caja.domain.CorteCaja;
 import com.iaml.puntoventaapi.catalogo.infrastructure.persistence.ProductoEntity;
+import com.iaml.puntoventaapi.shared.domain.Folio;
 import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import com.iaml.puntoventaapi.ventas.domain.VentaConfirmada;
 import com.iaml.puntoventaapi.ventas.domain.port.CajaPort.CorteAbierto;
@@ -35,7 +36,10 @@ public class VentaPersistenceAdapter implements VentaRepositorioPort {
         entity.setMetodoPago(venta.metodoPago().name());
         entity.setMontoRecibido(venta.montoRecibido());
         entity.setClaveOperacion(claveOperacion);
+        // El UUID solo ocupa el campo obligatorio mientras se conoce el id; el folio visible es corto.
+        entity.setFolio(UUID.randomUUID().toString());
         Venta guardada = ventas.save(entity);
+        guardada.setFolio(folio(guardada.getId()));
         for (var linea : venta.detalles()) {
             DetalleVenta detalle = new DetalleVenta();
             detalle.setVenta(guardada);
@@ -47,7 +51,13 @@ public class VentaPersistenceAdapter implements VentaRepositorioPort {
             entityManager.persist(detalle);
         }
         entityManager.flush();
-        return new VentaConfirmada(guardada.getId(), corte.cajaId(), corte.corteId(), guardada.getFechaHora(), venta);
+        return new VentaConfirmada(guardada.getId(), guardada.getFolio(), corte.cajaId(), corte.corteId(),
+            guardada.getFechaHora(), venta);
+    }
+
+    /** Folio que ve el cliente: "VTA-" y el id con al menos 6 dígitos (VTA-000123). */
+    static String folio(long ventaId) {
+        return Folio.VENTA.de(ventaId);
     }
 
     @Override

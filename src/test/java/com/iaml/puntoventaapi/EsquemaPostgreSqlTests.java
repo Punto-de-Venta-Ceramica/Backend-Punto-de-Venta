@@ -266,6 +266,7 @@ class EsquemaPostgreSqlTests {
         venta.setCaja(caja);
         venta.setCorteCaja(corte);
         venta.setMetodoPago("EFECTIVO");
+        venta.setFolio("VTA-PRUEBA-" + System.nanoTime());
         em.persist(venta);
         return venta;
     }

@@ -12,6 +12,8 @@ import com.iaml.puntoventaapi.pedidos.api.cancelar.CancelarPedidoController;
 import com.iaml.puntoventaapi.pedidos.api.consultar.ConsultarPedidosController;
 import com.iaml.puntoventaapi.pedidos.api.editar.EditarDatosPedidoController;
 import com.iaml.puntoventaapi.pedidos.api.registrar.RegistrarPedidoController;
+import com.iaml.puntoventaapi.ventas.api.TicketController;
+import com.iaml.puntoventaapi.ventas.api.VentaController;
 import java.util.Arrays;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,7 +32,9 @@ class PermisosHu05Test {
 
     static Stream<Arguments> matriz() {
         return Stream.of(
-            // El empleado registra pedidos y productos.
+            // El empleado registra ventas (HU-08), pedidos y productos.
+            Arguments.of(VentaController.class, null, AMBOS),
+            Arguments.of(TicketController.class, null, AMBOS),
             Arguments.of(RegistrarPedidoController.class, null, AMBOS),
             Arguments.of(ConsultarPedidosController.class, null, AMBOS),
             Arguments.of(RegistrarPagoController.class, null, AMBOS),

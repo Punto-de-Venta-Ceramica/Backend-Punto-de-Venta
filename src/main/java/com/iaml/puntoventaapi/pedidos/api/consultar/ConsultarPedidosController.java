@@ -1,9 +1,9 @@
 package com.iaml.puntoventaapi.pedidos.api.consultar;
 
 import com.iaml.puntoventaapi.pedidos.application.consultar.ConsultarPedidosService;
+import com.iaml.puntoventaapi.pedidos.domain.EstadoPedido;
 import com.iaml.puntoventaapi.pedidos.domain.port.ConsultaPedidosPort;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
-import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,9 +21,16 @@ public class ConsultarPedidosController {
         this.pedidos = pedidos;
         this.usuario = usuario;
     }
+    /**
+     * Listado paginado (20 por página, ?page=0), del más reciente al más antiguo. ?estado= filtra por estado;
+     * sin él devuelve todos. No incluye el folio: está en GET /api/pedidos/{id}.
+     */
     @GetMapping
-    public List<ConsultaPedidosPort.Vista> listar(@RequestParam long sucursalId) {
-        return pedidos.listar(sucursalId, usuario.id());
+    public PaginaPedidosResponse<ConsultaPedidosPort.Resumen> listar(
+            @RequestParam long sucursalId,
+            @RequestParam(required = false) EstadoPedido estado,
+            @RequestParam(defaultValue = "0") int page) {
+        return PaginaPedidosResponse.from(pedidos.listar(sucursalId, usuario.id(), estado, page));
     }
     @GetMapping("/{id}")
     public ConsultaPedidosPort.Vista consultar(@PathVariable long id) {

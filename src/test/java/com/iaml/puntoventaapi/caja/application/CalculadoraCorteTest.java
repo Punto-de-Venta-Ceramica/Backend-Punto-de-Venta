@@ -24,11 +24,36 @@ class CalculadoraCorteTest {
         calculadora = new CalculadoraCorte(jdbc);
     }
 
+    /** Pagos de pedidos cancelados en el mismo corte en que se cobraron. */
+    private static List<CalculadoraCorte.ItemPago> cancelados(List<CalculadoraCorte.ItemPago> pagos) {
+        return pagos.stream().filter(p -> "CANCELADO".equals(p.estadoPedido())).toList();
+    }
+
+    @Test
+    @DisplayName("Cancelar hoy un pedido cobrado en un corte anterior descuenta la devolución de hoy")
+    void cancelacionDePedidoCobradoEnOtroCorte() {
+        Instant ayer = Instant.now().minusSeconds(86_400);
+        // El anticipo entró en el corte de ayer: hoy no hay pagos, solo la devolución.
+        var cancelaciones = List.of(
+            new CalculadoraCorte.ItemPago(9L, 900L, "PED-900", "CANCELADO", new BigDecimal("150.00"), "EFECTIVO", "ANTICIPO", ayer)
+        );
+
+        var resultado = calculadora.procesarCalculo(
+            new BigDecimal("500.00"), List.of(), List.of(), cancelaciones, List.of());
+
+        assertThat(resultado.totalAnticipos()).isEqualByComparingTo("0.00");
+        assertThat(resultado.totalCancelaciones()).isEqualByComparingTo("150.00");
+        assertThat(resultado.ventasEfectivo().subtotalNeto()).isEqualByComparingTo("-150.00");
+        assertThat(resultado.totalEfectivo()).isEqualByComparingTo("350.00");
+        assertThat(resultado.cancelacionesPedidos().detalles()).hasSize(1);
+    }
+
     @Test
     @DisplayName("Sin ventas ni pagos retorna ceros y monto inicial esperado")
     void sinMovimientosRetornaMontoInicialYCeros() {
         var resultado = calculadora.procesarCalculo(
             new BigDecimal("500.00"),
+            List.of(),
             List.of(),
             List.of(),
             List.of()
@@ -57,6 +82,7 @@ class CalculadoraCorteTest {
         var resultado = calculadora.procesarCalculo(
             new BigDecimal("200.00"),
             ventas,
+            List.of(),
             List.of(),
             List.of()
         );
@@ -98,6 +124,7 @@ class CalculadoraCorteTest {
             new BigDecimal("1000.00"),
             List.of(),
             pagos,
+            cancelados(pagos),
             List.of()
         );
 
@@ -145,6 +172,7 @@ class CalculadoraCorteTest {
             new BigDecimal("100.00"), // Monto inicial
             List.of(),
             pagos,
+            cancelados(pagos),
             List.of()
         );
 
@@ -193,6 +221,7 @@ class CalculadoraCorteTest {
             new BigDecimal("500.00"),
             ventas,
             pagos,
+            cancelados(pagos),
             productosPedido
         );
 

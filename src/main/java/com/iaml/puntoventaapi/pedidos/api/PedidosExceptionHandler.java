@@ -22,8 +22,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class PedidosExceptionHandler {
     @ExceptionHandler(CorteCajaInvalidoException.class)
     public ProblemDetail corteInvalido(CorteCajaInvalidoException ex) {
-        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
-            "No hay un corte de caja abierto en esta sucursal. Abre uno antes de registrar un pago.");
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setProperty("codigo", "CORTE_CAJA_NO_ABIERTO");
         return problem;
     }

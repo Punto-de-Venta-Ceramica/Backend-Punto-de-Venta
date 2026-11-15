@@ -10,6 +10,7 @@ import com.iaml.puntoventaapi.pedidos.infrastructure.persistence.PedidoNoEncontr
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
 import com.iaml.puntoventaapi.pedidos.domain.PagoExcedeSaldoException;
 import com.iaml.puntoventaapi.pedidos.domain.ProductoPedidoNoDisponibleException;
+import com.iaml.puntoventaapi.pedidos.domain.exception.TransicionEstadoInvalidaException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,15 @@ public class PedidosExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     public ProblemDetail prohibido(SecurityException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
+    }
+
+    /** Dice en qué estado está el pedido y a cuál puede pasar. */
+    @ExceptionHandler(TransicionEstadoInvalidaException.class)
+    public ProblemDetail transicionInvalida(TransicionEstadoInvalidaException ex) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("codigo", "TRANSICION_ESTADO_INVALIDA");
+        problem.setProperty("estadoActual", ex.getEstadoActual().name());
+        return problem;
     }
 
     @ExceptionHandler(IllegalStateException.class)

@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.domain;
 
+import com.iaml.puntoventaapi.pedidos.domain.exception.TransicionEstadoInvalidaException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -66,7 +67,7 @@ public final class Pedido {
     public void cambiarEstado(EstadoPedido nuevo, boolean propietario) {
         Objects.requireNonNull(nuevo, "El estado es obligatorio.");
         if (estado == EstadoPedido.CANCELADO) {
-            throw new IllegalStateException("Un pedido cancelado no puede cambiar de estado.");
+            throw new TransicionEstadoInvalidaException(estado);
         }
         // El empleado solo puede terminar un pedido entregado; el resto es del propietario.
         if ((nuevo == EstadoPedido.PRODUCCION || nuevo == EstadoPedido.ENTREGADO
@@ -80,7 +81,7 @@ public final class Pedido {
             case ENTREGADO -> nuevo == EstadoPedido.TERMINADO;
             case TERMINADO, CANCELADO -> false;
         };
-        if (!permitido) throw new IllegalStateException("El cambio de estado no está permitido.");
+        if (!permitido) throw new TransicionEstadoInvalidaException(estado);
         estado = nuevo;
     }
 }

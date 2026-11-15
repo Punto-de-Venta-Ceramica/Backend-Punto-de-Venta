@@ -33,7 +33,9 @@ public class AreaController {
             .body(area);
     }
 
+    /** Con sucursalId, el empleado asignado consulta las áreas para filtrar productos (HU-05). */
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public List<AreaResponse> listar(@PathVariable @Positive Long negocioId,
                                      @RequestParam(required = false) Long sucursalId) {
         return areas.listar(negocioId, usuarioActual.id(), sucursalId).stream().map(AreaResponse::from).toList();

@@ -12,9 +12,14 @@ del JWT. Al cambiar de rol se requiere iniciar sesión de nuevo.
 | Pasar un pedido a producción o cancelarlo | Sí | No |
 | Editar descripción, entrega y datos del cliente de un pedido | Sí | No |
 | Registrar productos | Sí, en sus sucursales | Sí, en la asignada |
+| Consultar áreas y categorías para registrar o filtrar productos | Sí | Sí, de la asignada |
 | Editar o eliminar productos y ajustar inventario | Sí | No |
 | Administrar negocios, sucursales, áreas, categorías y empleados | Sí | No |
+| Abrir, consultar y cerrar el corte de caja del turno | Sí | Sí, en la asignada |
+| Historial y detalle de cortes anteriores | Sí | No |
 | Reportes o contabilidad de negocio | Sí | No |
+
+La matriz se verifica en `PermisosHu05Test` (permiso efectivo de cada acción).
 
 Para capturar un producto, `GET /api/productos/opciones/categorias?sucursalId=...`
 devuelve categorías activas del negocio de una sucursal autorizada. La creación

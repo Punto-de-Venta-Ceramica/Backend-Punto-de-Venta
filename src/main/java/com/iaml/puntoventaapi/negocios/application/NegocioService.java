@@ -31,7 +31,7 @@ public class NegocioService {
         if (usuarioId == null || usuarioId <= 0 || !usuarios.existePorId(usuarioId)) {
             throw new UsuarioNoAutenticadoException();
         }
-        Negocio negocio = Negocio.crear(command.nombre(), logos.procesar(command.logo()));
+        Negocio negocio = Negocio.crear(command.nombre(), logos.procesar(command.logo()), command.eslogan());
         return negocios.guardar(negocio, usuarioId);
     }
 
@@ -48,7 +48,8 @@ public class NegocioService {
     public Negocio editar(Long negocioId, EditarNegocioCommand command, Long usuarioId) {
         Negocio negocio = consultar(negocioId, usuarioId);
         String logo = obtenerLogoActualizado(negocio, command);
-        return negocios.guardar(negocio.editar(command.nombre(), logo), usuarioId);
+        String eslogan = command.eslogan() == null ? negocio.getEslogan() : command.eslogan();
+        return negocios.guardar(negocio.editar(command.nombre(), logo, eslogan), usuarioId);
     }
 
     @Transactional

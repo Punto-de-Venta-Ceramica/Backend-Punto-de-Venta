@@ -10,13 +10,16 @@ public final class Negocio {
     private final Long id;
     private final String nombre;
     private final String logo;
+    private final String eslogan;
     private final Instant fechaCreacion;
     private final Instant fechaActualizacion;
     private final Instant fechaEliminacion;
     private final boolean activo;
     private final long version;
 
-    public Negocio(Long id, String nombre, String logo, Instant fechaCreacion,
+    public static final int MAX_ESLOGAN = 150;
+
+    public Negocio(Long id, String nombre, String logo, String eslogan, Instant fechaCreacion,
                    Instant fechaActualizacion, Instant fechaEliminacion, boolean activo, long version) {
         if (id != null && id <= 0) {
             throw new IllegalArgumentException("El identificador del negocio debe ser positivo.");
@@ -27,12 +30,17 @@ public final class Negocio {
         if ((activo && fechaEliminacion != null) || (!activo && fechaEliminacion == null)) {
             throw new IllegalArgumentException("El estado del negocio y su fecha de eliminación no coinciden.");
         }
+        String esloganLimpio = eslogan == null || eslogan.isBlank() ? null : eslogan.trim();
+        if (esloganLimpio != null && esloganLimpio.length() > MAX_ESLOGAN) {
+            throw new IllegalArgumentException("El eslogan no debe superar " + MAX_ESLOGAN + " caracteres.");
+        }
         if (version < 0) {
             throw new IllegalArgumentException("La versión del negocio no puede ser negativa.");
         }
         this.id = id;
         this.nombre = nombre.trim();
         this.logo = logo;
+        this.eslogan = esloganLimpio;
         this.fechaCreacion = Objects.requireNonNull(fechaCreacion, "La fecha de creación es obligatoria.");
         this.fechaActualizacion = Objects.requireNonNull(fechaActualizacion, "La fecha de actualización es obligatoria.");
         this.fechaEliminacion = fechaEliminacion;
@@ -40,16 +48,16 @@ public final class Negocio {
         this.version = version;
     }
 
-    public static Negocio crear(String nombre, String logo) {
+    public static Negocio crear(String nombre, String logo, String eslogan) {
         Instant ahora = Instant.now();
-        return new Negocio(null, nombre, logo, ahora, ahora, null, true, 0);
+        return new Negocio(null, nombre, logo, eslogan, ahora, ahora, null, true, 0);
     }
 
-    public Negocio editar(String nombre, String logo) {
+    public Negocio editar(String nombre, String logo, String eslogan) {
         if (!activo) {
             throw new NegocioNoEncontradoException();
         }
-        return new Negocio(id, nombre, logo, fechaCreacion, Instant.now(), null, true, version);
+        return new Negocio(id, nombre, logo, eslogan, fechaCreacion, Instant.now(), null, true, version);
     }
 
     public Negocio eliminar() {
@@ -57,12 +65,14 @@ public final class Negocio {
             return this;
         }
         Instant ahora = Instant.now();
-        return new Negocio(id, nombre, logo, fechaCreacion, ahora, ahora, false, version);
+        return new Negocio(id, nombre, logo, eslogan, fechaCreacion, ahora, ahora, false, version);
     }
 
     public Long getId() { return id; }
     public String getNombre() { return nombre; }
     public String getLogo() { return logo; }
+    /** Frase al pie del ticket; null si el negocio no tiene. */
+    public String getEslogan() { return eslogan; }
     public Instant getFechaCreacion() { return fechaCreacion; }
     public Instant getFechaActualizacion() { return fechaActualizacion; }
     public Instant getFechaEliminacion() { return fechaEliminacion; }

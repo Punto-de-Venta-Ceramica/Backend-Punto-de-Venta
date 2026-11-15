@@ -185,9 +185,12 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             select p.id, p.id_sucursal, p.folio, p.descripcion, p.tipo_entrega,
                    p.descripcion_envio, p.estado, p.fecha_creacion,
                    c.nombre as cliente_nombre, c.telefono, c.ciudad, c.colonia, c.calle,
-                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo
+                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo,
+                   n.eslogan as negocio_eslogan
             from barrocontrol.pedido p
             join barrocontrol.cliente c on c.id = p.id_cliente
+            join barrocontrol.sucursal s on s.id = p.id_sucursal
+            join barrocontrol.negocio n on n.id = s.id_negocio
             """ + TOTALES + "where p.id = ?", (rs, i) -> cabecera(rs), pedidoId);
         if (cabeceras.isEmpty()) throw new PedidoNoEncontradoException();
         return cabeceras.get(0);
@@ -212,7 +215,8 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         return new Vista(id, rs.getLong("id_sucursal"), rs.getString("folio"),
             rs.getString("descripcion"), rs.getString("tipo_entrega"), rs.getString("descripcion_envio"),
             rs.getString("estado"), rs.getTimestamp("fecha_creacion").toInstant(), cliente, productos, pagos,
-            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0);
+            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0,
+            rs.getString("negocio_eslogan"));
     }
 
     private record FilaResumen(long id, long sucursalId, String tipoEntrega, String estado, Instant fechaCreacion,

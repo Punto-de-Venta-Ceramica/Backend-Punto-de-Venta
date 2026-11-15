@@ -13,5 +13,9 @@ public abstract class EntidadConId {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    protected void setId(Long id) {
+        this.id = id;
+    }
 }
 

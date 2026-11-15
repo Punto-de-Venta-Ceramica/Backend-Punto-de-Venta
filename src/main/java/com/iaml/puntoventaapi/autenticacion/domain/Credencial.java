@@ -17,8 +17,13 @@ public final class Credencial {
     private final String correo;
     private final String passwordHash;
     private final Rol rol;
+    private final boolean passwordMustChange;
 
     public Credencial(Long usuarioId, String correo, String passwordHash, Rol rol) {
+        this(usuarioId, correo, passwordHash, rol, false);
+    }
+
+    public Credencial(Long usuarioId, String correo, String passwordHash, Rol rol, boolean passwordMustChange) {
         if (usuarioId == null || correo == null || passwordHash == null || rol == null) {
             throw new IllegalArgumentException("Credencial incompleta");
         }
@@ -26,6 +31,7 @@ public final class Credencial {
         this.correo = correo;
         this.passwordHash = passwordHash;
         this.rol = rol;
+        this.passwordMustChange = passwordMustChange;
     }
 
     /** Lanza CredencialesInvalidasException si la contraseña no corresponde al hash. */
@@ -63,5 +69,9 @@ public final class Credencial {
 
     public Rol getRol() {
         return rol;
+    }
+
+    public boolean isPasswordMustChange() {
+        return passwordMustChange;
     }
 }

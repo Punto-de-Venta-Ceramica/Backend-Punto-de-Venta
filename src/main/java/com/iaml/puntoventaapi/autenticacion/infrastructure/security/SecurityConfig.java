@@ -52,6 +52,8 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // /api/auth/password requiere JWT válido (usuario autenticado cambia su propia contraseña)
+                .requestMatchers(HttpMethod.PATCH, "/api/auth/password").authenticated()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/registro").permitAll()
                 .requestMatchers("/api/reportes", "/api/reportes/**", "/api/contabilidad", "/api/contabilidad/**")

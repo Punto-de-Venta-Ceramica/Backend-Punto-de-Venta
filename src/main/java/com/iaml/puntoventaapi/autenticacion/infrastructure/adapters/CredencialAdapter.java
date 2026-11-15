@@ -38,6 +38,6 @@ public class CredencialAdapter implements CredencialRepositorioPort {
 
     private Optional<Credencial> aCredencial(CredencialesUsuario u) {
         return roles.findWithPermisosById(u.rolId())
-            .map(rol -> new Credencial(u.usuarioId(), u.correo(), u.passwordHash(), RolMapper.toDomain(rol)));
+            .map(rol -> new Credencial(u.usuarioId(), u.correo(), u.passwordHash(), RolMapper.toDomain(rol), u.passwordMustChange()));
     }
 }

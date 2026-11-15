@@ -21,12 +21,12 @@ public class UsuariosContratoService implements UsuariosContrato {
     @Override
     public Optional<CredencialesUsuario> buscarCredencialesPorCorreo(String correo) {
         return usuarios.buscarPorCorreo(correo)
-            .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId()));
+            .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId(), u.isPasswordMustChange()));
     }
 
     @Override
     public Optional<CredencialesUsuario> buscarCredencialesPorId(Long usuarioId) {
         return usuarios.buscarPorId(usuarioId)
-            .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId()));
+            .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId(), u.isPasswordMustChange()));
     }
 }

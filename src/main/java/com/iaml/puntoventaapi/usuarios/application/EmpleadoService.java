@@ -66,7 +66,8 @@ public class EmpleadoService {
             command.apellidoMaterno() != null ? command.apellidoMaterno().trim() : null,
             correo,
             null,
-            passwordHash
+            passwordHash,
+            true  // obligar cambio de contraseña en el primer login
         );
 
         Usuario guardado = empleados.guardar(nuevo);

@@ -240,7 +240,7 @@ class CorteCajaServiceTest {
         c.setMontoInicial(new BigDecimal("100.00"));
         c.setTotalEstimado(new BigDecimal("500.00"));
 
-        when(corteCajaRepository.findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(eq(10L), any(Pageable.class)))
+        when(corteCajaRepository.findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(eq(10L), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(c)));
 
         Page<ResumenCorteCajaDto> page = service.listarHistorial(null, 1L, PageRequest.of(0, 20));

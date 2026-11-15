@@ -2,12 +2,15 @@ package com.iaml.puntoventaapi;
 
 import com.iaml.puntoventaapi.autenticacion.api.AuthController;
 import com.iaml.puntoventaapi.autenticacion.application.IniciarSesionService;
+import com.iaml.puntoventaapi.autenticacion.application.RecuperarPasswordService;
 import com.iaml.puntoventaapi.autenticacion.application.RenovarSesionService;
 import com.iaml.puntoventaapi.shared.infrastructure.json.JsonConfig;
+import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.sucursal.api.SucursalController;
 import com.iaml.puntoventaapi.sucursal.application.SucursalService;
 import com.iaml.puntoventaapi.usuarios.api.UsuarioController;
 import com.iaml.puntoventaapi.usuarios.application.PropietarioService;
+import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioJpaRepository;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,7 +44,10 @@ class ErroresApiTest {
     @MockitoBean AutoridadesVigentesPort autoridades;
     @MockitoBean IniciarSesionService sesiones;
     @MockitoBean RenovarSesionService renovaciones;
+    @MockitoBean RecuperarPasswordService recuperarPasswordService;
     @MockitoBean PropietarioService propietarios;
+    @MockitoBean UsuarioActual usuarioActual;
+    @MockitoBean UsuarioJpaRepository usuarioJpaRepository;
 
     static Stream<Arguments> endpoints() {
         return Stream.of(

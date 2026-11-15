@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.ventas.api.dto.PaginaProductosVentaResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaConfirmadaResponse;
 import com.iaml.puntoventaapi.ventas.application.ConfirmarVentaService;
+import com.iaml.puntoventaapi.ventas.application.EsloganTicketService;
 import com.iaml.puntoventaapi.ventas.application.PrepararVentaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -32,12 +33,14 @@ public class VentaController {
 
     private final PrepararVentaService ventas;
     private final ConfirmarVentaService confirmacion;
+    private final EsloganTicketService eslogan;
     private final UsuarioActual usuarioActual;
 
     public VentaController(PrepararVentaService ventas, ConfirmarVentaService confirmacion,
-                           UsuarioActual usuarioActual) {
+                           EsloganTicketService eslogan, UsuarioActual usuarioActual) {
         this.ventas = ventas;
         this.confirmacion = confirmacion;
+        this.eslogan = eslogan;
         this.usuarioActual = usuarioActual;
     }
 
@@ -60,7 +63,7 @@ public class VentaController {
     public VentaConfirmadaResponse confirmar(
             @Valid @RequestBody PrepararVentaRequest request,
             @RequestHeader(name = "Idempotency-Key", required = false) UUID claveOperacion) {
-        return VentaConfirmadaResponse.from(
-            confirmacion.confirmar(request.toCommand(), usuarioActual.id(), claveOperacion));
+        var confirmada = confirmacion.confirmar(request.toCommand(), usuarioActual.id(), claveOperacion);
+        return VentaConfirmadaResponse.from(confirmada, eslogan.de(confirmada));
     }
 }

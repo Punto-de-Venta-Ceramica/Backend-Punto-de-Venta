@@ -10,4 +10,5 @@ public interface NegocioRepositorioPort {
     Optional<Negocio> buscarPorId(Long negocioId, Long usuarioId);
     List<NegocioResumen> listarPorUsuario(Long usuarioId);
     boolean perteneceAUsuario(Long negocioId, Long usuarioId);
+    Optional<String> eslogan(Long negocioId);
 }

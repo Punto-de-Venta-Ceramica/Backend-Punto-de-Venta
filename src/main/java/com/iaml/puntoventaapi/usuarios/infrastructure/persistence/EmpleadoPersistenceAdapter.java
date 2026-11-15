@@ -33,12 +33,12 @@ public class EmpleadoPersistenceAdapter implements EmpleadoRepositorioPort {
     public Usuario guardar(Usuario empleado) {
         RolEntity rol = entityManager.getReference(RolEntity.class, empleado.getRolId());
         NegocioEntity negocio = entityManager.getReference(NegocioEntity.class, empleado.getNegocioId());
-        SucursalEntity sucursal = empleado.getSucursalId() != null
-            ? entityManager.getReference(SucursalEntity.class, empleado.getSucursalId())
-            : null;
+        List<SucursalEntity> sucursales = empleado.getSucursalIds().stream()
+            .map(id -> entityManager.getReference(SucursalEntity.class, id))
+            .toList();
 
         try {
-            UsuarioEntity entity = UsuarioMapper.toEntity(empleado, rol, negocio, sucursal);
+            UsuarioEntity entity = UsuarioMapper.toEntity(empleado, rol, negocio, sucursales);
             return UsuarioMapper.toDomain(usuarios.saveAndFlush(entity));
         } catch (DataIntegrityViolationException ex) {
             for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
@@ -67,13 +67,12 @@ public class EmpleadoPersistenceAdapter implements EmpleadoRepositorioPort {
 
     @Override
     @Transactional
-    public void actualizarSucursal(Long empleadoId, Long sucursalId) {
+    public void actualizarSucursales(Long empleadoId, java.util.Collection<Long> sucursalIds) {
         UsuarioEntity entity = usuarios.findById(empleadoId)
             .orElseThrow(() -> new EmpleadoNoEncontradoException(empleadoId));
-        SucursalEntity sucursal = sucursalId != null
-            ? entityManager.getReference(SucursalEntity.class, sucursalId)
-            : null;
-        entity.setSucursal(sucursal);
+        entity.setSucursales(sucursalIds.stream()
+            .map(id -> entityManager.getReference(SucursalEntity.class, id))
+            .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
         usuarios.saveAndFlush(entity);
     }
 

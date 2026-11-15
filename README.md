@@ -328,7 +328,8 @@ Variables nuevas:
 | Variable | Valor |
 | --- | --- |
 | `JWT_SECRETO` | Obligatoria, mínimo 32 caracteres aleatorios |
-| `JWT_EXPIRACION_MINUTOS` | Opcional, por defecto `480` |
+| `JWT_EXPIRACION_MINUTOS` | Opcional, duración del token de acceso; por defecto `15` |
+| `JWT_REFRESH_EXPIRACION_DIAS` | Opcional, duración del token de renovación (`POST /api/auth/refresh`); por defecto `20` |
 
 `IniciarSesionServiceTest` muestra la ventaja de los puertos: prueba el caso
 de uso sin base de datos ni Spring.

@@ -14,6 +14,7 @@ public record EmpleadoResponse(
         String correoElectronico,
         Long sucursalId,
         String sucursalNombre,
+        java.util.List<SucursalEmpleadoResponse> sucursales,
         Boolean asignado) {
 
     public static EmpleadoResponse from(EmpleadoDetalle detalle) {
@@ -25,8 +26,11 @@ public record EmpleadoResponse(
                 u.getApellidoPaterno(),
                 u.getApellidoMaterno(),
                 u.getCorreo(),
-                u.getSucursalId(),
-                detalle.sucursalNombre(),
+                detalle.sucursales().isEmpty() ? null : detalle.sucursales().get(0).id(),
+                detalle.sucursales().isEmpty() ? null : detalle.sucursales().get(0).nombre(),
+                detalle.asignado() == null ? null
+                        : detalle.sucursales().stream()
+                                .map(s -> new SucursalEmpleadoResponse(s.id(), s.nombre())).toList(),
                 detalle.asignado()
         );
     }

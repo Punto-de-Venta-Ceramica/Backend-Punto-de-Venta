@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.catalogo.domain.port;
 
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -13,11 +14,25 @@ public interface DescuentoRepositorioPort {
     /** Enlaza el descuento con el producto (tabla descuento_producto). */
     void vincularAProducto(Long descuentoId, Long productoId);
 
+    /**
+     * Descuento activo que aplica al producto: el asignado directamente al producto; si no hay,
+     * el de su categoría; si no, el de su área. Dentro del mismo nivel gana el de menor id.
+     */
     Optional<Descuento> buscarActivoPorProducto(Long productoId);
 
-    /** Descuento activo de cada producto indicado (los productos sin descuento no aparecen). */
+    /** Igual que {@link #buscarActivoPorProducto} para varios productos (los que no tienen no aparecen). */
     Map<Long, Descuento> buscarActivosPorProductos(Collection<Long> productoIds);
 
-    /** Desenlaza el producto de sus descuentos y elimina los que se quedan sin ningún producto. */
-    void quitarDeProducto(Long productoId);
+    /**
+     * Escalones por cantidad que aplican al producto: todos los descuentos activos del nivel que gana
+     * (producto, si no categoría, si no área), ordenados por cantidad mínima. Lista vacía si no hay.
+     */
+    List<Descuento> buscarEscalonesActivosPorProducto(Long productoId);
+
+    /**
+     * Descuento activo propio del producto: el que solo está asignado a ese producto (no a otros
+     * productos, ni a categorías o áreas). Es el único que se edita en sitio al guardar un producto con un
+     * descuento único (compatibilidad).
+     */
+    Optional<Descuento> buscarPropioActivoDeProducto(Long productoId);
 }

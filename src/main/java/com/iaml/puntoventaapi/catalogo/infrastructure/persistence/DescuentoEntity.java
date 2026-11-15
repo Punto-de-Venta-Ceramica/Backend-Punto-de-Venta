@@ -58,4 +58,17 @@ public class DescuentoEntity extends EntidadConId {
         inverseJoinColumns = @JoinColumn(name = "id_producto"),
         indexes = @Index(name = "ix_descuento_producto_producto", columnList = "id_producto"))
     private Set<ProductoEntity> productos = new HashSet<>();
+
+    // Asignar el descuento a una categoría o a un área lo aplica a todos sus productos, también a los futuros.
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "descuento_categoria", joinColumns = @JoinColumn(name = "id_descuento"),
+        inverseJoinColumns = @JoinColumn(name = "id_categoria"),
+        indexes = @Index(name = "ix_descuento_categoria_categoria", columnList = "id_categoria"))
+    private Set<CategoriaEntity> categorias = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "descuento_area", joinColumns = @JoinColumn(name = "id_descuento"),
+        inverseJoinColumns = @JoinColumn(name = "id_area"),
+        indexes = @Index(name = "ix_descuento_area_area", columnList = "id_area"))
+    private Set<AreaEntity> areas = new HashSet<>();
 }

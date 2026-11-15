@@ -16,7 +16,7 @@ class RegistrarPedidoServiceTest {
         public boolean esPropietarioActual(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
         public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) { throw new UnsupportedOperationException(); }
         public Pedido obtenerParaActualizar(long pedidoId, long usuarioId) { throw new UnsupportedOperationException(); }
-        public void guardarPago(long pedidoId, PagoPedido pago, long corteId) { throw new UnsupportedOperationException(); }
+        public void guardarPago(long pedidoId, PagoPedido pago) { throw new UnsupportedOperationException(); }
         public void guardarEstado(long pedidoId, EstadoPedido estado) { throw new UnsupportedOperationException(); }
     }
     @Test
@@ -30,7 +30,8 @@ class RegistrarPedidoServiceTest {
                 return 7;
             }
         };
-        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), 2, null, new BigDecimal("10.00"));
+        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"),
+            List.of(new EscalonDescuento(2, null, new BigDecimal("10.00"))));
         var service = new RegistrarPedidoService(repo, catalogo, cliente -> 5, new NotificacionPort() {
             public void pedidoRegistrado(long pedido, long sucursal, long usuario) {
                 assertEquals(1, escrituras.get());
@@ -39,13 +40,37 @@ class RegistrarPedidoServiceTest {
             }
             public void pedidoEntregado(long pedidoId) { throw new AssertionError(); }
         });
-        var cliente = new ClientePedido("Ana", "123", "Puebla", "Centro", "Calle 1");
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2)), "LOCAL", null,
-            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO, 1L);
+            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO);
         var resultado = service.registrar(comando);
         assertEquals(new BigDecimal("130.00"), resultado.saldoPendiente());
         assertEquals(2, escrituras.get());
+    }
+
+    @Test
+    void sinAplicarDescuentoCobraPrecioDeLista() {
+        var repo = new RepoRegistro() {
+            public void comprobarAcceso(long sucursal, long usuario) { }
+            public long guardar(DatosRegistro datos, long cliente, Pedido pedido) {
+                // 2 × 100 sin el 10 % de descuento vigente.
+                assertEquals(new BigDecimal("200.00"), pedido.total());
+                assertEquals(0, pedido.detalles().get(0).porcentajeDescuento().signum());
+                return 8;
+            }
+        };
+        CatalogoPort catalogo = (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"),
+            List.of(new EscalonDescuento(2, null, new BigDecimal("10.00"))));
+        var service = new RegistrarPedidoService(repo, catalogo, cliente -> 5, new NotificacionPort() {
+            public void pedidoRegistrado(long pedido, long sucursal, long usuario) { }
+            public void pedidoEntregado(long pedidoId) { }
+        });
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
+        var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
+            List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2, false)), "LOCAL", null,
+            BigDecimal.ZERO, PagoPedido.MetodoPago.EFECTIVO);
+        assertEquals(new BigDecimal("200.00"), service.registrar(comando).saldoPendiente());
     }
 
     @Test
@@ -56,15 +81,15 @@ class RegistrarPedidoServiceTest {
             public long guardar(DatosRegistro datos, long cliente, Pedido pedido) { escrituras.incrementAndGet(); return 1; }
         };
         var service = new RegistrarPedidoService(repo,
-            (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), null, null, null),
+            (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), List.of()),
             cliente -> { escrituras.incrementAndGet(); return 1; }, new NotificacionPort() {
                 public void pedidoRegistrado(long p, long s, long u) { escrituras.incrementAndGet(); }
                 public void pedidoEntregado(long p) { escrituras.incrementAndGet(); }
             });
-        var cliente = new ClientePedido("Ana", "123", "Puebla", "Centro", "Calle 1");
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 1)), "LOCAL", null,
-            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA, 1L);
+            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA);
         assertThrows(IllegalArgumentException.class, () -> service.registrar(comando));
         assertEquals(0, escrituras.get());
     }

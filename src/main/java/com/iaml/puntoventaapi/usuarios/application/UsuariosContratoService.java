@@ -23,4 +23,10 @@ public class UsuariosContratoService implements UsuariosContrato {
         return usuarios.buscarPorCorreo(correo)
             .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId()));
     }
+
+    @Override
+    public Optional<CredencialesUsuario> buscarCredencialesPorId(Long usuarioId) {
+        return usuarios.buscarPorId(usuarioId)
+            .map(u -> new CredencialesUsuario(u.getId(), u.getCorreo(), u.getPasswordHash(), u.getRolId()));
+    }
 }

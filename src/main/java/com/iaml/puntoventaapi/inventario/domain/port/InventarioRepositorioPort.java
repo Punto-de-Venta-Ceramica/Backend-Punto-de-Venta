@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface InventarioRepositorioPort {
 
-    /** Inserta si no tiene id; si lo tiene, actualiza la existencia. */
+    /** Inserta si no tiene id; si lo tiene, actualiza la existencia y el estado activo. */
     Inventario guardar(Inventario inventario);
 
     /**
@@ -16,6 +16,27 @@ public interface InventarioRepositorioPort {
      */
     Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId);
 
-    /** Existencias de los productos activos del negocio; sucursalId es opcional. */
-    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId);
+    /** Negocio activo del usuario al que pertenece el producto activo; vacío si no es accesible. */
+    Optional<Long> negocioDeProducto(Long productoId, Long usuarioId);
+
+    /** Negocio activo del usuario al que pertenece la sucursal; vacío si no es accesible. */
+    Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId);
+
+    /** Registro (activo o no) del producto en la sucursal, si alguna vez se asignó. */
+    Optional<Inventario> buscarPorSucursalYProducto(Long sucursalId, Long productoId);
+
+    /**
+     * Registro activo de un producto activo en un negocio activo del propietario, bloqueado hasta que termine
+     * la transacción. Vacío si no es accesible. Debe llamarse dentro de una transacción.
+     */
+    Optional<Inventario> buscarParaQuitar(Long inventarioId, Long usuarioId);
+
+    /** Sucursales en las que el producto sigue asignado. */
+    long contarActivosDeProducto(Long productoId);
+
+    /** Existencias de los productos activos del negocio; sucursalId y productoId son filtros opcionales. */
+    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId, Long usuarioId);
+
+    /** Existencias de un producto activo del usuario en cada sucursal; vacía si no es accesible. */
+    List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId);
 }

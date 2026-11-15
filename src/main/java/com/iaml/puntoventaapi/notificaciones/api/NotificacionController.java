@@ -26,6 +26,11 @@ public class NotificacionController {
         return notificaciones.listar(usuarioActual.id());
     }
 
+    @GetMapping("/no-leidas/conteo")
+    public NotificacionService.ConteoNoLeidas contarNoLeidas() {
+        return notificaciones.contarNoLeidas(usuarioActual.id());
+    }
+
     @PatchMapping("/{id}/leida")
     public ResponseEntity<Void> marcarLeida(@PathVariable long id) {
         return notificaciones.marcarLeida(usuarioActual.id(), id)

@@ -8,6 +8,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "usuario", check = {
     @CheckConstraint(name = "ck_usuario_1", constraint = "btrim(nombre) <> ''"),
@@ -15,8 +18,7 @@ import lombok.*;
     @CheckConstraint(name = "ck_usuario_3", constraint = "btrim(password_hash) <> ''")
 }, indexes = {
     @Index(name = "ix_usuario_rol", columnList = "id_rol"),
-    @Index(name = "ix_usuario_negocio", columnList = "id_negocio"),
-    @Index(name = "ix_usuario_sucursal", columnList = "id_sucursal")
+    @Index(name = "ix_usuario_negocio", columnList = "id_negocio")
 })
 @Getter
 @Setter
@@ -30,9 +32,11 @@ public class UsuarioEntity extends EntidadConId {
     @JoinColumn(name = "id_negocio")
     private NegocioEntity negocio;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_sucursal")
-    private SucursalEntity sucursal;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "empleado_sucursal",
+        joinColumns = @JoinColumn(name = "id_usuario"),
+        inverseJoinColumns = @JoinColumn(name = "id_sucursal"))
+    private Set<SucursalEntity> sucursales = new LinkedHashSet<>();
 
     @NotBlank
     @Size(max = 100)

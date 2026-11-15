@@ -25,7 +25,7 @@ public record EmpleadoCreadoResponse(
                 u.getApellidoPaterno(),
                 u.getApellidoMaterno(),
                 u.getCorreo(),
-                u.getSucursalId(),
+                u.getSucursalIds().isEmpty() ? null : u.getSucursalIds().get(0),
                 creado.sucursalNombre(),
                 creado.passwordGenerada()
         );

@@ -22,6 +22,6 @@ public class RegistrarPagoController {
     }
     @PostMapping("/{id}/pagos")
     public RegistrarPagoService.Resultado registrar(@PathVariable long id, @Valid @RequestBody RegistrarPagoRequest request) {
-        return pagos.registrar(id, usuario.id(), request.toDomain(), request.corteCajaId());
+        return pagos.registrar(id, usuario.id(), request.toDomain());
     }
 }

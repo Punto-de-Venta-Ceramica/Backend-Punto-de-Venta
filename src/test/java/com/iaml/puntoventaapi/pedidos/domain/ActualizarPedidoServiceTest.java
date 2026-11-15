@@ -23,7 +23,7 @@ class ActualizarPedidoServiceTest {
         public Pedido obtenerParaActualizar(long pedidoId, long usuarioId) { return pedido; }
         public boolean esPropietarioActual(long pedidoId, long usuarioId) { return propietario; }
         public void actualizarDatos(long pedidoId, long clienteId, DatosEdicion datos) { throw new UnsupportedOperationException(); }
-        public void guardarPago(long pedidoId, PagoPedido pago, long corteId) { pagosGuardados++; }
+        public void guardarPago(long pedidoId, PagoPedido pago) { pagosGuardados++; }
         public void guardarEstado(long pedidoId, EstadoPedido estado) { estadosGuardados++; }
     }
 
@@ -32,9 +32,9 @@ class ActualizarPedidoServiceTest {
         var repo = new Repositorio();
         var service = new RegistrarPagoService(repo);
         assertThrows(IllegalArgumentException.class, () -> service.registrar(1, 2,
-            new PagoPedido(new BigDecimal("71.00"), PagoPedido.MetodoPago.TARJETA), 1));
+            new PagoPedido(new BigDecimal("71.00"), PagoPedido.MetodoPago.TARJETA)));
         assertEquals(0, repo.pagosGuardados);
-        var resultado = service.registrar(1, 2, new PagoPedido(new BigDecimal("70.00"), PagoPedido.MetodoPago.TARJETA), 1);
+        var resultado = service.registrar(1, 2, new PagoPedido(new BigDecimal("70.00"), PagoPedido.MetodoPago.TARJETA));
         assertTrue(resultado.pagado());
         assertEquals(new BigDecimal("0.00"), resultado.saldoPendiente());
         assertEquals(1, repo.pagosGuardados);
@@ -53,6 +53,8 @@ class ActualizarPedidoServiceTest {
         repo.propietario = true;
         service.cambiar(1, 2, EstadoPedido.PRODUCCION);
         repo.propietario = false;
+        assertThrows(SecurityException.class, () -> service.cambiar(1, 2, EstadoPedido.ENTREGADO));
+        repo.propietario = true;
         service.cambiar(1, 2, EstadoPedido.ENTREGADO);
         service.cambiar(1, 2, EstadoPedido.ENTREGADO);
         assertEquals(1, avisos.get());

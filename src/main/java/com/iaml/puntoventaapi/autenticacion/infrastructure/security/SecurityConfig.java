@@ -12,7 +12,13 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -39,7 +45,10 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, AutoridadesVigentesConverter converter) throws Exception {
         return http
             .cors(Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable())
+            // CSRF se desactiva a propósito: la API es stateless (sin sesión ni cookies de autenticación);
+            // cada petición se autentica con un JWT en el encabezado Authorization, que el navegador no
+            // envía automáticamente, por lo que no hay vector CSRF. NOSONAR (java:S4502)
+            .csrf(csrf -> csrf.disable()) // NOSONAR
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -58,13 +67,21 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtEncoder jwtEncoder() {
+    public JwtEncoder jwtEncoder() {
         return new NimbusJwtEncoder(new ImmutableSecret<>(clave));
     }
 
     @Bean
-    JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withSecretKey(clave).macAlgorithm(MacAlgorithm.HS256).build();
+    public JwtDecoder jwtDecoder() {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(clave).macAlgorithm(MacAlgorithm.HS256).build();
+        // Un token de renovación nunca debe autorizar peticiones a la API.
+        OAuth2TokenValidator<Jwt> noRenovacion = jwt -> JwtTokenAdapter.TIPO_RENOVACION
+            .equals(jwt.getClaimAsString(JwtTokenAdapter.CLAIM_TIPO))
+            ? OAuth2TokenValidatorResult.failure(
+                new OAuth2Error("invalid_token", "Token de renovación no válido para la API.", null))
+            : OAuth2TokenValidatorResult.success();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), noRenovacion));
+        return decoder;
     }
 
 }

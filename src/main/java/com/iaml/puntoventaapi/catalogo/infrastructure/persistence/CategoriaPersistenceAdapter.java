@@ -62,4 +62,10 @@ public class CategoriaPersistenceAdapter implements CategoriaRepositorioPort {
         return categorias.listarActivasPorArea(
             areaId, negocioId).stream().map(CategoriaMapper::toDomain).toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Categoria> listarPorNegocio(Long negocioId) {
+        return categorias.listarActivasPorNegocio(negocioId).stream().map(CategoriaMapper::toDomain).toList();
+    }
 }

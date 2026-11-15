@@ -1,10 +1,16 @@
 package com.iaml.puntoventaapi.catalogo.infrastructure.persistence;
 
+import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
+import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import jakarta.persistence.EntityManager;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -40,8 +46,62 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<ProductoDetalle> buscarConClasificacion(Long id, Long usuarioId) {
+        return productos.buscarActivoConClasificacion(id, usuarioId).map(ProductoPersistenceAdapter::conClasificacion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ProductoDetalle> buscarConClasificacionEnNegocio(Long id, Long negocioId) {
+        return productos.buscarActivoConClasificacionEnNegocio(id, negocioId)
+            .map(ProductoPersistenceAdapter::conClasificacion);
+    }
+
+    private static ProductoDetalle conClasificacion(ProductoEntity entity) {
+        CategoriaEntity categoria = entity.getCategoria();
+        AreaEntity area = categoria.getArea();
+        return new ProductoDetalle(ProductoMapper.toDomain(entity), null,
+            new ClasificacionProducto(area.getId(), area.getNombre(), categoria.getId(), categoria.getNombre()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Producto> listarPorNegocio(Long negocioId) {
         return productos.listarActivosPorNegocio(negocioId).stream().map(ProductoMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio) {
+        Page<ProductoEntity> resultado = productos.buscarActivosPorNegocio(negocioId, filtro.areaId(),
+            filtro.categoriaId(), patronBusqueda(filtro.texto()), filtro.sucursalId(),
+            filtro.precioMinimo(), filtro.precioMaximo(),
+            PageRequest.of(pagina, tamanio));
+        return new Pagina<>(resultado.getContent().stream().map(ProductoMapper::toDomain).toList(),
+            pagina, tamanio, resultado.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ClasificacionProducto> buscarClasificacion(Long categoriaId) {
+        return productos.clasificacionDeCategoria(categoriaId).stream().findFirst()
+            .map(f -> new ClasificacionProducto((Long) f[2], (String) f[3], (Long) f[0], (String) f[1]));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean imagenUsadaPorOtroProducto(String imagenPublicId, Long productoId) {
+        return productos.existsByImagenPublicIdAndActivoTrueAndIdNot(imagenPublicId, productoId);
+    }
+
+    /** %texto% en minúsculas con los comodines del propio texto escapados; sin texto coincide con todo. */
+    private static String patronBusqueda(String texto) {
+        if (texto == null) {
+            return "%";
+        }
+        String escapado = texto.toLowerCase()
+            .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return "%" + escapado + "%";
     }
 
     @Override

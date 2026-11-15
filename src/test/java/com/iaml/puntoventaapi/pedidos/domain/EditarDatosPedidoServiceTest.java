@@ -22,7 +22,7 @@ class EditarDatosPedidoServiceTest {
         }
         public boolean esPropietarioActual(long pedido, long usuario) { return propietario; }
         public void actualizarDatos(long pedido, long cliente, DatosEdicion datos) { actualizaciones++; }
-        public void guardarPago(long pedido, PagoPedido pago, long corte) { throw new UnsupportedOperationException(); }
+        public void guardarPago(long pedido, PagoPedido pago) { throw new UnsupportedOperationException(); }
         public void guardarEstado(long pedido, EstadoPedido estado) { throw new UnsupportedOperationException(); }
     }
 
@@ -31,7 +31,7 @@ class EditarDatosPedidoServiceTest {
         var repo = new Repositorio();
         var clientes = new AtomicInteger();
         var servicio = new EditarDatosPedidoService(repo, datos -> { clientes.incrementAndGet(); return 4; });
-        var cliente = new ClientePedido("Ana", "123", "Puebla", "Centro", "Calle 1");
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var datos = new PedidoRepositorioPort.DatosEdicion("Nueva descripción", "LOCAL", null);
         assertThrows(AccessDeniedException.class, () -> servicio.editar(1, 2, cliente, datos));
         assertEquals(0, clientes.get());

@@ -208,7 +208,7 @@ class AreaYCategoriaServiceTest {
         when(jpa.productoParaPedido(2L, NEGOCIO)).thenReturn(Optional.empty());
         when(descuentos.buscarEscalonesActivosPorProducto(1L)).thenReturn(List.of(
             new Descuento(1L, NEGOCIO, "Mayoreo", 5, null, new BigDecimal("10"), true)));
-        CatalogoContratoService contrato = new CatalogoContratoService(jpa, descuentos);
+        CatalogoContratoService contrato = new CatalogoContratoService(jpa, descuentos, mock(ProductoRepositorioPort.class));
 
         ProductoPedido pedido = contrato.productoParaPedido(1L, NEGOCIO).orElseThrow();
 

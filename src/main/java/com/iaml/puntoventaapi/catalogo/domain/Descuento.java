@@ -93,6 +93,11 @@ public final class Descuento {
         return porcentaje;
     }
 
+    public boolean aplicaA(int cantidad) {
+        return activo && cantidad >= cantidadMinima
+            && (cantidadMaxima == null || cantidad <= cantidadMaxima);
+    }
+
     public boolean isActivo() {
         return activo;
     }

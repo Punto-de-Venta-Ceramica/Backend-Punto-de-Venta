@@ -21,14 +21,22 @@ BEGIN
 END
 $$;
 ^^^
-CREATE OR REPLACE VIEW vw_venta AS
-SELECT v.*, COALESCE(d.total, 0::NUMERIC) AS total
-FROM venta v
-LEFT JOIN (
-    SELECT id_venta, SUM(subtotal) AS total
-    FROM detalle_venta
-    GROUP BY id_venta
-) d ON d.id_venta = v.id;
+-- Mantiene la proyección de las vistas existentes al ampliar la tabla venta.
+DO $$
+BEGIN
+    IF to_regclass('barrocontrol.vw_venta') IS NULL THEN
+        CREATE VIEW barrocontrol.vw_venta AS
+        SELECT v.id, v.fecha_hora, v.metodo_pago, v.id_caja, v.id_corte_caja, v.id_usuario,
+               COALESCE(d.total, 0::NUMERIC) AS total
+        FROM barrocontrol.venta v
+        LEFT JOIN (
+            SELECT id_venta, SUM(subtotal) AS total
+            FROM barrocontrol.detalle_venta
+            GROUP BY id_venta
+        ) d ON d.id_venta = v.id;
+    END IF;
+END
+$$;
 ^^^
 
 CREATE OR REPLACE VIEW vw_corte_caja AS

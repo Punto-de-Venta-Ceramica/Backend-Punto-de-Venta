@@ -91,6 +91,37 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         return List.of();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds) {
+        if (productoIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Descuento>> escalones = new HashMap<>();
+        Set<Long> pendientes = new HashSet<>(productoIds);
+        agregarEscalones(escalones, descuentos.activosDirectosPorProductos(pendientes));
+        pendientes.removeAll(escalones.keySet());
+        if (!pendientes.isEmpty()) {
+            agregarEscalones(escalones, descuentos.activosPorCategoriaDeProductos(pendientes));
+            pendientes.removeAll(escalones.keySet());
+        }
+        if (!pendientes.isEmpty()) {
+            agregarEscalones(escalones, descuentos.activosPorAreaDeProductos(pendientes));
+        }
+        escalones.replaceAll((id, nivel) -> nivel.stream()
+            .sorted(Comparator.comparing(Descuento::getCantidadMinima).thenComparing(Descuento::getId))
+            .toList());
+        return Map.copyOf(escalones);
+    }
+
+    private static void agregarEscalones(Map<Long, List<Descuento>> resultado, List<Object[]> filas) {
+        for (Object[] fila : filas) {
+            Long productoId = ((Number) fila[0]).longValue();
+            resultado.computeIfAbsent(productoId, id -> new ArrayList<>())
+                .add(DescuentoMapper.toDomain((DescuentoEntity) fila[1]));
+        }
+    }
+
     /** Las filas llegan ordenadas por id de descuento: el primero de cada producto, si aún no tiene, gana. */
     private static void agregarPrimeros(Map<Long, Descuento> resultado, List<Object[]> filas) {
         for (Object[] fila : filas) {

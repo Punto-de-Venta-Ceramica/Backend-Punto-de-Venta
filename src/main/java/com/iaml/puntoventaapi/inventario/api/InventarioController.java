@@ -69,7 +69,8 @@ public class InventarioController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Ajuste manual del propietario: cantidad positiva suma, negativa resta. */
+    /** Ajuste manual: cantidad positiva suma, negativa resta. */
+    /** Ajustar existencias es solo del propietario (HU-05); el empleado solo las consulta. */
     @PatchMapping("/{id}/existencia")
     @PreAuthorize("hasRole('PROPIETARIO')")
     public ExistenciaResponse ajustar(@PathVariable Long id, @Valid @RequestBody AjustarExistenciaRequest request) {

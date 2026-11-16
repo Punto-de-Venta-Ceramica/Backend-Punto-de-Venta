@@ -536,6 +536,14 @@ class ProductoServiceTest {
         }
 
         @Override
+        public List<Producto> listarActivosPorIds(Long negocioId, Collection<Long> productoIds) {
+            return listarPorNegocio(negocioId).stream()
+                .filter(p -> productoIds.contains(p.getId()))
+                .filter(p -> negocioId.equals(FakeCategorias.NEGOCIO_POR_CATEGORIA.get(p.getCategoriaId())))
+                .toList();
+        }
+
+        @Override
         public Pagina<Producto> listarPagina(Long negocioId, FiltroProductos filtro, int pagina, int tamanio) {
             List<Producto> activos = guardados.values().stream().filter(Producto::isActivo).toList();
             int desde = Math.min(pagina * tamanio, activos.size());
@@ -634,6 +642,18 @@ class ProductoServiceTest {
             Map<Long, Descuento> resultado = new HashMap<>();
             productoIds.forEach(id -> buscarActivoPorProducto(id).ifPresent(d -> resultado.put(id, d)));
             return resultado;
+        }
+
+        @Override
+        public Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds) {
+            Map<Long, List<Descuento>> escalones = new HashMap<>();
+            for (Long productoId : productoIds) {
+                List<Descuento> nivel = buscarEscalonesActivosPorProducto(productoId);
+                if (!nivel.isEmpty()) {
+                    escalones.put(productoId, nivel);
+                }
+            }
+            return Map.copyOf(escalones);
         }
 
         @Override

@@ -9,7 +9,7 @@ public final class NegocioMapper {
     }
 
     public static Negocio toDomain(NegocioEntity entity) {
-        return new Negocio(entity.getId(), entity.getNombre(), entity.getLogo(),
+        return new Negocio(entity.getId(), entity.getNombre(), entity.getLogo(), entity.getEslogan(),
             entity.getFechaCreacion(), entity.getFechaActualizacion(), entity.getFechaEliminacion(),
             entity.isActivo(), entity.getVersion());
     }
@@ -24,6 +24,7 @@ public final class NegocioMapper {
     static void actualizar(Negocio negocio, NegocioEntity entity) {
         entity.setNombre(negocio.getNombre());
         entity.setLogo(negocio.getLogo());
+        entity.setEslogan(negocio.getEslogan());
         entity.setActivo(negocio.isActivo());
         entity.setFechaEliminacion(negocio.getFechaEliminacion());
     }

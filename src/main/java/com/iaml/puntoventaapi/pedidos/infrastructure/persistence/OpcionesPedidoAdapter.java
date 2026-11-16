@@ -33,7 +33,8 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
         Map<Long, Producto> productos = new LinkedHashMap<>();
         jdbc.query("""
             with productos as (
-                select p.id, p.nombre, p.precio, p.id_categoria, c.id_area
+                select p.id, p.nombre, p.precio, p.id_categoria, c.id_area,
+                       a.nombre as area, c.nombre as categoria, p.imagen_url
                 from barrocontrol.producto p
                 join barrocontrol.categoria c on c.id = p.id_categoria
                 join barrocontrol.area a on a.id = c.id_area
@@ -62,7 +63,8 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
                 ) x
                 where x.prioridad = x.mejor
             )
-            select pr.id, pr.nombre, pr.precio, e.cantidad_minima, e.cantidad_maxima, e.descuento
+            select pr.id, pr.nombre, pr.precio, e.cantidad_minima, e.cantidad_maxima, e.descuento,
+                   pr.id_area, pr.area, pr.id_categoria, pr.categoria, pr.imagen_url
             from productos pr
             left join escalones e on e.producto = pr.id
             order by pr.nombre, pr.id, e.cantidad_minima, e.id
@@ -70,7 +72,8 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
                 long id = rs.getLong(1);
                 Producto producto = productos.get(id);
                 if (producto == null) {
-                    producto = new Producto(id, rs.getString(2), rs.getBigDecimal(3), new ArrayList<>());
+                    producto = new Producto(id, rs.getString(2), rs.getBigDecimal(3), new ArrayList<>(),
+                        rs.getLong(7), rs.getString(8), rs.getLong(9), rs.getString(10), rs.getString(11));
                     productos.put(id, producto);
                 }
                 Integer minimo = rs.getObject(4, Integer.class);
@@ -80,7 +83,8 @@ public class OpcionesPedidoAdapter implements OpcionesPedidoPort {
                 }
             }, negocioId);
         return productos.values().stream()
-            .map(p -> new Producto(p.id(), p.nombre(), p.precio(), List.copyOf(p.descuentos())))
+            .map(p -> new Producto(p.id(), p.nombre(), p.precio(), List.copyOf(p.descuentos()),
+                p.areaId(), p.area(), p.categoriaId(), p.categoria(), p.imagenUrl()))
             .toList();
     }
 

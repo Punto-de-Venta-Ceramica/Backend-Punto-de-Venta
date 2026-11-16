@@ -12,13 +12,14 @@ public class NegocioResponse {
     private Long id;
     private String nombre;
     private String logo;
+    private String eslogan;
     private Instant fechaCreacion;
     private Instant fechaActualizacion;
     private Instant fechaEliminacion;
     private boolean activo;
 
     public static NegocioResponse from(Negocio negocio) {
-        return new NegocioResponse(negocio.getId(), negocio.getNombre(), negocio.getLogo(),
+        return new NegocioResponse(negocio.getId(), negocio.getNombre(), negocio.getLogo(), negocio.getEslogan(),
             negocio.getFechaCreacion(), negocio.getFechaActualizacion(), negocio.getFechaEliminacion(),
             negocio.isActivo());
     }

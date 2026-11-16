@@ -37,6 +37,9 @@ public class DetalleVenta {
     @Column(name = "cantidad", nullable = false)
     private Integer cantidad;
 
+    @Column(name = "nombre_producto", length = 150, updatable = false)
+    private String nombreProducto;
+
     @NotNull
     @DecimalMin("0.00")
     @Digits(integer = 12, fraction = 2)

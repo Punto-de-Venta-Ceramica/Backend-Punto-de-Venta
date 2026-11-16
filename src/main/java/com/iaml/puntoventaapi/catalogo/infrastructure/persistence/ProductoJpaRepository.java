@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Long> {
@@ -34,6 +35,17 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
         order by p.nombre, p.id
         """)
     List<ProductoEntity> listarActivosPorNegocio(@Param("negocioId") Long negocioId);
+
+    @Query("""
+        select p from ProductoEntity p
+        join p.categoria c
+        join c.area a
+        where a.negocio.id = :negocioId and p.id in :productoIds
+          and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
+        order by p.nombre, p.id
+        """)
+    List<ProductoEntity> listarActivosPorIds(@Param("negocioId") Long negocioId,
+                                            @Param("productoIds") Collection<Long> productoIds);
 
     /** Texto ya en minúsculas y con comodines (%texto%); los demás filtros null no se aplican. */
     /** Igual que buscarActivoDelUsuario, pero trae categoría y área en la misma consulta. */

@@ -1,5 +1,8 @@
 package com.iaml.puntoventaapi.inventario.application;
 
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
+
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.exception.ExistenciaInsuficienteException;
@@ -165,6 +168,17 @@ class InventarioServiceTest {
 
     /** Repositorio en memoria; "buscarParaAjuste" solo entrega registros del propietario de prueba. */
     private static final class FakeInventarios implements InventarioRepositorioPort {
+        @Override
+        public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                                   String buscar, int pagina, int tamanio) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Inventario> bloquearActivosParaVenta(Long sucursalId, java.util.Collection<Long> productoIds) {
+            throw new UnsupportedOperationException();
+        }
+
 
         final Map<Long, Inventario> guardados = new HashMap<>();
 

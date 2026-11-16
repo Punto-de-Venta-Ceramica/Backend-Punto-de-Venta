@@ -9,10 +9,12 @@ import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/negocios/{negocioId}/areas")
+@PreAuthorize("hasRole('PROPIETARIO')")
 public class AreaController {
 
     private final AreaService areas;
@@ -31,7 +33,9 @@ public class AreaController {
             .body(area);
     }
 
+    /** Con sucursalId, el empleado asignado consulta las áreas para filtrar productos (HU-05). */
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public List<AreaResponse> listar(@PathVariable @Positive Long negocioId,
                                      @RequestParam(required = false) Long sucursalId) {
         return areas.listar(negocioId, usuarioActual.id(), sucursalId).stream().map(AreaResponse::from).toList();

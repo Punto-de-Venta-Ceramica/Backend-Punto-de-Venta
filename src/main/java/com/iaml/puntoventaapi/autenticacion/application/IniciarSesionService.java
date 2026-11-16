@@ -32,7 +32,12 @@ public class IniciarSesionService {
                 .orElseThrow(() -> correoInexistente(command.password()));
             credencial.verificarPassword(command.password(), hasher);
             intentos.limpiar(command.correo());
-            return tokens.generar(credencial);
+            Sesion sesion = tokens.generar(credencial);
+            if (credencial.isPasswordMustChange()) {
+                sesion = new Sesion(sesion.token(), sesion.expiraEn(), sesion.refreshToken(),
+                    sesion.refreshExpiraEn(), sesion.usuarioId(), sesion.rol(), true);
+            }
+            return sesion;
         } catch (CredencialesInvalidasException ex) {
             intentos.registrarFallo(command.correo());
             throw ex;

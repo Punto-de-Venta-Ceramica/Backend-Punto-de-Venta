@@ -40,9 +40,25 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositorioPort {
     @Override
     @Transactional
     public Usuario guardar(Usuario usuario) {
-        RolEntity rol = entityManager.getReference(RolEntity.class, usuario.getRolId());
         try {
-            return UsuarioMapper.toDomain(usuarioJpaRepository.saveAndFlush(UsuarioMapper.toEntity(usuario, rol)));
+            UsuarioEntity entity;
+            if (usuario.getId() != null) {
+                // Actualización: cargar entidad existente y actualizar sus campos
+                entity = usuarioJpaRepository.findById(usuario.getId())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + usuario.getId()));
+                entity.setNombre(usuario.getNombre());
+                entity.setApellidoPaterno(usuario.getApellidoPaterno());
+                entity.setApellidoMaterno(usuario.getApellidoMaterno());
+                entity.setCorreo(usuario.getCorreo());
+                entity.setTelefono(usuario.getTelefono());
+                entity.setPasswordHash(usuario.getPasswordHash());
+                entity.setPasswordMustChange(usuario.isPasswordMustChange());
+            } else {
+                // Inserción nueva
+                RolEntity rol = entityManager.getReference(RolEntity.class, usuario.getRolId());
+                entity = UsuarioMapper.toEntity(usuario, rol);
+            }
+            return UsuarioMapper.toDomain(usuarioJpaRepository.saveAndFlush(entity));
         } catch (DataIntegrityViolationException ex) {
             for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
                 if (cause instanceof ConstraintViolationException violation

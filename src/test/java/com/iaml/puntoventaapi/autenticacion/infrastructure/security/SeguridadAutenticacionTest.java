@@ -2,6 +2,8 @@ package com.iaml.puntoventaapi.autenticacion.infrastructure.security;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.iaml.puntoventaapi.autenticacion.domain.port.AutoridadesVigentesPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -23,6 +25,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,8 +40,15 @@ class SeguridadAutenticacionTest {
 
     @EnableWebSecurity
     @EnableWebMvc
-    @Import({SecurityConfig.class, Pruebas.class})
+    @Import({SecurityConfig.class, AutoridadesVigentesConverter.class, Pruebas.class})
     static class Config {
+        /** Fuente de permisos vigentes simulada: el usuario 7 sigue siendo empleado. */
+        @Bean
+        AutoridadesVigentesPort autoridadesVigentes() {
+            return usuarioId -> usuarioId == 7
+                ? Optional.of(new AutoridadesVigentesPort.Autoridades("EMPLEADO", List.of()))
+                : Optional.empty();
+        }
     }
 
     @RestController
@@ -70,7 +80,7 @@ class SeguridadAutenticacionTest {
 
     private String token(String tipo) {
         JwtClaimsSet claims = JwtClaimsSet.builder().subject("7").issuedAt(Instant.now())
-            .expiresAt(Instant.now().plusSeconds(60)).claim("tipo", tipo)
+            .expiresAt(Instant.now().plusSeconds(60)).claim("tipo", tipo).claim("rol", "EMPLEADO")
             .claim("autoridades", List.of("ROLE_EMPLEADO")).build();
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
             .getTokenValue();

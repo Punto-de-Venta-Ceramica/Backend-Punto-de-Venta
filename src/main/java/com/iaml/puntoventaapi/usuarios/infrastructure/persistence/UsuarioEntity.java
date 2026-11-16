@@ -63,4 +63,7 @@ public class UsuarioEntity extends EntidadConId {
     @NotBlank
     @Column(name = "password_hash", nullable = false, columnDefinition = "text")
     private String passwordHash;
+
+    @Column(name = "password_must_change", nullable = false, columnDefinition = "boolean default false")
+    private boolean passwordMustChange = false;
 }

@@ -22,8 +22,6 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -44,7 +42,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AutoridadesVigentesConverter converter) throws Exception {
         return http
             .cors(Customizer.withDefaults())
             // CSRF se desactiva a propósito: la API es stateless (sin sesión ni cookies de autenticación);
@@ -54,10 +52,14 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // /api/auth/password requiere JWT válido (usuario autenticado cambia su propia contraseña)
+                .requestMatchers(HttpMethod.PATCH, "/api/auth/password").authenticated()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/registro").permitAll()
+                .requestMatchers("/api/reportes", "/api/reportes/**", "/api/contabilidad", "/api/contabilidad/**")
+                    .hasRole("PROPIETARIO")
                 .anyRequest().authenticated())
-            .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+            .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
             .build();
     }
 
@@ -82,15 +84,6 @@ public class SecurityConfig {
             : OAuth2TokenValidatorResult.success();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), noRenovacion));
         return decoder;
-    }
-
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter autoridades = new JwtGrantedAuthoritiesConverter();
-        autoridades.setAuthoritiesClaimName(JwtTokenAdapter.CLAIM_AUTORIDADES);
-        autoridades.setAuthorityPrefix("");
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(autoridades);
-        return converter;
     }
 
 }

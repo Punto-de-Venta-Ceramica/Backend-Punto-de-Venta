@@ -23,12 +23,13 @@ class PedidoTest {
     }
 
     @Test
-    void reservaProduccionYCancelacionAlPropietario() {
+    void reservaProduccionEntregaYCancelacionAlPropietario() {
         var pedido = new Pedido(List.of(new DetallePedido(1, 1, cantidad("50.00"), cantidad("0.00"))));
         assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.PRODUCCION, false));
         assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.CANCELADO, false));
         pedido.cambiarEstado(EstadoPedido.PRODUCCION, true);
-        pedido.cambiarEstado(EstadoPedido.ENTREGADO, false);
+        assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, false));
+        pedido.cambiarEstado(EstadoPedido.ENTREGADO, true);
         assertEquals(EstadoPedido.ENTREGADO, pedido.estado());
         pedido.cambiarEstado(EstadoPedido.CANCELADO, true);
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENCARGADO, true));
@@ -39,11 +40,12 @@ class PedidoTest {
     @Test
     void impideSaltarORetrocederEstados() {
         var pedido = new Pedido(List.of(new DetallePedido(1, 1, cantidad("50.00"), cantidad("0.00"))));
-        assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, false));
+        assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, true));
         pedido.cambiarEstado(EstadoPedido.PRODUCCION, true);
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENCARGADO, true));
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.TERMINADO, true));
-        pedido.cambiarEstado(EstadoPedido.ENTREGADO, false);
+        pedido.cambiarEstado(EstadoPedido.ENTREGADO, true);
+        // El empleado sí puede terminar el pedido.
         pedido.cambiarEstado(EstadoPedido.TERMINADO, false);
         assertEquals(EstadoPedido.TERMINADO, pedido.estado());
     }

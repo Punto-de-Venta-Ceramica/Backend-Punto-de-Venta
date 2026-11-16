@@ -89,7 +89,7 @@ public class JwtTokenAdapter implements TokenPort, RefreshTokenPort {
             .claim("rol", rol)
             .claim(CLAIM_AUTORIDADES, autoridades)
             .build());
-        return new Sesion(acceso, expiraAcceso, renovacion, expiraRenovacion, credencial.getUsuarioId(), rol);
+        return new Sesion(acceso, expiraAcceso, renovacion, expiraRenovacion, credencial.getUsuarioId(), rol, false);
     }
 
     @Override

@@ -7,13 +7,11 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/cortes-caja")
@@ -49,13 +47,17 @@ public class CorteCajaController {
         return ResponseEntity.ok(respuesta);
     }
 
+    /** Cortes anteriores: información financiera del negocio, solo del propietario (HU-05). */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<CorteCajaResponse> consultarCorte(@PathVariable("id") Long id) {
         CorteCajaResponse respuesta = corteCajaService.consultarCorte(id, usuarioActual.id());
         return ResponseEntity.ok(respuesta);
     }
 
+    /** Historial de cortes: solo el propietario. El empleado abre y cierra el corte de su turno. */
     @GetMapping
+    @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<Page<ResumenCorteCajaDto>> listarHistorial(
         @RequestParam(name = "sucursalId", required = false) Long sucursalId,
         @RequestParam(name = "page", defaultValue = "0") int page,

@@ -61,7 +61,7 @@ public class InventarioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(creada);
     }
 
-    /** Quita el producto de la sucursal; su existencia se conserva por si se vuelve a asignar. */
+    /** Quita el producto de la sucursal y deja su existencia en cero. */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('PROPIETARIO')")
     public ResponseEntity<Void> quitar(@PathVariable Long id) {

@@ -13,11 +13,12 @@ class InventarioReglasExtraTest {
         assertThrows(IllegalStateException.class, () -> inventario.reactivar(1));
         inventario.desactivar();
         assertFalse(inventario.isActivo());
+        assertEquals(0, inventario.getExistencia());
         assertThrows(IllegalStateException.class, inventario::desactivar);
 
         inventario.reactivar(null);
         assertTrue(inventario.isActivo());
-        assertEquals(4, inventario.getExistencia());
+        assertEquals(0, inventario.getExistencia());
 
         inventario.desactivar();
         inventario.reactivar(9);

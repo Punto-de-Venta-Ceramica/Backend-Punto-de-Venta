@@ -18,7 +18,7 @@ public final class Inventario {
         this(id, sucursalId, productoId, existencia, true);
     }
 
-    /** Un registro inactivo significa que el producto se quitó de la sucursal; conserva su existencia. */
+    /** Un registro inactivo significa que el producto se quitó de la sucursal; su existencia queda en cero. */
     public Inventario(Long id, Long sucursalId, Long productoId, int existencia, boolean activo) {
         if (sucursalId == null || sucursalId <= 0) {
             throw new IllegalArgumentException("La sucursal debe tener un identificador positivo.");
@@ -33,25 +33,24 @@ public final class Inventario {
         this.activo = activo;
     }
 
-    /** Quita el producto de la sucursal sin perder la existencia registrada. */
+    /** Quita el producto de la sucursal y deja su existencia en cero. */
     public void desactivar() {
         if (!activo) {
             throw new IllegalStateException("El producto ya no está asignado a esta sucursal.");
         }
+        setExistencia(0);
         this.activo = false;
     }
 
     /**
-     * Vuelve a asignar el producto a la sucursal. Sin existencia indicada (null) conserva
-     * la que tenía cuando se quitó.
+     * Vuelve a asignar el producto a la sucursal. Sin existencia indicada (null) empieza en cero,
+     * igual que una asignación nueva.
      */
     public void reactivar(Integer existencia) {
         if (activo) {
             throw new IllegalStateException("El producto ya está asignado a esta sucursal.");
         }
-        if (existencia != null) {
-            setExistencia(existencia);
-        }
+        setExistencia(existencia == null ? 0 : existencia);
         this.activo = true;
     }
 

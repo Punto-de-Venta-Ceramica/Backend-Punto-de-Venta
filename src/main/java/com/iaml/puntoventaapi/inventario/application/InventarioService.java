@@ -99,4 +99,13 @@ public class InventarioService {
         inventario.ajustar(cantidad);
         return inventarios.guardar(inventario);
     }
+
+    /** Entrada de piezas: solo suma. Es lo único que el empleado puede hacer con la existencia. */
+    @Transactional
+    public Inventario agregar(Long inventarioId, int cantidad, Long usuarioId) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("Solo se pueden agregar piezas.");
+        }
+        return ajustar(inventarioId, cantidad, usuarioId);
+    }
 }

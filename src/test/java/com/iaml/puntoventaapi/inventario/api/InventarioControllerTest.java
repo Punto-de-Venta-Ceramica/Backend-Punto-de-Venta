@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.inventario.api;
 
+import com.iaml.puntoventaapi.inventario.api.dto.AgregarExistenciaRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.AjustarExistenciaRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.AsignarProductoRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.ExistenciaResponse;
@@ -17,6 +18,7 @@ import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
@@ -98,6 +100,31 @@ class InventarioControllerTest {
         mvc.perform(patch("/api/inventario/4/existencia").contentType("application/json")
                 .content("{\"cantidad\":0}"))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void agregarSoloAceptaCantidadesPositivas() throws Exception {
+        when(service.agregar(4L, 5, 7L)).thenReturn(new Inventario(4L, 3L, 2L, 12));
+
+        mvc.perform(post("/api/inventario/4/entradas").contentType("application/json")
+                .content("{\"cantidad\":5}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.existencia").value(12));
+        for (String cantidad : List.of("0", "-3", "1000001", "null")) {
+            mvc.perform(post("/api/inventario/4/entradas").contentType("application/json")
+                    .content("{\"cantidad\":" + cantidad + "}"))
+                .andExpect(status().isBadRequest());
+        }
+        verify(service).agregar(4L, 5, 7L);
+    }
+
+    @Test
+    void soloElPropietarioAjustaLibremente() throws Exception {
+        var ajustar = InventarioController.class.getMethod("ajustar", Long.class, AjustarExistenciaRequest.class);
+        var agregar = InventarioController.class.getMethod("agregar", Long.class, AgregarExistenciaRequest.class);
+        assertEquals("hasRole('PROPIETARIO')", ajustar.getAnnotation(PreAuthorize.class).value());
+        // Sin anotación propia: hereda la de la clase, que admite al empleado.
+        assertEquals(null, agregar.getAnnotation(PreAuthorize.class));
     }
 
     @Test

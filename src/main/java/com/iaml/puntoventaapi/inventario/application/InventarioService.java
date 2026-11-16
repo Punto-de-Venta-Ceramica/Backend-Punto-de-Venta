@@ -53,7 +53,7 @@ public class InventarioService {
     /**
      * Asigna un producto ya registrado a otra sucursal del mismo negocio. Un producto o una sucursal
      * ajenos o inexistentes producen la misma respuesta pública. Si el producto se había quitado de esa
-     * sucursal, se reactiva su registro: sin existencia indicada (null) conserva la que tenía.
+     * sucursal, se reactiva su registro: sin existencia indicada (null) empieza en cero.
      */
     @Transactional
     public Inventario asignar(Long productoId, Long sucursalId, Integer existencia, Long usuarioId) {
@@ -77,7 +77,7 @@ public class InventarioService {
     }
 
     /**
-     * Quita el producto de una sucursal (baja lógica): la existencia se conserva por si se vuelve a asignar.
+     * Quita el producto de una sucursal (baja lógica) y deja su existencia en cero.
      * El producto debe seguir asignado al menos a otra sucursal.
      */
     @Transactional

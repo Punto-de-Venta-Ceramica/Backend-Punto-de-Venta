@@ -5,8 +5,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * Asigna un producto existente a una sucursal. Sin existencia (null): 0 en una asignación nueva, o la que
- * tenía si el producto se había quitado de esa sucursal.
+ * Asigna un producto existente a una sucursal. Sin existencia (null) empieza en 0, también si el producto
+ * se había quitado antes de esa sucursal.
  */
 public record AsignarProductoRequest(
         @NotNull(message = "El producto es obligatorio.") Long productoId,

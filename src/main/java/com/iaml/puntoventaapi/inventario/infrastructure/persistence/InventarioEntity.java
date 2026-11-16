@@ -34,7 +34,7 @@ public class InventarioEntity extends EntidadConId {
     @Column(name = "existencia", nullable = false)
     private Integer existencia = 0;
 
-    // Baja lógica por sucursal: quitar el producto conserva la fila y su existencia.
+    // Baja lógica por sucursal: quitar el producto conserva la fila con existencia en cero.
     @ColumnDefault("true")
     @Column(name = "activo", nullable = false)
     private boolean activo = true;

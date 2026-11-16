@@ -126,7 +126,7 @@ class InventarioServiceTest {
         service.quitar(2L, PROPIETARIO);
 
         assertFalse(repositorio.guardados.get(2L).isActivo());
-        assertEquals(3, repositorio.guardados.get(2L).getExistencia());
+        assertEquals(0, repositorio.guardados.get(2L).getExistencia());
         assertThrows(InventarioNoEncontradoException.class, () -> service.ajustar(2L, 1, PROPIETARIO));
     }
 
@@ -143,14 +143,14 @@ class InventarioServiceTest {
     }
 
     @Test
-    void reasignarReactivaElRegistroYConservaOReemplazaLaExistencia() {
+    void reasignarReactivaElRegistroEnCeroOConLaExistenciaIndicada() {
         repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
         repositorio.registrar(new Inventario(2L, 11L, 20L, 3, false));
 
-        Inventario conservado = service.asignar(20L, 11L, null, PROPIETARIO);
-        assertEquals(2L, conservado.getId());
-        assertTrue(conservado.isActivo());
-        assertEquals(3, conservado.getExistencia());
+        Inventario reactivado = service.asignar(20L, 11L, null, PROPIETARIO);
+        assertEquals(2L, reactivado.getId());
+        assertTrue(reactivado.isActivo());
+        assertEquals(0, reactivado.getExistencia());
 
         service.quitar(2L, PROPIETARIO);
         assertEquals(9, service.asignar(20L, 11L, 9, PROPIETARIO).getExistencia());

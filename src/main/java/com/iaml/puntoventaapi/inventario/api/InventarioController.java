@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.inventario.api;
 
+import com.iaml.puntoventaapi.inventario.api.dto.AgregarExistenciaRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.AjustarExistenciaRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.AsignarProductoRequest;
 import com.iaml.puntoventaapi.inventario.api.dto.ExistenciaResponse;
@@ -74,5 +75,11 @@ public class InventarioController {
     @PreAuthorize("hasRole('PROPIETARIO')")
     public ExistenciaResponse ajustar(@PathVariable Long id, @Valid @RequestBody AjustarExistenciaRequest request) {
         return ExistenciaResponse.from(inventario.ajustar(id, request.cantidad(), usuarioActual.id()));
+    }
+
+    /** Entrada de piezas: el empleado de la sucursal (o el propietario) solo puede sumar. */
+    @PostMapping("/{id}/entradas")
+    public ExistenciaResponse agregar(@PathVariable Long id, @Valid @RequestBody AgregarExistenciaRequest request) {
+        return ExistenciaResponse.from(inventario.agregar(id, request.cantidad(), usuarioActual.id()));
     }
 }

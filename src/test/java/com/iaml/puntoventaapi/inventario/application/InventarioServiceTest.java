@@ -58,6 +58,16 @@ class InventarioServiceTest {
     }
 
     @Test
+    void agregarSoloSuma() {
+        repositorio.registrar(new Inventario(1L, 10L, 20L, 5));
+
+        assertEquals(9, service.agregar(1L, 4, PROPIETARIO).getExistencia());
+        assertThrows(IllegalArgumentException.class, () -> service.agregar(1L, 0, PROPIETARIO));
+        assertThrows(IllegalArgumentException.class, () -> service.agregar(1L, -2, PROPIETARIO));
+        assertEquals(9, repositorio.guardados.get(1L).getExistencia());
+    }
+
+    @Test
     void noGuardaSiLaExistenciaQuedariaNegativa() {
         repositorio.registrar(new Inventario(1L, 10L, 20L, 2));
 

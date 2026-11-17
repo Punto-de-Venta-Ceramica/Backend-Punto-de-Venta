@@ -71,9 +71,9 @@ public class AreaService {
     @Transactional
     public void eliminar(Long negocioId, Long areaId, Long usuarioId) {
         Area area = consultarParaActualizar(negocioId, areaId, usuarioId);
-        if (productos.existenPorArea(areaId)) {
+        if (productos.existenActivosPorArea(areaId)) {
             throw new ClasificacionConProductosException(
-                "No se puede eliminar el área porque alguna de sus categorías tiene productos relacionados.");
+                "No se puede eliminar el área porque alguna de sus categorías tiene productos activos relacionados.");
         }
         Instant fecha = Instant.now();
         for (Categoria categoria : categorias.listarPorArea(areaId, negocioId)) {

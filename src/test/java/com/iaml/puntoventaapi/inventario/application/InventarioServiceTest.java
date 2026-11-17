@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.inventario.application;
 
 import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
@@ -170,7 +171,7 @@ class InventarioServiceTest {
     private static final class FakeInventarios implements InventarioRepositorioPort {
         @Override
         public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
-                                                                   String buscar, int pagina, int tamanio) {
+                                                                   FiltroProductosVenta filtros, int pagina, int tamanio) {
             throw new UnsupportedOperationException();
         }
 

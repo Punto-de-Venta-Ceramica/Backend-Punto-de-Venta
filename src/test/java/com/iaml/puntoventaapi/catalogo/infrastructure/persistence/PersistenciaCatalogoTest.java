@@ -227,8 +227,8 @@ class PersistenciaCatalogoTest {
         when(jpa.buscarActivoConClasificacionEnNegocio(5L, 1L)).thenReturn(Optional.of(existente));
         when(jpa.listarActivosPorNegocio(1L)).thenReturn(List.of(existente));
         when(jpa.existsByImagenPublicIdAndActivoTrueAndIdNot("pid", 5L)).thenReturn(true);
-        when(jpa.existsByCategoria_Id(3L)).thenReturn(true);
-        when(jpa.existsByCategoria_Area_Id(2L)).thenReturn(true);
+        when(jpa.existsByCategoria_IdAndActivoTrue(3L)).thenReturn(true);
+        when(jpa.existsByCategoria_Area_IdAndActivoTrue(2L)).thenReturn(true);
 
         assertEquals("Nuevo", adapter.guardar(new Producto(null, 3L, "Nuevo", BigDecimal.ONE, true)).getNombre());
         assertEquals("Editado", adapter.guardar(new Producto(5L, 3L, "Editado", BigDecimal.ONE, true)).getNombre());
@@ -241,8 +241,8 @@ class PersistenciaCatalogoTest {
         assertTrue(adapter.buscarConClasificacionEnNegocio(5L, 1L).isPresent());
         assertEquals(1, adapter.listarPorNegocio(1L).size());
         assertTrue(adapter.imagenUsadaPorOtroProducto("pid", 5L));
-        assertTrue(adapter.existenPorCategoria(3L));
-        assertTrue(adapter.existenPorArea(2L));
+        assertTrue(adapter.existenActivosPorCategoria(3L));
+        assertTrue(adapter.existenActivosPorArea(2L));
         verify(jpa, never()).findById(null);
     }
 

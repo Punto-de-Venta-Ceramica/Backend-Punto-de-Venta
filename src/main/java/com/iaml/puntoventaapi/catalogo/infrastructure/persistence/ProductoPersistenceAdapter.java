@@ -116,13 +116,13 @@ public class ProductoPersistenceAdapter implements ProductoRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existenPorCategoria(Long categoriaId) {
-        return productos.existsByCategoria_Id(categoriaId);
+    public boolean existenActivosPorCategoria(Long categoriaId) {
+        return productos.existsByCategoria_IdAndActivoTrue(categoriaId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existenPorArea(Long areaId) {
-        return productos.existsByCategoria_Area_Id(areaId);
+    public boolean existenActivosPorArea(Long areaId) {
+        return productos.existsByCategoria_Area_IdAndActivoTrue(areaId);
     }
 }

@@ -4,6 +4,7 @@ import com.iaml.puntoventaapi.inventario.InventarioContrato;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,8 +41,8 @@ public class InventarioContratoService implements InventarioContrato {
     @Override
     @Transactional(readOnly = true)
     public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
-                                                                String buscar, int pagina, int tamanio) {
-        return inventarios.listarProductosParaVenta(negocioId, sucursalId, buscar, pagina, tamanio);
+                                                                FiltroProductosVenta filtros, int pagina, int tamanio) {
+        return inventarios.listarProductosParaVenta(negocioId, sucursalId, filtros, pagina, tamanio);
     }
 
     @Override

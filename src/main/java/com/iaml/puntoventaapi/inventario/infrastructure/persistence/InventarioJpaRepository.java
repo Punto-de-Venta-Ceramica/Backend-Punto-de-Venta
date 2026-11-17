@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -39,12 +40,20 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         where i.sucursal.id = :sucursalId and i.sucursal.negocio.id = :negocioId and a.negocio.id = :negocioId
           and i.activo = true and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
           and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId)
+          and (:areaId is null or a.id = :areaId)
+          and (:categoriaId is null or c.id = :categoriaId)
+          and (:precioMinimo is null or p.precio >= :precioMinimo)
+          and (:precioMaximo is null or p.precio <= :precioMaximo)
         order by lower(p.nombre), p.id
         """)
     Page<ProductoEnSucursal> listarProductosParaVenta(@Param("negocioId") Long negocioId,
                                                        @Param("sucursalId") Long sucursalId,
                                                        @Param("texto") String texto,
                                                        @Param("productoId") Long productoId,
+                                                       @Param("areaId") Long areaId,
+                                                       @Param("categoriaId") Long categoriaId,
+                                                       @Param("precioMinimo") BigDecimal precioMinimo,
+                                                       @Param("precioMaximo") BigDecimal precioMaximo,
                                                        Pageable pageable);
 
     // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.

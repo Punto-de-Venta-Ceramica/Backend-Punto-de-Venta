@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.ventas.application;
 
 import com.iaml.puntoventaapi.ventas.domain.DetalleVenta;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 import com.iaml.puntoventaapi.ventas.domain.ProductoCotizado;
 import com.iaml.puntoventaapi.ventas.domain.ProductoDisponible;
@@ -53,13 +54,18 @@ public class PrepararVentaService {
     }
 
     /** Incluye existencia cero para que el cliente pueda mostrar los productos agotados. */
-    public Pagina<ProductoDisponible> listarProductos(Long sucursalId, Long usuarioId, String buscar,
+    public Pagina<ProductoDisponible> listarProductos(Long sucursalId, Long usuarioId, FiltroProductosVenta filtros,
                                                         int pagina, int tamanio) {
         Long negocioId = resolverNegocio(sucursalId, usuarioId);
+        if (filtros.precioMinimo() != null && filtros.precioMaximo() != null
+            && filtros.precioMinimo().compareTo(filtros.precioMaximo()) > 0) {
+            throw new DatosVentaInvalidosException(Map.of(
+                "precioMaximo", "El precio máximo no puede ser menor que el mínimo."));
+        }
         if ((long) pagina * tamanio > Integer.MAX_VALUE) {
             throw new DatosVentaInvalidosException(Map.of("page", "La página supera el máximo permitido."));
         }
-        var productos = inventario.listarProductos(negocioId, sucursalId, buscar, pagina, tamanio);
+        var productos = inventario.listarProductos(negocioId, sucursalId, filtros, pagina, tamanio);
         var descuentos = catalogo.descuentosDisponibles(
             productos.contenido().stream().map(ProductoDisponible::productoId).toList());
         return productos.mapear(producto ->

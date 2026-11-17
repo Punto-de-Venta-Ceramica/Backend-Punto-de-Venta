@@ -557,12 +557,12 @@ class ProductoServiceTest {
         }
 
         @Override
-        public boolean existenPorCategoria(Long categoriaId) {
+        public boolean existenActivosPorCategoria(Long categoriaId) {
             return guardados.values().stream().anyMatch(p -> p.getCategoriaId().equals(categoriaId));
         }
 
         @Override
-        public boolean existenPorArea(Long areaId) {
+        public boolean existenActivosPorArea(Long areaId) {
             return false;
         }
     }

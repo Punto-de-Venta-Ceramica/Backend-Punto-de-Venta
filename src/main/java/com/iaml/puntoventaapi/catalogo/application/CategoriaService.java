@@ -63,9 +63,9 @@ public class CategoriaService {
     public void eliminar(Long negocioId, Long areaId, Long categoriaId, Long usuarioId) {
         areas.consultarParaActualizar(negocioId, areaId, usuarioId);
         Categoria categoria = buscarCategoria(negocioId, areaId, categoriaId);
-        if (productos.existenPorCategoria(categoriaId)) {
+        if (productos.existenActivosPorCategoria(categoriaId)) {
             throw new ClasificacionConProductosException(
-                "No se puede eliminar la categoría porque tiene productos relacionados.");
+                "No se puede eliminar la categoría porque tiene productos activos relacionados.");
         }
         categorias.guardar(categoria.eliminar(Instant.now()), negocioId);
     }

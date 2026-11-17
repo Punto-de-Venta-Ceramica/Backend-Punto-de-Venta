@@ -46,7 +46,7 @@ public interface ProductoRepositorioPort {
     Optional<ClasificacionProducto> buscarClasificacion(Long categoriaId);
 
     /** Incluye productos activos y dados de baja, pues ambos conservan la relación. */
-    boolean existenPorCategoria(Long categoriaId);
+    boolean existenActivosPorCategoria(Long categoriaId);
 
-    boolean existenPorArea(Long areaId);
+    boolean existenActivosPorArea(Long areaId);
 }

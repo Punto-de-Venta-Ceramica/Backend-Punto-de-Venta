@@ -7,6 +7,7 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontrado
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
 import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.domain.Pagina;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -53,10 +54,11 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
 
     @Override
     public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
-                                                                String buscar, int pagina, int tamanio) {
-        String texto = buscar.strip().toLowerCase(Locale.ROOT);
+                                                                FiltroProductosVenta filtros, int pagina, int tamanio) {
+        String texto = filtros.buscar().strip().toLowerCase(Locale.ROOT);
         var resultado = inventarios.listarProductosParaVenta(negocioId, sucursalId, texto,
-            idBuscado(texto), PageRequest.of(pagina, tamanio));
+            idBuscado(texto), filtros.areaId(), filtros.categoriaId(), filtros.precioMinimo(),
+            filtros.precioMaximo(), PageRequest.of(pagina, tamanio));
         return new Pagina<>(resultado.getContent(), pagina, tamanio, resultado.getTotalElements());
     }
 

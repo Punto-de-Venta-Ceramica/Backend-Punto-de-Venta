@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.ventas.api;
 
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.ventas.api.dto.PrepararVentaRequest;
 import com.iaml.puntoventaapi.ventas.api.dto.PaginaProductosVentaResponse;
@@ -9,10 +10,12 @@ import com.iaml.puntoventaapi.ventas.application.ConfirmarVentaService;
 import com.iaml.puntoventaapi.ventas.application.EsloganTicketService;
 import com.iaml.puntoventaapi.ventas.application.PrepararVentaService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,9 +51,14 @@ public class VentaController {
     public PaginaProductosVentaResponse listarProductos(
             @RequestParam @Positive Long sucursalId,
             @RequestParam(defaultValue = "") @Size(max = 150) String buscar,
+            @RequestParam(required = false) @Positive Long areaId,
+            @RequestParam(required = false) @Positive Long categoriaId,
+            @RequestParam(required = false) @DecimalMin("0") BigDecimal precioMinimo,
+            @RequestParam(required = false) @DecimalMin("0") BigDecimal precioMaximo,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
-        return PaginaProductosVentaResponse.from(ventas.listarProductos(sucursalId, usuarioActual.id(), buscar, page, size));
+        var filtros = new FiltroProductosVenta(buscar, areaId, categoriaId, precioMinimo, precioMaximo);
+        return PaginaProductosVentaResponse.from(ventas.listarProductos(sucursalId, usuarioActual.id(), filtros, page, size));
     }
 
     @PostMapping("/preparar")

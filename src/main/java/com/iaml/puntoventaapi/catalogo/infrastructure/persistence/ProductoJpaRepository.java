@@ -115,11 +115,11 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
     @Query("select c.id, c.nombre, a.id, a.nombre from CategoriaEntity c join c.area a where c.id = :categoriaId")
     List<Object[]> clasificacionDeCategoria(@Param("categoriaId") Long categoriaId);
 
-    boolean existsByCategoria_Id(Long categoriaId);
+    boolean existsByCategoria_IdAndActivoTrue(Long categoriaId);
 
     boolean existsByImagenPublicIdAndActivoTrueAndIdNot(String imagenPublicId, Long id);
 
-    boolean existsByCategoria_Area_Id(Long areaId);
+    boolean existsByCategoria_Area_IdAndActivoTrue(Long areaId);
 
     @Query("""
         select p from ProductoEntity p join p.categoria c join c.area a

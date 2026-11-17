@@ -113,11 +113,11 @@ class AreaYCategoriaServiceTest {
     }
 
     @Test
-    void eliminaElAreaYSusCategoriasSiNoTieneProductos() {
+    void eliminaElAreaYSusCategoriasSiNoTieneProductosActivos() {
         Categoria c1 = new Categoria(10L, 1L, "Café", null);
         Categoria c2 = new Categoria(11L, 1L, "Té", null);
         when(areas.buscarPorIdParaActualizar(1L, NEGOCIO)).thenReturn(Optional.of(area(1L)));
-        when(productos.existenPorArea(1L)).thenReturn(false);
+        when(productos.existenActivosPorArea(1L)).thenReturn(false);
         when(categorias.listarPorArea(1L, NEGOCIO)).thenReturn(List.of(c1, c2));
 
         areaService.eliminar(NEGOCIO, 1L, USUARIO);
@@ -129,9 +129,9 @@ class AreaYCategoriaServiceTest {
     }
 
     @Test
-    void noEliminaUnAreaConProductos() {
+    void noEliminaUnAreaConProductosActivos() {
         when(areas.buscarPorIdParaActualizar(1L, NEGOCIO)).thenReturn(Optional.of(area(1L)));
-        when(productos.existenPorArea(1L)).thenReturn(true);
+        when(productos.existenActivosPorArea(1L)).thenReturn(true);
 
         assertThrows(ClasificacionConProductosException.class, () -> areaService.eliminar(NEGOCIO, 1L, USUARIO));
         verify(areas, never()).guardar(any());
@@ -183,10 +183,10 @@ class AreaYCategoriaServiceTest {
     }
 
     @Test
-    void eliminaUnaCategoriaSinProductosYRechazaConProductos() {
+    void eliminaUnaCategoriaSinProductosActivosYRechazaConProductosActivos() {
         areaDisponible();
         when(categorias.buscarPorId(3L, 1L, NEGOCIO)).thenReturn(Optional.of(new Categoria(3L, 1L, "Café", null)));
-        when(productos.existenPorCategoria(3L)).thenReturn(false, true);
+        when(productos.existenActivosPorCategoria(3L)).thenReturn(false, true);
 
         categoriaService.eliminar(NEGOCIO, 1L, 3L, USUARIO);
         verify(categorias).guardar(any(), eq(NEGOCIO));

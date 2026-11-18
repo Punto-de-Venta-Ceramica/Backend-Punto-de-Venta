@@ -51,13 +51,25 @@ public class UsuarioController {
         return PerfilUsuarioResponse.from(entity);
     }
 
-    @Operation(summary = "Actualizar perfil", description = "Actualiza los datos personales (nombre, apellidos, teléfono) del usuario autenticado.")
+    @Operation(summary = "Actualizar perfil", description = "Actualiza los datos personales (nombre, apellidos, teléfono, correo) del usuario autenticado.")
     @PutMapping("/perfil")
     @org.springframework.transaction.annotation.Transactional
     public PerfilUsuarioResponse actualizarPerfil(@Valid @RequestBody ActualizarPerfilRequest request) {
         Long usuarioId = usuarioActual.id();
         UsuarioEntity entity = usuarioJpaRepository.findById(usuarioId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (request.correo() != null && !request.correo().isBlank()) {
+            String nuevoCorreo = request.correo().trim();
+            if (!nuevoCorreo.equalsIgnoreCase(entity.getCorreo().trim())) {
+                usuarioJpaRepository.findByCorreoNormalizado(nuevoCorreo).ifPresent(existente -> {
+                    if (!existente.getId().equals(usuarioId)) {
+                        throw new CorreoYaRegistradoException("El correo electrónico ya está registrado por otro usuario.");
+                    }
+                });
+                entity.setCorreo(nuevoCorreo);
+            }
+        }
 
         entity.setNombre(request.nombre().trim());
         entity.setApellidoPaterno(request.apellidoPaterno() != null && !request.apellidoPaterno().isBlank() ? request.apellidoPaterno().trim() : null);

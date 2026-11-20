@@ -5,6 +5,7 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontrado
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteException;
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
+import com.iaml.puntoventaapi.inventario.domain.exception.UltimaSucursalException;
 import com.iaml.puntoventaapi.shared.security.UsuarioNoAutenticadoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -20,7 +21,8 @@ public class InventarioExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({ExistenciaInsuficienteException.class, InventarioYaExisteException.class})
+    @ExceptionHandler({ExistenciaInsuficienteException.class, InventarioYaExisteException.class,
+        UltimaSucursalException.class})
     public ProblemDetail conflicto(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }

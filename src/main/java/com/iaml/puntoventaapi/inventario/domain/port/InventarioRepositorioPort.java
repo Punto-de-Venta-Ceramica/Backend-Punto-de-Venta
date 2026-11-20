@@ -2,12 +2,16 @@ package com.iaml.puntoventaapi.inventario.domain.port;
 
 import com.iaml.puntoventaapi.inventario.domain.ExistenciaProducto;
 import com.iaml.puntoventaapi.inventario.domain.Inventario;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface InventarioRepositorioPort {
 
-    /** Inserta si no tiene id; si lo tiene, actualiza la existencia. */
+    /** Inserta si no tiene id; si lo tiene, actualiza la existencia y el estado activo. */
     Inventario guardar(Inventario inventario);
 
     /**
@@ -16,14 +20,32 @@ public interface InventarioRepositorioPort {
      */
     Optional<Inventario> buscarParaAjuste(Long inventarioId, Long usuarioId);
 
+    List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds);
+
+    Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                         FiltroProductosVenta filtros, int pagina, int tamanio);
+
     /** Negocio activo del usuario al que pertenece el producto activo; vacío si no es accesible. */
     Optional<Long> negocioDeProducto(Long productoId, Long usuarioId);
 
     /** Negocio activo del usuario al que pertenece la sucursal; vacío si no es accesible. */
     Optional<Long> negocioDeSucursal(Long sucursalId, Long usuarioId);
 
-    boolean existe(Long sucursalId, Long productoId);
+    /** Registro (activo o no) del producto en la sucursal, si alguna vez se asignó. */
+    Optional<Inventario> buscarPorSucursalYProducto(Long sucursalId, Long productoId);
 
-    /** Existencias de los productos activos del negocio; sucursalId es opcional. */
-    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId);
+    /**
+     * Registro activo de un producto activo en un negocio activo del propietario, bloqueado hasta que termine
+     * la transacción. Vacío si no es accesible. Debe llamarse dentro de una transacción.
+     */
+    Optional<Inventario> buscarParaQuitar(Long inventarioId, Long usuarioId);
+
+    /** Sucursales en las que el producto sigue asignado. */
+    long contarActivosDeProducto(Long productoId);
+
+    /** Existencias de los productos activos del negocio; sucursalId y productoId son filtros opcionales. */
+    List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId, Long usuarioId);
+
+    /** Existencias de un producto activo del usuario en cada sucursal; vacía si no es accesible. */
+    List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId);
 }

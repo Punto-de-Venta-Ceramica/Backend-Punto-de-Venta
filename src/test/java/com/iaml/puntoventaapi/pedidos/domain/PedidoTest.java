@@ -23,12 +23,13 @@ class PedidoTest {
     }
 
     @Test
-    void reservaProduccionYCancelacionAlPropietario() {
+    void reservaProduccionEntregaYCancelacionAlPropietario() {
         var pedido = new Pedido(List.of(new DetallePedido(1, 1, cantidad("50.00"), cantidad("0.00"))));
         assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.PRODUCCION, false));
         assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.CANCELADO, false));
         pedido.cambiarEstado(EstadoPedido.PRODUCCION, true);
-        pedido.cambiarEstado(EstadoPedido.ENTREGADO, false);
+        assertThrows(SecurityException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, false));
+        pedido.cambiarEstado(EstadoPedido.ENTREGADO, true);
         assertEquals(EstadoPedido.ENTREGADO, pedido.estado());
         pedido.cambiarEstado(EstadoPedido.CANCELADO, true);
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENCARGADO, true));
@@ -39,11 +40,12 @@ class PedidoTest {
     @Test
     void impideSaltarORetrocederEstados() {
         var pedido = new Pedido(List.of(new DetallePedido(1, 1, cantidad("50.00"), cantidad("0.00"))));
-        assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, false));
+        assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENTREGADO, true));
         pedido.cambiarEstado(EstadoPedido.PRODUCCION, true);
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.ENCARGADO, true));
         assertThrows(IllegalStateException.class, () -> pedido.cambiarEstado(EstadoPedido.TERMINADO, true));
-        pedido.cambiarEstado(EstadoPedido.ENTREGADO, false);
+        pedido.cambiarEstado(EstadoPedido.ENTREGADO, true);
+        // El empleado sí puede terminar el pedido.
         pedido.cambiarEstado(EstadoPedido.TERMINADO, false);
         assertEquals(EstadoPedido.TERMINADO, pedido.estado());
     }
@@ -64,9 +66,24 @@ class PedidoTest {
 
     @Test
     void aplicaDescuentoSoloCuandoLaCantidadEstaEnElRango() {
-        var sinDescuento = DetallePedido.desdeCatalogo(1, 4, cantidad("25.00"), 5, 10, cantidad("15.00"));
-        var conDescuento = DetallePedido.desdeCatalogo(1, 5, cantidad("25.00"), 5, 10, cantidad("15.00"));
+        var escalon = List.of(new EscalonDescuento(5, 10, cantidad("15.00")));
+        var sinDescuento = DetallePedido.desdeCatalogo(1, 4, cantidad("25.00"), escalon);
+        var conDescuento = DetallePedido.desdeCatalogo(1, 5, cantidad("25.00"), escalon);
         assertEquals(cantidad("100.00"), sinDescuento.subtotal());
         assertEquals(cantidad("106.25"), conDescuento.subtotal());
+    }
+
+    @Test
+    void aplicaSoloElEscalonEnQueCaeLaCantidad() {
+        var escalones = List.of(
+            new EscalonDescuento(5, 10, cantidad("5.00")),
+            new EscalonDescuento(11, 20, cantidad("10.00")),
+            new EscalonDescuento(21, null, cantidad("15.00")));
+        assertEquals(0, DetallePedido.desdeCatalogo(1, 4, cantidad("100.00"), escalones).porcentajeDescuento().signum());
+        assertEquals(cantidad("5.00"), DetallePedido.desdeCatalogo(1, 5, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("5.00"), DetallePedido.desdeCatalogo(1, 10, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("10.00"), DetallePedido.desdeCatalogo(1, 11, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(cantidad("15.00"), DetallePedido.desdeCatalogo(1, 50, cantidad("100.00"), escalones).porcentajeDescuento());
+        assertEquals(0, DetallePedido.desdeCatalogo(1, 50, cantidad("100.00"), List.of()).porcentajeDescuento().signum());
     }
 }

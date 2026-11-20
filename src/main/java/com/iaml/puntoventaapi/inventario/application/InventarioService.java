@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontrado
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioYaExisteException;
 import com.iaml.puntoventaapi.inventario.domain.exception.ProductoOSucursalNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.exception.NegocioNoEncontradoException;
+import com.iaml.puntoventaapi.inventario.domain.exception.UltimaSucursalException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.inventario.domain.port.NegocioPort;
 import lombok.RequiredArgsConstructor;
@@ -22,19 +23,40 @@ public class InventarioService {
 
     @Transactional(readOnly = true)
     public List<ExistenciaProducto> consultarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
-        // Un negocio ajeno y uno inexistente producen la misma respuesta pública.
-        if (!negocios.perteneceAUsuario(negocioId, usuarioId)) {
+        return consultarPanel(negocioId, sucursalId, null, usuarioId);
+    }
+
+    /** Con productoId el panel se limita a ese producto: lo que necesita el detalle que ve el empleado. */
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> consultarPanel(Long negocioId, Long sucursalId, Long productoId,
+                                                   Long usuarioId) {
+        // Un negocio ajeno y uno inexistente producen la misma respuesta pública. El empleado solo consulta
+        // una sucursal suya; el panel de todo el negocio es del propietario.
+        boolean permitido = sucursalId == null
+            ? negocios.perteneceAUsuario(negocioId, usuarioId)
+            : negocios.puedeOperarSucursal(negocioId, sucursalId, usuarioId);
+        if (!permitido) {
             throw new NegocioNoEncontradoException();
         }
-        return inventarios.listarPanel(negocioId, sucursalId, usuarioId);
+        return inventarios.listarPanel(negocioId, sucursalId, productoId, usuarioId);
+    }
+
+    /**
+     * Existencias de un solo producto (detalle). Un producto ajeno o inexistente devuelve una lista vacía,
+     * igual que uno sin sucursales asignadas: no revela si existe.
+     */
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> consultarPorProducto(Long productoId, Long usuarioId) {
+        return inventarios.listarPorProducto(productoId, usuarioId);
     }
 
     /**
      * Asigna un producto ya registrado a otra sucursal del mismo negocio. Un producto o una sucursal
-     * ajenos o inexistentes producen la misma respuesta pública.
+     * ajenos o inexistentes producen la misma respuesta pública. Si el producto se había quitado de esa
+     * sucursal, se reactiva su registro: sin existencia indicada (null) empieza en cero.
      */
     @Transactional
-    public Inventario asignar(Long productoId, Long sucursalId, int existencia, Long usuarioId) {
+    public Inventario asignar(Long productoId, Long sucursalId, Integer existencia, Long usuarioId) {
         Long negocioProducto = inventarios.negocioDeProducto(productoId, usuarioId)
             .orElseThrow(() -> new ProductoOSucursalNoEncontradoException());
         Long negocioSucursal = inventarios.negocioDeSucursal(sucursalId, usuarioId)
@@ -42,10 +64,31 @@ public class InventarioService {
         if (!negocioProducto.equals(negocioSucursal)) {
             throw new ProductoOSucursalNoEncontradoException();
         }
-        if (inventarios.existe(sucursalId, productoId)) {
+        Inventario previo = inventarios.buscarPorSucursalYProducto(sucursalId, productoId).orElse(null);
+        if (previo == null) {
+            return inventarios.guardar(new Inventario(null, sucursalId, productoId,
+                existencia == null ? 0 : existencia));
+        }
+        if (previo.isActivo()) {
             throw new InventarioYaExisteException();
         }
-        return inventarios.guardar(new Inventario(null, sucursalId, productoId, existencia));
+        previo.reactivar(existencia);
+        return inventarios.guardar(previo);
+    }
+
+    /**
+     * Quita el producto de una sucursal (baja lógica) y deja su existencia en cero.
+     * El producto debe seguir asignado al menos a otra sucursal.
+     */
+    @Transactional
+    public void quitar(Long inventarioId, Long usuarioId) {
+        Inventario inventario = inventarios.buscarParaQuitar(inventarioId, usuarioId)
+            .orElseThrow(() -> new InventarioNoEncontradoException());
+        if (inventarios.contarActivosDeProducto(inventario.getProductoId()) <= 1) {
+            throw new UltimaSucursalException();
+        }
+        inventario.desactivar();
+        inventarios.guardar(inventario);
     }
 
     /** El bloqueo de la fila dura hasta que termina esta transacción: lectura, regla y guardado son atómicos. */
@@ -55,5 +98,14 @@ public class InventarioService {
             .orElseThrow(() -> new InventarioNoEncontradoException());
         inventario.ajustar(cantidad);
         return inventarios.guardar(inventario);
+    }
+
+    /** Entrada de piezas: solo suma. Es lo único que el empleado puede hacer con la existencia. */
+    @Transactional
+    public Inventario agregar(Long inventarioId, int cantidad, Long usuarioId) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("Solo se pueden agregar piezas.");
+        }
+        return ajustar(inventarioId, cantidad, usuarioId);
     }
 }

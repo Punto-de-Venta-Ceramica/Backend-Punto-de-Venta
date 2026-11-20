@@ -36,4 +36,12 @@ public interface CategoriaJpaRepository extends JpaRepository<CategoriaEntity, L
         order by c.nombre, c.id
         """)
     List<CategoriaEntity> listarActivasPorArea(@Param("areaId") Long areaId, @Param("negocioId") Long negocioId);
+
+    @Query("""
+        select c from CategoriaEntity c
+        where c.area.negocio.id = :negocioId
+          and c.activo = true and c.area.activo = true and c.area.negocio.activo = true
+        order by c.area.nombre, c.area.id, c.nombre, c.id
+        """)
+    List<CategoriaEntity> listarActivasPorNegocio(@Param("negocioId") Long negocioId);
 }

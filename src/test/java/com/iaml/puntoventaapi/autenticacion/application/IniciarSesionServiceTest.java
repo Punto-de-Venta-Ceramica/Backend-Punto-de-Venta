@@ -5,6 +5,7 @@ import com.iaml.puntoventaapi.autenticacion.domain.Rol;
 import com.iaml.puntoventaapi.autenticacion.domain.Sesion;
 import com.iaml.puntoventaapi.autenticacion.domain.exception.CredencialesInvalidasException;
 import com.iaml.puntoventaapi.autenticacion.domain.port.CredencialRepositorioPort;
+import com.iaml.puntoventaapi.autenticacion.domain.exception.DemasiadosIntentosException;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Optional;
@@ -52,5 +53,29 @@ class IniciarSesionServiceTest {
     void rechazaCorreoInexistente() {
         assertThrows(CredencialesInvalidasException.class,
             () -> service.iniciarSesion(new IniciarSesionCommand("nadie@barro.mx", "secreto")));
+    }
+
+    @Test
+    void bloqueaElCorreoTrasDemasiadosFallosAunqueLaPasswordSeaCorrecta() {
+        for (int i = 0; i < ControlIntentos.MAXIMO; i++) {
+            assertThrows(CredencialesInvalidasException.class,
+                () -> service.iniciarSesion(new IniciarSesionCommand("dueno@barro.mx", "otra")));
+        }
+
+        assertThrows(DemasiadosIntentosException.class,
+            () -> service.iniciarSesion(new IniciarSesionCommand("Dueno@Barro.mx", "secreto")));
+    }
+
+    @Test
+    void unInicioCorrectoReiniciaLaCuentaDeFallos() {
+        for (int i = 0; i < ControlIntentos.MAXIMO - 1; i++) {
+            assertThrows(CredencialesInvalidasException.class,
+                () -> service.iniciarSesion(new IniciarSesionCommand("dueno@barro.mx", "otra")));
+        }
+        service.iniciarSesion(new IniciarSesionCommand("dueno@barro.mx", "secreto"));
+
+        assertThrows(CredencialesInvalidasException.class,
+            () -> service.iniciarSesion(new IniciarSesionCommand("dueno@barro.mx", "otra")));
+        assertEquals(7L, service.iniciarSesion(new IniciarSesionCommand("dueno@barro.mx", "secreto")).usuarioId());
     }
 }

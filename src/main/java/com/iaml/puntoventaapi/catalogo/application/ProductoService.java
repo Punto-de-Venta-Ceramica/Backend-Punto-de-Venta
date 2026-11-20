@@ -1,19 +1,25 @@
 package com.iaml.puntoventaapi.catalogo.application;
 
+import com.iaml.puntoventaapi.catalogo.domain.ClasificacionProducto;
 import com.iaml.puntoventaapi.catalogo.domain.Descuento;
+import com.iaml.puntoventaapi.catalogo.domain.FiltroProductos;
 import com.iaml.puntoventaapi.catalogo.domain.Producto;
 import com.iaml.puntoventaapi.catalogo.domain.ProductoDetalle;
 import com.iaml.puntoventaapi.catalogo.domain.exception.CategoriaNoEncontradaException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.NegocioNoEncontradoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoInvalidoException;
 import com.iaml.puntoventaapi.catalogo.domain.exception.ProductoNoEncontradoException;
+import com.iaml.puntoventaapi.catalogo.domain.port.AlmacenImagenesPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.CategoriaRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.DescuentoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.InventarioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.NegocioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.ProductoRepositorioPort;
 import com.iaml.puntoventaapi.catalogo.domain.port.SucursalPort;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
@@ -26,7 +32,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProductoService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ProductoService.class);
     private static final int NOMBRE_DESCUENTO_MAX = 120;
+    public static final int TAMANIO_PAGINA_MAX = 100;
 
     private final ProductoRepositorioPort productos;
     private final CategoriaRepositorioPort categorias;
@@ -34,21 +42,26 @@ public class ProductoService {
     private final NegocioPort negocios;
     private final SucursalPort sucursales;
     private final InventarioPort inventario;
+    private final AlmacenImagenesPort almacenImagenes;
 
     /** Producto, descuento (opcional) e inventario por sucursal se guardan en una sola transacción. */
     @Transactional
     public ProductoDetalle crear(CrearProductoCommand command, Long usuarioId) {
-        Long negocioId = resolverNegocioDeCategoria(command.categoriaId(), usuarioId);
-        Map<Long, Integer> existencias = resolverExistencias(negocioId, command.existencias(), usuarioId);
+        Long negocioId = categorias.buscarNegocioIdParaActualizar(command.categoriaId())
+            .orElseThrow(() -> new CategoriaNoEncontradaException());
+        // El propietario elige las sucursales; un empleado solo registra en la suya y sin descuento.
+        Map<Long, Integer> existencias = negocios.perteneceAUsuario(negocioId, usuarioId)
+            ? resolverExistencias(negocioId, command.existencias(), usuarioId)
+            : resolverExistenciasEmpleado(negocioId, command, usuarioId);
 
         Producto producto = productos.guardar(new Producto(null, command.categoriaId(), command.nombre(),
-            command.precio(), true));
+            command.precio(), command.imagenUrl(), command.imagenPublicId(), true));
         // Sin descuento propio, el producto puede heredar el de su categoría o área.
         Descuento descuento = command.descuento() == null
             ? descuentos.buscarActivoPorProducto(producto.getId()).orElse(null)
             : crearDescuento(producto, negocioId, command.descuento());
         inventario.registrarExistenciasIniciales(producto.getId(), existencias);
-        return new ProductoDetalle(producto, descuento);
+        return conClasificacion(producto, descuento);
     }
 
     /** Nunca modifica la existencia: eso es responsabilidad del módulo de inventario. */
@@ -56,45 +69,113 @@ public class ProductoService {
     public ProductoDetalle editar(EditarProductoCommand command, Long usuarioId) {
         Producto producto = buscarProducto(command.id(), usuarioId);
         Long categoriaAnterior = producto.getCategoriaId();
+        String publicIdAnterior = producto.getImagenPublicId();
+        String urlAnterior = producto.getImagenUrl();
         Long negocioId = categorias.buscarNegocioId(categoriaAnterior)
             .orElseThrow(() -> new CategoriaNoEncontradaException());
 
         producto.setNombre(command.nombre());
         producto.setPrecio(command.precio());
         producto.setCategoriaId(command.categoriaId());
+        producto.setImagenUrl(command.imagenUrl());
+        producto.setImagenPublicId(command.imagenPublicId());
         Long negocioNuevo = resolverNegocioDeCategoria(producto.getCategoriaId(), usuarioId);
         if (!negocioNuevo.equals(negocioId)) {
             throw new ProductoInvalidoException("La categoría debe pertenecer al mismo negocio del producto.");
         }
 
         Producto guardado = productos.guardar(producto);
-        return new ProductoDetalle(guardado, aplicarDescuento(guardado, negocioId, command.descuento()));
+        Descuento descuento = aplicarDescuento(guardado, negocioId, command.descuento());
+        if (cambioImagen(publicIdAnterior, urlAnterior, guardado) && publicIdAnterior != null) {
+            eliminarImagenSegura(publicIdAnterior, guardado.getId());
+        }
+        return conClasificacion(guardado, descuento);
     }
 
     /** Baja lógica: el producto sigue referenciado por ventas, pedidos e inventario. */
     @Transactional
     public void eliminar(Long id, Long usuarioId) {
         Producto producto = buscarProducto(id, usuarioId);
+        String publicIdAnterior = producto.getImagenPublicId();
         producto.desactivar();
         productos.guardar(producto);
+        if (publicIdAnterior != null) {
+            eliminarImagenSegura(publicIdAnterior, id);
+        }
+    }
+
+    /**
+     * El identificador de la imagen lo envía el cliente: si otro producto la usa, no es (solo) de este y no
+     * se borra. Así nadie puede eliminar la imagen de un producto ajeno apuntando el suyo a ella.
+     */
+    private void eliminarImagenSegura(String publicId, Long productoId) {
+        if (productos.imagenUsadaPorOtroProducto(publicId, productoId)) {
+            return;
+        }
+        try {
+            almacenImagenes.eliminar(publicId);
+        } catch (Exception ex) {
+            LOG.error("No se pudo eliminar la imagen '{}' en Cloudinary; la operación del producto continúa.", publicId, ex);
+        }
+    }
+
+    private static boolean cambioImagen(String publicIdAnterior, String urlAnterior, Producto actual) {
+        return !Objects.equals(publicIdAnterior, actual.getImagenPublicId())
+            || !Objects.equals(urlAnterior, actual.getImagenUrl());
     }
 
     @Transactional(readOnly = true)
     public ProductoDetalle consultar(Long id, Long usuarioId) {
-        Producto producto = buscarProducto(id, usuarioId);
-        return new ProductoDetalle(producto, descuentos.buscarActivoPorProducto(id).orElse(null));
+        return consultar(id, usuarioId, null);
     }
 
+    /** Con sucursalId, un empleado asignado a ella también puede consultar productos de ese negocio. */
     @Transactional(readOnly = true)
-    public List<ProductoDetalle> listar(Long negocioId, Long usuarioId) {
-        // Un negocio ajeno y uno inexistente producen la misma respuesta pública.
+    public ProductoDetalle consultar(Long id, Long usuarioId, Long sucursalId) {
+        ProductoDetalle detalle = productos.buscarConClasificacion(id, usuarioId)
+            .or(() -> sucursalId == null ? Optional.empty()
+                : negocios.negocioDeSucursal(sucursalId, usuarioId)
+                    .flatMap(negocioId -> productos.buscarConClasificacionEnNegocio(id, negocioId)))
+            .orElseThrow(() -> new ProductoNoEncontradoException());
+        // Una sola búsqueda: los escalones del nivel que aplica (producto > categoría > área).
+        return ProductoDetalle.conEscalones(detalle.producto(), detalle.clasificacion(),
+            descuentos.buscarEscalonesActivosPorProducto(id));
+    }
+
+    /**
+     * Página de productos para el listado: solo el producto (imagen, nombre, precio). Descuento, existencia,
+     * área y categoría se consultan en el detalle.
+     */
+    @Transactional(readOnly = true)
+    public Pagina<Producto> listar(Long negocioId, Long usuarioId, FiltroProductos filtro,
+                                   int pagina, int tamanio) {
+        // El empleado solo lista productos de una sucursal suya (filtro obligatorio).
+        if (!negocios.puedeConsultar(negocioId, filtro.sucursalId(), usuarioId)) {
+            throw new NegocioNoEncontradoException();
+        }
+        return productos.listarPagina(negocioId, filtro,
+            Math.max(pagina, 0), Math.min(Math.max(tamanio, 1), TAMANIO_PAGINA_MAX));
+    }
+
+    /** Todos los productos activos del negocio, sin existencia ni descuento: lo usan los selectores de otros módulos. */
+    @Transactional(readOnly = true)
+    public List<Producto> catalogo(Long negocioId, Long usuarioId) {
+        validarNegocio(negocioId, usuarioId);
+        return productos.listarPorNegocio(negocioId);
+    }
+
+    /** Un negocio ajeno y uno inexistente producen la misma respuesta pública. */
+    private void validarNegocio(Long negocioId, Long usuarioId) {
         if (!negocios.perteneceAUsuario(negocioId, usuarioId)) {
             throw new NegocioNoEncontradoException();
         }
-        List<Producto> lista = productos.listarPorNegocio(negocioId);
-        Map<Long, Descuento> descuentosPorProducto =
-            descuentos.buscarActivosPorProductos(lista.stream().map(Producto::getId).toList());
-        return lista.stream().map(p -> new ProductoDetalle(p, descuentosPorProducto.get(p.getId()))).toList();
+    }
+
+    private ProductoDetalle conClasificacion(Producto producto, Descuento descuento) {
+        ClasificacionProducto clasificacion = productos.buscarClasificacion(producto.getCategoriaId()).orElse(null);
+        // El descuento recién guardado se conserva; los escalones son los que realmente aplican.
+        List<Descuento> escalones = descuentos.buscarEscalonesActivosPorProducto(producto.getId());
+        return new ProductoDetalle(producto, descuento, clasificacion, escalones);
     }
 
     private Producto buscarProducto(Long id, Long usuarioId) {
@@ -109,6 +190,32 @@ public class ProductoService {
             throw new CategoriaNoEncontradaException();
         }
         return negocioId;
+    }
+
+    /**
+     * Registro por un empleado: debe indicar exactamente una sucursal, la suya (asignada a él y del mismo negocio
+     * que la categoría). No puede crear descuentos: son exclusivos del propietario. Cualquier otro caso (categoría
+     * de otro negocio, sucursal ajena) produce la misma respuesta pública que una categoría inexistente.
+     */
+    private Map<Long, Integer> resolverExistenciasEmpleado(Long negocioId, CrearProductoCommand command,
+                                                           Long usuarioId) {
+        List<ExistenciaInicialCommand> solicitadas = command.existencias();
+        if (solicitadas == null || solicitadas.size() != 1 || solicitadas.get(0).sucursalId() == null) {
+            throw new CategoriaNoEncontradaException();
+        }
+        ExistenciaInicialCommand solicitada = solicitadas.get(0);
+        boolean sucursalPropia = negocios.negocioDeSucursal(solicitada.sucursalId(), usuarioId)
+            .filter(negocioId::equals).isPresent();
+        if (!sucursalPropia) {
+            throw new CategoriaNoEncontradaException();
+        }
+        if (command.descuento() != null) {
+            throw new ProductoInvalidoException("Solo el propietario puede asignar descuentos a un producto.");
+        }
+        if (solicitada.existencia() == null || solicitada.existencia() < 0) {
+            throw new ProductoInvalidoException("La existencia inicial no puede ser negativa.");
+        }
+        return Map.of(solicitada.sucursalId(), solicitada.existencia());
     }
 
     /**

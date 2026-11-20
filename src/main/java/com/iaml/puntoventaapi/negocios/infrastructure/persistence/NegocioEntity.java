@@ -28,6 +28,10 @@ public class NegocioEntity extends EntidadConId {
     @Column(name = "logo", columnDefinition = "text")
     private String logo;
 
+    @Size(max = 150)
+    @Column(name = "eslogan", length = 150)
+    private String eslogan;
+
     @CreationTimestamp
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "fecha_creacion", nullable = false, updatable = false,

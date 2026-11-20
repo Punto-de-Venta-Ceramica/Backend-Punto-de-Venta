@@ -1,0 +1,19 @@
+# SonarQube local para análisis de calidad (cada integrante lo levanta en su máquina).
+#   Levantar:  docker compose -f docker-compose.sonar.yml up -d
+#   Detener:   docker compose -f docker-compose.sonar.yml down      (los datos se conservan)
+# Panel: http://localhost:9000  (primer acceso: admin / admin, te pedirá cambiar la contraseña)
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube-barrocontrol
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+
+volumes:
+  sonar_data:
+  sonar_extensions:
+  sonar_logs:

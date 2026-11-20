@@ -24,6 +24,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.iaml.puntoventaapi.autenticacion.domain.port.AutoridadesVigentesPort;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = RegistrarPedidoController.class,
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class PedidosErroresApiTest {
     @Autowired MockMvc mvc;
     @MockitoBean RegistrarPedidoService pedidos;
+    @MockitoBean AutoridadesVigentesPort autoridades;
     @MockitoBean UsuarioActual usuario;
 
     private static final String PEDIDO = """

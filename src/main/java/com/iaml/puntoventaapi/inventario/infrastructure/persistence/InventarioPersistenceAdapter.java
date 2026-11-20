@@ -6,11 +6,17 @@ import com.iaml.puntoventaapi.inventario.domain.Inventario;
 import com.iaml.puntoventaapi.inventario.domain.exception.InventarioNoEncontradoException;
 import com.iaml.puntoventaapi.inventario.domain.port.InventarioRepositorioPort;
 import com.iaml.puntoventaapi.sucursal.infrastructure.persistence.SucursalEntity;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
+import com.iaml.puntoventaapi.shared.domain.Pagina;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Component
@@ -32,6 +38,7 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             entity = inventarios.findById(inventario.getId())
                 .orElseThrow(() -> new InventarioNoEncontradoException());
             entity.setExistencia(inventario.getExistencia());
+            entity.setActivo(inventario.isActivo());
         }
         return InventarioMapper.toDomain(inventarios.saveAndFlush(entity));
     }
@@ -43,6 +50,30 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
             return Optional.empty();
         }
         return inventarios.buscarConBloqueo(inventarioId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
+                                                                FiltroProductosVenta filtros, int pagina, int tamanio) {
+        String texto = filtros.buscar().strip().toLowerCase(Locale.ROOT);
+        var resultado = inventarios.listarProductosParaVenta(negocioId, sucursalId, texto,
+            idBuscado(texto), filtros.areaId(), filtros.categoriaId(), filtros.precioMinimo(),
+            filtros.precioMaximo(), PageRequest.of(pagina, tamanio));
+        return new Pagina<>(resultado.getContent(), pagina, tamanio, resultado.getTotalElements());
+    }
+
+    private static Long idBuscado(String texto) {
+        try {
+            return Long.valueOf(texto);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @Override
+    public List<Inventario> bloquearActivosParaVenta(Long sucursalId, Collection<Long> productoIds) {
+        return inventarios.bloquearActivosParaVenta(sucursalId, productoIds).stream()
+            .map(InventarioMapper::toDomain).toList();
     }
 
     @Override
@@ -59,16 +90,38 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existe(Long sucursalId, Long productoId) {
-        return inventarios.existe(sucursalId, productoId);
+    public Optional<Inventario> buscarPorSucursalYProducto(Long sucursalId, Long productoId) {
+        return inventarios.findBySucursalIdAndProductoId(sucursalId, productoId).map(InventarioMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Inventario> buscarParaQuitar(Long inventarioId, Long usuarioId) {
+        if (!inventarios.esDelPropietario(inventarioId, usuarioId)) {
+            return Optional.empty();
+        }
+        return inventarios.buscarConBloqueo(inventarioId).map(InventarioMapper::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long usuarioId) {
+    public long contarActivosDeProducto(Long productoId) {
+        return inventarios.contarActivosDeProducto(productoId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> listarPanel(Long negocioId, Long sucursalId, Long productoId, Long usuarioId) {
         List<Object[]> filas = sucursalId == null
-            ? inventarios.panelPorNegocio(negocioId, usuarioId)
-            : inventarios.panelPorSucursal(negocioId, sucursalId, usuarioId);
+            ? inventarios.panelPorNegocio(negocioId, productoId, usuarioId)
+            : inventarios.panelPorSucursal(negocioId, sucursalId, productoId, usuarioId);
         return filas.stream().map(InventarioMapper::toExistencia).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExistenciaProducto> listarPorProducto(Long productoId, Long usuarioId) {
+        return inventarios.existenciasDeProducto(productoId, usuarioId).stream()
+            .map(InventarioMapper::toExistencia).toList();
     }
 }

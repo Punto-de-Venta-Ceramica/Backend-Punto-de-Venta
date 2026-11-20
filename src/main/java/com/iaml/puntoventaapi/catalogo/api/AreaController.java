@@ -1,7 +1,7 @@
 package com.iaml.puntoventaapi.catalogo.api;
 
-import com.iaml.puntoventaapi.catalogo.api.dto.AreaResponse;
-import com.iaml.puntoventaapi.catalogo.api.dto.GuardarAreaRequest;
+import com.iaml.puntoventaapi.catalogo.api.dto.response.AreaResponse;
+import com.iaml.puntoventaapi.catalogo.api.dto.request.GuardarAreaRequest;
 import com.iaml.puntoventaapi.catalogo.application.AreaService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import jakarta.validation.Valid;
@@ -9,10 +9,12 @@ import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/negocios/{negocioId}/areas")
+@PreAuthorize("hasRole('PROPIETARIO')")
 public class AreaController {
 
     private final AreaService areas;
@@ -31,9 +33,12 @@ public class AreaController {
             .body(area);
     }
 
+    /** Con sucursalId, el empleado asignado consulta las áreas para filtrar productos (HU-05). */
     @GetMapping
-    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId) {
-        return areas.listar(negocioId, usuarioActual.id()).stream().map(AreaResponse::from).toList();
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
+    public List<AreaResponse> listar(@PathVariable @Positive Long negocioId,
+                                     @RequestParam(required = false) Long sucursalId) {
+        return areas.listar(negocioId, usuarioActual.id(), sucursalId).stream().map(AreaResponse::from).toList();
     }
 
     @GetMapping("/{areaId}")

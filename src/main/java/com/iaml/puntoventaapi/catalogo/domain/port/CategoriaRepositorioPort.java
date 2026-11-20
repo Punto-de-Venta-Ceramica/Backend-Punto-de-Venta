@@ -17,4 +17,7 @@ public interface CategoriaRepositorioPort {
     Optional<Categoria> buscarPorId(Long categoriaId, Long areaId, Long negocioId);
 
     List<Categoria> listarPorArea(Long areaId, Long negocioId);
+
+    /** Categorías activas de todas las áreas activas del negocio, agrupadas por área. */
+    List<Categoria> listarPorNegocio(Long negocioId);
 }

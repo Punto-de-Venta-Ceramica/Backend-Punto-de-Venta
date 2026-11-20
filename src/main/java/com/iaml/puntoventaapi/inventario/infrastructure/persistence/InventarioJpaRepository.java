@@ -1,10 +1,15 @@
 package com.iaml.puntoventaapi.inventario.infrastructure.persistence;
 
 import jakarta.persistence.LockModeType;
+import com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,15 +20,53 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
     @Query("select i from InventarioEntity i where i.id = :id")
     Optional<InventarioEntity> buscarConBloqueo(@Param("id") Long id);
 
-    // El registro es accesible si su producto está activo y su sucursal pertenece a un negocio activo del usuario.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select i from InventarioEntity i
+        where i.sucursal.id = :sucursalId and i.producto.id in :productoIds and i.activo = true
+          and exists (select p.id from ProductoEntity p where p.id = i.producto.id and p.activo = true)
+        order by i.id
+        """)
+    List<InventarioEntity> bloquearActivosParaVenta(@Param("sucursalId") Long sucursalId,
+                                                   @Param("productoIds") Collection<Long> productoIds);
+
+    @Query("""
+        select new com.iaml.puntoventaapi.inventario.domain.ProductoEnSucursal(
+            p.id, p.nombre, p.precio, i.existencia, p.imagenUrl, a.id, a.nombre, c.id, c.nombre)
+        from InventarioEntity i
+        join i.producto p
+        join p.categoria c
+        join c.area a
+        where i.sucursal.id = :sucursalId and i.sucursal.negocio.id = :negocioId and a.negocio.id = :negocioId
+          and i.activo = true and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
+          and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId)
+          and (:areaId is null or a.id = :areaId)
+          and (:categoriaId is null or c.id = :categoriaId)
+          and (:precioMinimo is null or p.precio >= :precioMinimo)
+          and (:precioMaximo is null or p.precio <= :precioMaximo)
+        order by lower(p.nombre), p.id
+        """)
+    Page<ProductoEnSucursal> listarProductosParaVenta(@Param("negocioId") Long negocioId,
+                                                       @Param("sucursalId") Long sucursalId,
+                                                       @Param("texto") String texto,
+                                                       @Param("productoId") Long productoId,
+                                                       @Param("areaId") Long areaId,
+                                                       @Param("categoriaId") Long categoriaId,
+                                                       @Param("precioMinimo") BigDecimal precioMinimo,
+                                                       @Param("precioMaximo") BigDecimal precioMaximo,
+                                                       Pageable pageable);
+
+    // Accesible si su producto está activo y su sucursal es de un negocio activo del propietario o del empleado asignado.
     @Query("""
         select count(i) > 0
         from InventarioEntity i
         join i.producto p
         join i.sucursal s
         join s.negocio n
-        join n.usuarios u
-        where i.id = :id and u.id = :usuarioId and n.activo = true and p.activo = true
+        where i.id = :id and i.activo = true and n.activo = true and p.activo = true
+          and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
+               or exists (select e.id from UsuarioEntity e
+                          where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
         """)
     boolean esAccesibleParaUsuario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
 
@@ -47,8 +90,22 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         """)
     Optional<Long> negocioDeSucursal(@Param("sucursalId") Long sucursalId, @Param("usuarioId") Long usuarioId);
 
-    @Query("select count(i) > 0 from InventarioEntity i where i.sucursal.id = :sucursalId and i.producto.id = :productoId")
-    boolean existe(@Param("sucursalId") Long sucursalId, @Param("productoId") Long productoId);
+    Optional<InventarioEntity> findBySucursalIdAndProductoId(Long sucursalId, Long productoId);
+
+    // Solo el propietario quita productos de una sucursal; el empleado asignado no.
+    @Query("""
+        select count(i) > 0
+        from InventarioEntity i
+        join i.producto p
+        join i.sucursal s
+        join s.negocio n
+        join n.usuarios u
+        where i.id = :id and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
+        """)
+    boolean esDelPropietario(@Param("id") Long id, @Param("usuarioId") Long usuarioId);
+
+    @Query("select count(i) from InventarioEntity i where i.producto.id = :productoId and i.activo = true")
+    long contarActivosDeProducto(@Param("productoId") Long productoId);
 
     @Query("""
         select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
@@ -57,10 +114,12 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.sucursal s
         join s.negocio n
         join n.usuarios u
-        where n.id = :negocioId and u.id = :usuarioId and n.activo = true and p.activo = true
+        where n.id = :negocioId and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
+          and (:productoId is null or p.id = :productoId)
         order by s.nombre, p.nombre, i.id
         """)
-    List<Object[]> panelPorNegocio(@Param("negocioId") Long negocioId, @Param("usuarioId") Long usuarioId);
+    List<Object[]> panelPorNegocio(@Param("negocioId") Long negocioId, @Param("productoId") Long productoId,
+                                   @Param("usuarioId") Long usuarioId);
 
     @Query("""
         select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
@@ -68,11 +127,26 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join i.producto p
         join i.sucursal s
         join s.negocio n
-        join n.usuarios u
-        where n.id = :negocioId and s.id = :sucursalId and u.id = :usuarioId
-          and n.activo = true and p.activo = true
+        where n.id = :negocioId and s.id = :sucursalId
+          and i.activo = true and n.activo = true and p.activo = true
+          and (:productoId is null or p.id = :productoId)
+          and (exists (select u.id from n.usuarios u where u.id = :usuarioId)
+               or exists (select e.id from UsuarioEntity e
+                          where e.id = :usuarioId and e.rol.nombre = 'EMPLEADO' and s member of e.sucursales))
         order by p.nombre, i.id
         """)
     List<Object[]> panelPorSucursal(@Param("negocioId") Long negocioId, @Param("sucursalId") Long sucursalId,
-                                    @Param("usuarioId") Long usuarioId);
+                                    @Param("productoId") Long productoId, @Param("usuarioId") Long usuarioId);
+
+    @Query("""
+        select i.id, p.id, p.nombre, s.id, s.nombre, i.existencia
+        from InventarioEntity i
+        join i.producto p
+        join i.sucursal s
+        join s.negocio n
+        join n.usuarios u
+        where p.id = :productoId and u.id = :usuarioId and i.activo = true and n.activo = true and p.activo = true
+        order by s.nombre, i.id
+        """)
+    List<Object[]> existenciasDeProducto(@Param("productoId") Long productoId, @Param("usuarioId") Long usuarioId);
 }

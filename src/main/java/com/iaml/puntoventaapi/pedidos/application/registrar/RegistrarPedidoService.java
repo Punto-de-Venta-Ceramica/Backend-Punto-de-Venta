@@ -10,6 +10,7 @@ import com.iaml.puntoventaapi.pedidos.domain.port.ClientePort;
 import com.iaml.puntoventaapi.pedidos.domain.port.NotificacionPort;
 import com.iaml.puntoventaapi.pedidos.domain.port.PedidoRepositorioPort;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
@@ -57,8 +58,9 @@ public class RegistrarPedidoService {
             }
             var producto = catalogo.consultar(comando.sucursalId(), comando.usuarioId(), item.productoId());
             if (producto == null) throw new ProductoPedidoNoDisponibleException();
+            // Sin aplicar el descuento, la línea queda a precio de lista (0 %).
             return DetallePedido.desdeCatalogo(item.productoId(), item.cantidad(), producto.precio(),
-                producto.cantidadMinima(), producto.cantidadMaxima(), producto.descuento());
+                item.aplicarDescuento() ? producto.escalones() : List.of());
         }).toList();
         var pedido = new Pedido(detalles);
         if (comando.montoInicial().signum() > 0) {

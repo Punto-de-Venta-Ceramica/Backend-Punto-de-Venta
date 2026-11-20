@@ -31,8 +31,19 @@ public class CategoriaService {
     }
 
     public List<Categoria> listar(Long negocioId, Long areaId, Long usuarioId) {
-        areas.consultar(negocioId, areaId, usuarioId);
+        return listar(negocioId, areaId, usuarioId, null);
+    }
+
+    /** Con sucursalId, un empleado asignado a ella también puede consultar (solo lectura). */
+    public List<Categoria> listar(Long negocioId, Long areaId, Long usuarioId, Long sucursalId) {
+        areas.consultar(negocioId, areaId, usuarioId, sucursalId);
         return categorias.listarPorArea(areaId, negocioId);
+    }
+
+    /** Todas las categorías del negocio en una sola consulta, para no pedirlas área por área. */
+    public List<Categoria> listarPorNegocio(Long negocioId, Long usuarioId, Long sucursalId) {
+        areas.verificarLectura(negocioId, usuarioId, sucursalId);
+        return categorias.listarPorNegocio(negocioId);
     }
 
     public Categoria consultar(Long negocioId, Long areaId, Long categoriaId, Long usuarioId) {
@@ -52,9 +63,9 @@ public class CategoriaService {
     public void eliminar(Long negocioId, Long areaId, Long categoriaId, Long usuarioId) {
         areas.consultarParaActualizar(negocioId, areaId, usuarioId);
         Categoria categoria = buscarCategoria(negocioId, areaId, categoriaId);
-        if (productos.existenPorCategoria(categoriaId)) {
+        if (productos.existenActivosPorCategoria(categoriaId)) {
             throw new ClasificacionConProductosException(
-                "No se puede eliminar la categoría porque tiene productos relacionados.");
+                "No se puede eliminar la categoría porque tiene productos activos relacionados.");
         }
         categorias.guardar(categoria.eliminar(Instant.now()), negocioId);
     }

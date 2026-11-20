@@ -10,13 +10,16 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 @Component
 @RequiredArgsConstructor
@@ -67,6 +70,58 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         return resultado;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Descuento> buscarEscalonesActivosPorProducto(Long productoId) {
+        var ids = List.of(productoId);
+        // Perezoso: solo se consulta el siguiente nivel si el anterior no tiene descuentos.
+        List<Function<List<Long>, List<Object[]>>> niveles = List.of(
+            descuentos::activosDirectosPorProductos,
+            descuentos::activosPorCategoriaDeProductos,
+            descuentos::activosPorAreaDeProductos);
+        for (var consulta : niveles) {
+            List<Object[]> nivel = consulta.apply(ids);
+            if (!nivel.isEmpty()) {
+                return nivel.stream()
+                    .map(fila -> DescuentoMapper.toDomain((DescuentoEntity) fila[1]))
+                    .sorted(Comparator.comparing(Descuento::getCantidadMinima).thenComparing(Descuento::getId))
+                    .toList();
+            }
+        }
+        return List.of();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Descuento>> buscarEscalonesActivosPorProductos(Collection<Long> productoIds) {
+        if (productoIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Descuento>> escalones = new HashMap<>();
+        Set<Long> pendientes = new HashSet<>(productoIds);
+        agregarEscalones(escalones, descuentos.activosDirectosPorProductos(pendientes));
+        pendientes.removeAll(escalones.keySet());
+        if (!pendientes.isEmpty()) {
+            agregarEscalones(escalones, descuentos.activosPorCategoriaDeProductos(pendientes));
+            pendientes.removeAll(escalones.keySet());
+        }
+        if (!pendientes.isEmpty()) {
+            agregarEscalones(escalones, descuentos.activosPorAreaDeProductos(pendientes));
+        }
+        escalones.replaceAll((id, nivel) -> nivel.stream()
+            .sorted(Comparator.comparing(Descuento::getCantidadMinima).thenComparing(Descuento::getId))
+            .toList());
+        return Map.copyOf(escalones);
+    }
+
+    private static void agregarEscalones(Map<Long, List<Descuento>> resultado, List<Object[]> filas) {
+        for (Object[] fila : filas) {
+            Long productoId = ((Number) fila[0]).longValue();
+            resultado.computeIfAbsent(productoId, id -> new ArrayList<>())
+                .add(DescuentoMapper.toDomain((DescuentoEntity) fila[1]));
+        }
+    }
+
     /** Las filas llegan ordenadas por id de descuento: el primero de cada producto, si aún no tiene, gana. */
     private static void agregarPrimeros(Map<Long, Descuento> resultado, List<Object[]> filas) {
         for (Object[] fila : filas) {
@@ -94,6 +149,12 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
     @Transactional(readOnly = true)
     public List<Descuento> listarPorNegocio(Long negocioId) {
         return descuentos.findByNegocioIdOrderById(negocioId).stream().map(DescuentoMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Descuento> listarPorProducto(Long negocioId, Long productoId) {
+        return descuentos.asignadosAProducto(negocioId, productoId).stream().map(DescuentoMapper::toDomain).toList();
     }
 
     @Override
@@ -147,6 +208,25 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Descuento>> activosAsignadosA(DestinoDescuento destino, Collection<Long> destinoIds) {
+        if (destinoIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> filas = switch (destino) {
+            case PRODUCTO -> descuentos.activosAsignadosAProductos(destinoIds);
+            case CATEGORIA -> descuentos.activosAsignadosACategorias(destinoIds);
+            case AREA -> descuentos.activosAsignadosAAreas(destinoIds);
+        };
+        Map<Long, List<Descuento>> resultado = new HashMap<>();
+        for (Object[] fila : filas) {
+            resultado.computeIfAbsent(((Number) fila[0]).longValue(), k -> new ArrayList<>())
+                .add(DescuentoMapper.toDomain((DescuentoEntity) fila[1]));
+        }
+        return resultado;
+    }
+
+    @Override
     @Transactional
     public void asignar(Long descuentoId, DestinoDescuento destino, Long destinoId) {
         DescuentoEntity entity = cargar(descuentoId);
@@ -155,7 +235,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
                 .add(entityManager.getReference(ProductoEntity.class, destinoId));
             case CATEGORIA -> entity.getCategorias()
                 .add(entityManager.getReference(CategoriaEntity.class, destinoId));
-            case AREA -> entity.getAreas()
+            default -> entity.getAreas()
                 .add(entityManager.getReference(AreaEntity.class, destinoId));
         }
         descuentos.saveAndFlush(entity);
@@ -168,7 +248,7 @@ public class DescuentoPersistenceAdapter implements DescuentoRepositorioPort, De
         switch (destino) {
             case PRODUCTO -> entity.getProductos().removeIf(p -> destinoId.equals(p.getId()));
             case CATEGORIA -> entity.getCategorias().removeIf(c -> destinoId.equals(c.getId()));
-            case AREA -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
+            default -> entity.getAreas().removeIf(a -> destinoId.equals(a.getId()));
         }
         descuentos.saveAndFlush(entity);
     }

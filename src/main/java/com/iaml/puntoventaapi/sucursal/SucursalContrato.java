@@ -17,4 +17,7 @@ public interface SucursalContrato {
 
     List<Long> propietariosDeSucursal(Long sucursalId);
     List<Long> empleadosDeSucursal(Long sucursalId);
+
+    /** Reutiliza el alcance de acceso que ya aplica el módulo de sucursales. */
+    Optional<Long> obtenerNegocioIdAccesible(Long sucursalId, Long usuarioId);
 }

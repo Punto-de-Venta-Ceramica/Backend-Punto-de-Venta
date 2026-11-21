@@ -94,7 +94,8 @@ public class ConfirmarVentaService {
         });
     }
 
-    private static boolean mismoMonto(BigDecimal izquierda, BigDecimal derecha) {
-        return izquierda == null ? derecha == null : derecha != null && izquierda.compareTo(derecha) == 0;
+    /** Se evalúa después de comparar el método: tarjeta no lleva monto y efectivo siempre lo lleva. */
+    private static boolean mismoMonto(BigDecimal solicitado, BigDecimal registrado) {
+        return solicitado == null || solicitado.compareTo(registrado) == 0;
     }
 }

@@ -39,7 +39,7 @@ public record RegistrarPedidoRequest(
 
     public record Cliente(
             @NotBlank(message = "El nombre del cliente es obligatorio.") @Size(max = 150)
-            @Pattern(regexp = "^[\\p{L}\\p{M}]+(?:[ '’-][\\p{L}\\p{M}]+)*$", message = "Ingresa un nombre válido, sin números.") String nombre,
+            @Pattern(regexp = ClientePedido.NOMBRE_REGEX, message = "Ingresa un nombre válido, sin números.") String nombre,
             @NotBlank(message = "El teléfono del cliente es obligatorio.")
             @Pattern(regexp = "^(?:[0-9]{10})?$", message = "El teléfono debe contener exactamente 10 dígitos.") String telefono,
             @Size(max = 120, message = "La ciudad no debe superar 120 caracteres.")

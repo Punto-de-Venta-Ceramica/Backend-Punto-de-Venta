@@ -118,16 +118,15 @@ public class CorteCajaService {
 
     @Transactional(readOnly = true)
     public Page<ResumenCorteCajaDto> listarHistorial(Long sucursalIdParam, Long usuarioId, Pageable pageable) {
-        Pageable ordenado = (pageable != null && pageable.getSort().isSorted())
+        Pageable ordenado = pageable.getSort().isSorted()
             ? pageable
-            : PageRequest.of(pageable != null ? pageable.getPageNumber() : 0,
-                             (pageable != null && pageable.getPageSize() > 0) ? pageable.getPageSize() : 20,
+            : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                              Sort.by(Sort.Direction.DESC, "fechaHoraApertura"));
 
         UsuarioEntity usuario = usuarioJpaRepository.findById(usuarioId)
             .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado o no encontrado."));
 
-        String rol = usuario.getRol() != null ? usuario.getRol().getNombre() : "";
+        String rol = usuario.getRol().getNombre();
 
         Page<CorteCaja> cortes;
 
@@ -155,17 +154,15 @@ public class CorteCajaService {
 
         return cortes.map(c -> {
             boolean cerrado = c.getFechaHoraCierre() != null;
-            BigDecimal diferencia = c.getTotalReal() != null && c.getTotalEstimado() != null
+            BigDecimal diferencia = c.getTotalReal() != null
                 ? c.getTotalReal().subtract(c.getTotalEstimado())
                 : null;
-            String usuarioNombre = c.getUsuario() != null ? c.getUsuario().getNombre() : null;
-
             return new ResumenCorteCajaDto(
                 c.getId(),
-                c.getCaja() != null ? c.getCaja().getId() : null,
-                c.getCaja() != null && c.getCaja().getSucursal() != null ? c.getCaja().getSucursal().getId() : null,
-                c.getUsuario() != null ? c.getUsuario().getId() : null,
-                usuarioNombre,
+                c.getCaja().getId(),
+                c.getCaja().getSucursal().getId(),
+                c.getUsuario().getId(),
+                c.getUsuario().getNombre(),
                 c.getFechaHoraApertura(),
                 c.getFechaHoraCierre(),
                 cerrado,
@@ -182,7 +179,7 @@ public class CorteCajaService {
         UsuarioEntity usuario = usuarioJpaRepository.findById(usuarioId)
             .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado o no encontrado."));
 
-        String rol = usuario.getRol() != null ? usuario.getRol().getNombre() : "";
+        String rol = usuario.getRol().getNombre();
 
         if ("EMPLEADO".equalsIgnoreCase(rol)) {
             List<Long> asignadas = usuario.getSucursales().stream().map(SucursalEntity::getId).toList();
@@ -226,10 +223,9 @@ public class CorteCajaService {
     private Caja obtenerOCrearCaja(Long sucursalId) {
         return cajaRepository.findBySucursal_Id(sucursalId)
             .orElseGet(() -> {
-                SucursalEntity sucursal = sucursalJpaRepository.findById(sucursalId)
-                    .orElseThrow(() -> new IllegalArgumentException("No se encontró la sucursal con ID: " + sucursalId));
+                // resolverSucursalId ya comprobó que la sucursal existe y es accesible.
                 Caja nuevaCaja = new Caja();
-                nuevaCaja.setSucursal(sucursal);
+                nuevaCaja.setSucursal(sucursalJpaRepository.getReferenceById(sucursalId));
                 return cajaRepository.save(nuevaCaja);
             });
     }
@@ -241,26 +237,16 @@ public class CorteCajaService {
 
     private CorteCajaResponse construirRespuesta(CorteCaja corte, CalculadoraCorte.ResultadoCalculo calculo) {
         boolean cerrado = corte.getFechaHoraCierre() != null;
-        BigDecimal diferencia = corte.getTotalReal() != null && corte.getTotalEstimado() != null
+        BigDecimal diferencia = corte.getTotalReal() != null
             ? corte.getTotalReal().subtract(corte.getTotalEstimado())
-            : null;
-
-        Long sucursalId = corte.getCaja() != null && corte.getCaja().getSucursal() != null
-            ? corte.getCaja().getSucursal().getId()
-            : null;
-        String usuarioNombre = corte.getUsuario() != null
-            ? corte.getUsuario().getNombre()
-            : null;
-        Long usuarioId = corte.getUsuario() != null
-            ? corte.getUsuario().getId()
             : null;
 
         return new CorteCajaResponse(
             corte.getId(),
-            corte.getCaja() != null ? corte.getCaja().getId() : null,
-            sucursalId,
-            usuarioId,
-            usuarioNombre,
+            corte.getCaja().getId(),
+            corte.getCaja().getSucursal().getId(),
+            corte.getUsuario().getId(),
+            corte.getUsuario().getNombre(),
             corte.getFechaHoraApertura(),
             corte.getFechaHoraCierre(),
             cerrado,

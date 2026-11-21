@@ -33,21 +33,8 @@ import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Run against a dedicated, empty PostgreSQL database, never the business database.
- * Without TEST_DB_URL these integration tests are explicitly skipped.
- */
-@EnabledIfEnvironmentVariable(named = "TEST_DB_URL", matches = ".+")
-@SpringBootTest(properties = {
-    "spring.config.import=",
-    "jwt.secreto=clave-de-pruebas-locales-de-al-menos-32-bytes",
-    "spring.datasource.url=${TEST_DB_URL}",
-    "spring.datasource.username=${TEST_DB_USERNAME}",
-    "spring.datasource.password=${TEST_DB_PASSWORD:}",
-    "spring.jpa.hibernate.ddl-auto=update"
-})
-@Transactional
-class EsquemaPostgreSqlTests {
+/** Esquema real en un PostgreSQL temporal (ver {@link PostgresDePrueba}); nunca la base del negocio. */
+class EsquemaPostgreSqlTests extends PostgresDePrueba {
 
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
@@ -100,11 +87,11 @@ class EsquemaPostgreSqlTests {
     }
 
     @Test
-    void creaLas25TablasYLasTresVistasDelScript() {
+    void creaLas27TablasYLasTresVistasDelScript() {
         assertThat(jdbc.queryForObject("""
             select count(*) from information_schema.tables
             where table_schema = 'barrocontrol' and table_type = 'BASE TABLE'
-            """, Integer.class)).isEqualTo(25);
+            """, Integer.class)).isEqualTo(27);
         assertThat(jdbc.queryForList("""
             select table_name from information_schema.views
             where table_schema = 'barrocontrol'

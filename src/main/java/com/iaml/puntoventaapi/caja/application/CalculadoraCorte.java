@@ -347,11 +347,10 @@ public class CalculadoraCorte {
             this.subtotal = BigDecimal.ZERO.setScale(2);
         }
 
+        /** sub ya viene normalizado (nunca nulo, dos decimales). */
         public void acumular(int cant, BigDecimal sub) {
             this.cantidad += cant;
-            if (sub != null) {
-                this.subtotal = this.subtotal.add(sub.setScale(2, RoundingMode.HALF_UP));
-            }
+            this.subtotal = this.subtotal.add(sub);
         }
 
         public ProductoVendidoDto toDto() {

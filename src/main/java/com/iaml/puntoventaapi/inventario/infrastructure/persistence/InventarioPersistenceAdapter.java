@@ -56,8 +56,11 @@ public class InventarioPersistenceAdapter implements InventarioRepositorioPort {
     public Pagina<ProductoEnSucursal> listarProductosParaVenta(Long negocioId, Long sucursalId,
                                                                 FiltroProductosVenta filtros, int pagina, int tamanio) {
         String texto = filtros.buscar().strip().toLowerCase(Locale.ROOT);
-        var resultado = inventarios.listarProductosParaVenta(negocioId, sucursalId, texto,
-            idBuscado(texto), filtros.areaId(), filtros.categoriaId(), filtros.precioMinimo(),
+        Long productoId = idBuscado(texto);
+        String prefijo = productoId == null && texto.length() >= 2 && !texto.matches("[0-9]+")
+            ? texto.substring(0, 2) : "";
+        var resultado = inventarios.listarProductosParaVenta(negocioId, sucursalId, texto, prefijo,
+            productoId, filtros.areaId(), filtros.categoriaId(), filtros.precioMinimo(),
             filtros.precioMaximo(), PageRequest.of(pagina, tamanio));
         return new Pagina<>(resultado.getContent(), pagina, tamanio, resultado.getTotalElements());
     }

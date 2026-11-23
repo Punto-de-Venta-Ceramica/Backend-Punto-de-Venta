@@ -64,14 +64,16 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
             from barrocontrol.corte_caja cc
             join barrocontrol.caja c on c.id = cc.id_caja
             where c.id_sucursal = :sucursalId
-              and cc.fecha_hora_apertura < :hasta and cc.fecha_hora_cierre >= :desde
+              and cc.fecha_hora_apertura < :hasta
+              and (cc.fecha_hora_cierre >= :desde or (:incluirAbiertos and cc.fecha_hora_cierre is null))
         )
         select v.id, v.id_corte_caja, v.fecha_hora, 'VENTA' as tipo, upper(trim(v.metodo_pago)) as medio,
                concat('#', v.id) as referencia, u.id as vendedor_id,
                concat_ws(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as vendedor,
                null::numeric as monto,
                d.id_producto as producto_id, coalesce(d.nombre_producto, p.nombre) as producto,
-               d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal
+               d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal,
+               null::bigint as creador_pedido_id, null::text as creador_pedido
         from cortes cc
         join barrocontrol.venta v on v.id_corte_caja = cc.id
         join barrocontrol.usuario u on u.id = v.id_usuario
@@ -82,10 +84,12 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
         union all
         select pp.id, pp.id_corte_caja, pp.fecha_hora, upper(trim(pp.tipo_pago)), upper(trim(pp.metodo_pago)),
                concat('Pedido ', pe.folio), null, null, pp.monto,
-               d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal
+               d.id_producto, p.nombre, d.cantidad, d.precio_unitario, d.desc_aplicado, d.subtotal,
+               pu.id, concat_ws(' ', pu.nombre, pu.apellido_paterno, pu.apellido_materno)
         from cortes cc
         join barrocontrol.pago_pedido pp on pp.id_corte_caja = cc.id
         join barrocontrol.pedido pe on pe.id = pp.id_pedido
+        left join barrocontrol.usuario pu on pu.id = pe.id_usuario
         left join barrocontrol.detalle_pedido d on d.id_pedido = pe.id
         left join barrocontrol.producto p on p.id = d.id_producto
         where pp.fecha_hora >= :desde and pp.fecha_hora < :hasta
@@ -123,9 +127,11 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
     }
 
     @Override
-    public List<Movimiento> buscarMovimientos(long sucursalId, Instant desde, Instant hastaExclusivo) {
-        return jdbc.query(MOVIMIENTOS, parametros(sucursalId, desde, hastaExclusivo),
-            ReporteQueryRepository::leerMovimientos);
+    public List<Movimiento> buscarMovimientos(long sucursalId, Instant desde, Instant hastaExclusivo,
+                                              boolean incluirAbiertos) {
+        var parametros = new java.util.HashMap<String, Object>(parametros(sucursalId, desde, hastaExclusivo));
+        parametros.put("incluirAbiertos", incluirAbiertos);
+        return jdbc.query(MOVIMIENTOS, parametros, ReporteQueryRepository::leerMovimientos);
     }
 
     private static List<Movimiento> leerMovimientos(ResultSet rs) throws SQLException {
@@ -149,9 +155,12 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
     private static Movimiento leerCabecera(ResultSet rs, ClaveMovimiento clave) throws SQLException {
         Long vendedorId = rs.getObject("vendedor_id", Long.class);
         Vendedor vendedor = vendedorId == null ? null : new Vendedor(vendedorId, rs.getString("vendedor"));
+        Long creadorId = rs.getObject("creador_pedido_id", Long.class);
+        Vendedor creadorPedido = creadorId == null ? null : new Vendedor(creadorId, rs.getString("creador_pedido"));
         BigDecimal monto = rs.getBigDecimal("monto");
         return new Movimiento(clave.id(), rs.getLong("id_corte_caja"), instante(rs, "fecha_hora"), clave.tipo(),
-            MedioPago.valueOf(rs.getString("medio")), rs.getString("referencia"), vendedor, monto, new ArrayList<>());
+            MedioPago.valueOf(rs.getString("medio")), rs.getString("referencia"), vendedor, monto,
+            new ArrayList<>(), creadorPedido);
     }
 
     private static Movimiento completar(Movimiento fila) {
@@ -161,7 +170,7 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
             case ANTICIPO, LIQUIDACION -> fila.importe();
         };
         return new Movimiento(fila.id(), fila.corteId(), fila.fechaHora(), fila.tipo(), fila.medioPago(),
-            fila.referencia(), fila.vendedor(), importe, List.copyOf(fila.productos()));
+            fila.referencia(), fila.vendedor(), importe, List.copyOf(fila.productos()), fila.creadorPedido());
     }
 
     private static Map<String, ?> parametros(long sucursalId, Instant desde, Instant hastaExclusivo) {

@@ -13,7 +13,8 @@ public interface ReporteConsultaPort {
 
     List<CorteConsultado> buscarCortes(long sucursalId, Instant desde, Instant hastaExclusivo);
 
-    List<Movimiento> buscarMovimientos(long sucursalId, Instant desde, Instant hastaExclusivo);
+    List<Movimiento> buscarMovimientos(long sucursalId, Instant desde, Instant hastaExclusivo,
+                                      boolean incluirAbiertos);
 
     record CorteConsultado(Corte corte, Cuadre cuadre) {}
 }

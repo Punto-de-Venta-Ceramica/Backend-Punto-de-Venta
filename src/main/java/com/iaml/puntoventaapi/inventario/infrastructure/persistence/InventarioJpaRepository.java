@@ -39,16 +39,20 @@ public interface InventarioJpaRepository extends JpaRepository<InventarioEntity,
         join c.area a
         where i.sucursal.id = :sucursalId and i.sucursal.negocio.id = :negocioId and a.negocio.id = :negocioId
           and i.activo = true and p.activo = true and c.activo = true and a.activo = true and a.negocio.activo = true
-          and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId)
+          and (:texto = '' or locate(:texto, lower(p.nombre)) > 0 or p.id = :productoId
+               or (:prefijo <> '' and locate(:prefijo, lower(p.nombre)) = 1))
           and (:areaId is null or a.id = :areaId)
           and (:categoriaId is null or c.id = :categoriaId)
           and (:precioMinimo is null or p.precio >= :precioMinimo)
           and (:precioMaximo is null or p.precio <= :precioMaximo)
-        order by lower(p.nombre), p.id
+        order by case when lower(p.nombre) = :texto or p.id = :productoId then 0
+                      when locate(:texto, lower(p.nombre)) > 0 then 1 else 2 end,
+                 lower(p.nombre), p.id
         """)
     Page<ProductoEnSucursal> listarProductosParaVenta(@Param("negocioId") Long negocioId,
                                                        @Param("sucursalId") Long sucursalId,
                                                        @Param("texto") String texto,
+                                                       @Param("prefijo") String prefijo,
                                                        @Param("productoId") Long productoId,
                                                        @Param("areaId") Long areaId,
                                                        @Param("categoriaId") Long categoriaId,

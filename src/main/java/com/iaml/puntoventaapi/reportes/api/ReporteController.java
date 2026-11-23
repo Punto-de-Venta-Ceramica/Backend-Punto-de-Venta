@@ -38,9 +38,10 @@ public class ReporteController {
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ReporteMovimientos> consultar(@PathVariable @Positive long sucursalId,
-            @RequestParam Periodo periodo, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+            @RequestParam Periodo periodo, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestParam(defaultValue = "false") boolean incluirAbiertos) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-            .body(reportes.consultar(sucursalId, usuarioActual.id(), periodo, fecha));
+            .body(reportes.consultar(sucursalId, usuarioActual.id(), periodo, fecha, incluirAbiertos));
     }
 
     @GetMapping(value = "/excel", produces = TIPO_EXCEL)

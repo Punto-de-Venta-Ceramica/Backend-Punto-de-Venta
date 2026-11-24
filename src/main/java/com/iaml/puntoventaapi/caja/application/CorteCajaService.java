@@ -95,6 +95,10 @@ public class CorteCajaService {
             throw new CorteCajaYaCerradoException("El corte de caja ya se encuentra cerrado.");
         }
 
+        if (corte.getUsuario() != null && !corte.getUsuario().getId().equals(usuarioId)) {
+            throw new AccessDeniedException("Únicamente el usuario que abrió el corte de caja puede cerrarlo.");
+        }
+
         var calculo = calculadoraCorte.calcular(corte.getId(), corte.getMontoInicial());
 
         corte.setTotalEfectivo(calculo.totalEfectivo());
@@ -113,6 +117,16 @@ public class CorteCajaService {
             .orElseThrow(() -> new CorteCajaNoEncontradoException(corteId));
 
         resolverSucursalId(corte.getCaja().getSucursal().getId(), usuarioId);
+
+        UsuarioEntity usuario = usuarioJpaRepository.findById(usuarioId)
+            .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado o no encontrado."));
+
+        if ("EMPLEADO".equalsIgnoreCase(usuario.getRol().getNombre())) {
+            if (!corte.getUsuario().getId().equals(usuarioId)) {
+                throw new AccessDeniedException("No tienes permiso para consultar cortes de caja de otros usuarios.");
+            }
+        }
+
         return construirRespuesta(corte);
     }
 
@@ -131,9 +145,23 @@ public class CorteCajaService {
         Page<CorteCaja> cortes;
 
         if ("EMPLEADO".equalsIgnoreCase(rol)) {
-            // El empleado puede trabajar en varias sucursales: misma validación que el resto de operaciones.
-            Long sucursalEmpleadoId = resolverSucursalId(sucursalIdParam, usuarioId);
-            cortes = corteCajaRepository.findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(sucursalEmpleadoId, ordenado);
+            if (sucursalIdParam != null) {
+                Long sucursalEmpleadoId = resolverSucursalId(sucursalIdParam, usuarioId);
+                cortes = corteCajaRepository.findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(
+                    sucursalEmpleadoId, usuarioId, ordenado);
+            } else {
+                List<Long> asignadas = usuario.getSucursales().stream().map(SucursalEntity::getId).toList();
+                if (asignadas.isEmpty()) {
+                    throw new AccessDeniedException("El empleado no tiene asignada una sucursal.");
+                }
+                if (asignadas.size() == 1) {
+                    cortes = corteCajaRepository.findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(
+                        asignadas.get(0), usuarioId, ordenado);
+                } else {
+                    cortes = corteCajaRepository.findByUsuario_IdAndCaja_Sucursal_IdInAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(
+                        usuarioId, asignadas, ordenado);
+                }
+            }
         } else if ("PROPIETARIO".equalsIgnoreCase(rol)) {
             if (sucursalIdParam != null) {
                 if (sucursalContrato.negocioAutorizado(sucursalIdParam, usuarioId).isEmpty()) {

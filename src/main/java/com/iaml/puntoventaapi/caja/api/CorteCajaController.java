@@ -47,17 +47,17 @@ public class CorteCajaController {
         return ResponseEntity.ok(respuesta);
     }
 
-    /** Cortes anteriores: información financiera del negocio, solo del propietario (HU-05). */
+    /** Consulta de corte: propietario o empleado (solo de su propio corte). */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('PROPIETARIO')")
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public ResponseEntity<CorteCajaResponse> consultarCorte(@PathVariable("id") Long id) {
         CorteCajaResponse respuesta = corteCajaService.consultarCorte(id, usuarioActual.id());
         return ResponseEntity.ok(respuesta);
     }
 
-    /** Historial de cortes: solo el propietario. El empleado abre y cierra el corte de su turno. */
+    /** Historial de cortes: propietario (todos los cortes) o empleado (únicamente sus propios cortes). */
     @GetMapping
-    @PreAuthorize("hasRole('PROPIETARIO')")
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'EMPLEADO')")
     public ResponseEntity<Page<ResumenCorteCajaDto>> listarHistorial(
         @RequestParam(name = "sucursalId", required = false) Long sucursalId,
         @RequestParam(name = "page", defaultValue = "0") int page,

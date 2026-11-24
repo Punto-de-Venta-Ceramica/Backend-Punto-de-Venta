@@ -18,9 +18,9 @@ class PermisosCorteCajaTest {
     }
 
     @Test
-    void elHistorialYLosCortesAnterioresSonSoloDelPropietario() {
-        assertEquals("hasRole('PROPIETARIO')", permiso("listarHistorial").value());
-        assertEquals("hasRole('PROPIETARIO')", permiso("consultarCorte").value());
+    void elHistorialYLosCortesAnterioresPermitenPropietarioYEmpleado() {
+        assertEquals("hasAnyRole('PROPIETARIO', 'EMPLEADO')", permiso("listarHistorial").value());
+        assertEquals("hasAnyRole('PROPIETARIO', 'EMPLEADO')", permiso("consultarCorte").value());
     }
 
     @Test

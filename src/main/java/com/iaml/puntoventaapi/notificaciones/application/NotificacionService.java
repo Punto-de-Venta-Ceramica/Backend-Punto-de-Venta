@@ -8,6 +8,7 @@ import com.iaml.puntoventaapi.usuarios.infrastructure.persistence.UsuarioEntity;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,8 @@ public class NotificacionService implements NotificacionesContrato {
     }
 
     public record Aviso(long id, String titulo, String mensaje, Instant fecha, boolean leida, Long pedidoId) { }
+    /** pagina empieza en 0; misma forma que el listado de pedidos. */
+    public record PaginaAvisos(List<Aviso> contenido, int pagina, long totalElementos, boolean ultima) { }
     public record ConteoNoLeidas(long cantidad) { }
 
     @Transactional(readOnly = true)
@@ -46,12 +49,18 @@ public class NotificacionService implements NotificacionesContrato {
         notificaciones.save(aviso);
     }
 
+    public static final int TAMANIO_PAGINA = 20;
+
+    /** Del más reciente al más antiguo, 20 por página. */
     @Transactional(readOnly = true)
-    public List<Aviso> listar(long usuarioId) {
-        return notificaciones.findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc(usuarioId).stream()
+    public PaginaAvisos listar(long usuarioId, int pagina) {
+        var resultado = notificaciones.findByUsuario_IdOrderByFechaDescIdDesc(usuarioId,
+            PageRequest.of(Math.max(pagina, 0), TAMANIO_PAGINA));
+        var avisos = resultado.getContent().stream()
             .map(n -> new Aviso(n.getId(), n.getTitulo(), n.getMensaje(), n.getFecha(),
                 Boolean.TRUE.equals(n.getLeida()), n.getPedido() == null ? null : n.getPedido().getId()))
             .toList();
+        return new PaginaAvisos(avisos, resultado.getNumber(), resultado.getTotalElements(), resultado.isLast());
     }
 
     @Transactional

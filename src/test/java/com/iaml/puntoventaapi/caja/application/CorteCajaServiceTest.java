@@ -204,6 +204,7 @@ class CorteCajaServiceTest {
         CorteCaja corteCerrado = new CorteCaja();
         ReflectionTestUtils.setField(corteCerrado, "id", 500L);
         corteCerrado.setCaja(caja);
+        corteCerrado.setUsuario(empleado);
         corteCerrado.setFechaHoraCierre(Instant.now());
 
         when(corteCajaRepository.buscarConBloqueo(500L)).thenReturn(Optional.of(corteCerrado));
@@ -228,7 +229,7 @@ class CorteCajaServiceTest {
     }
 
     @Test
-    @DisplayName("Listar historial devuelve página con cortes ordenados")
+    @DisplayName("Listar historial para empleado devuelve página con únicamente sus cortes")
     void listarHistorialPaginado() {
         when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
 
@@ -240,12 +241,54 @@ class CorteCajaServiceTest {
         c.setMontoInicial(new BigDecimal("100.00"));
         c.setTotalEstimado(new BigDecimal("500.00"));
 
-        when(corteCajaRepository.findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(eq(10L), any(Pageable.class)))
+        when(corteCajaRepository.findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(eq(10L), eq(1L), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(c)));
 
         Page<ResumenCorteCajaDto> page = service.listarHistorial(null, 1L, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().get(0).id()).isEqualTo(600L);
+    }
+
+    @Test
+    @DisplayName("Empleado no puede consultar corte de otro usuario")
+    void empleadoNoPuedeConsultarCorteDeOtroUsuario() {
+        when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
+
+        UsuarioEntity otroUsuario = new UsuarioEntity();
+        ReflectionTestUtils.setField(otroUsuario, "id", 99L);
+        otroUsuario.setNombre("Otro Empleado");
+
+        CorteCaja corteDeOtro = new CorteCaja();
+        ReflectionTestUtils.setField(corteDeOtro, "id", 700L);
+        corteDeOtro.setCaja(caja);
+        corteDeOtro.setUsuario(otroUsuario);
+
+        when(corteCajaRepository.findById(700L)).thenReturn(Optional.of(corteDeOtro));
+
+        assertThatThrownBy(() -> service.consultarCorte(700L, 1L))
+            .isInstanceOf(AccessDeniedException.class)
+            .hasMessageContaining("No tienes permiso para consultar cortes de caja de otros usuarios");
+    }
+
+    @Test
+    @DisplayName("Empleado no puede cerrar corte abierto por otro usuario")
+    void empleadoNoPuedeCerrarCorteDeOtroUsuario() {
+        UsuarioEntity otroUsuario = new UsuarioEntity();
+        ReflectionTestUtils.setField(otroUsuario, "id", 99L);
+
+        CorteCaja corteDeOtro = new CorteCaja();
+        ReflectionTestUtils.setField(corteDeOtro, "id", 800L);
+        corteDeOtro.setCaja(caja);
+        corteDeOtro.setUsuario(otroUsuario);
+
+        when(corteCajaRepository.buscarConBloqueo(800L)).thenReturn(Optional.of(corteDeOtro));
+        when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
+
+        var request = new CerrarCorteRequest(new BigDecimal("500.00"));
+
+        assertThatThrownBy(() -> service.cerrarCorte(800L, request, 1L))
+            .isInstanceOf(AccessDeniedException.class)
+            .hasMessageContaining("Únicamente el usuario que abrió el corte de caja puede cerrarlo");
     }
 }

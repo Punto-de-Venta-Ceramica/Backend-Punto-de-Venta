@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.infrastructure.persistence;
 
+import java.sql.Timestamp;
 import com.iaml.puntoventaapi.pedidos.domain.EstadoPedido;
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido;
@@ -71,10 +72,11 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
     public long guardar(DatosRegistro datos, long clienteId, com.iaml.puntoventaapi.pedidos.domain.Pedido pedido) {
         long id = Objects.requireNonNull(jdbc.queryForObject("""
             insert into barrocontrol.pedido (id_sucursal, id_usuario, id_cliente, folio, descripcion,
-                 tipo_entrega, estado, descripcion_envio, fecha_creacion)
-            values (?, ?, ?, ?, ?, ?, ?, ?, current_timestamp) returning id
+                 tipo_entrega, estado, descripcion_envio, fecha_creacion, fecha_entrega)
+            values (?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?) returning id
             """, Long.class, datos.sucursalId(), datos.usuarioId(), clienteId, UUID.randomUUID().toString(),
-            datos.descripcion(), datos.tipoEntrega(), pedido.estado().name(), datos.descripcionEnvio()));
+            datos.descripcion(), datos.tipoEntrega(), pedido.estado().name(), datos.descripcionEnvio(),
+            Timestamp.from(datos.fechaEntrega())));
         // El UUID solo ocupa el campo obligatorio mientras se conoce el id; el folio visible es corto.
         jdbc.update("update barrocontrol.pedido set folio = ? where id = ?", folio(id), id);
         for (var detalle : pedido.detalles()) {
@@ -159,7 +161,9 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         if (estado == EstadoPedido.CANCELADO) registrarDevolucion(pedidoId);
         jdbc.update("""
             update barrocontrol.pedido set estado = ?,
-                fecha_entrega = case when ? = 'ENTREGADO' then coalesce(fecha_entrega, current_timestamp) else fecha_entrega end
+                -- Hasta entregarse guarda la fecha acordada; al entregarse, la real (una sola vez).
+                fecha_entrega = case when ? = 'ENTREGADO' and estado <> 'ENTREGADO'
+                    then current_timestamp else fecha_entrega end
             where id = ?
             """, estado.name(), estado.name(), pedidoId);
     }
@@ -203,9 +207,12 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             select p.id, p.id_sucursal, p.folio, p.descripcion, p.tipo_entrega,
                    p.descripcion_envio, p.estado, p.fecha_creacion,
                    c.nombre as cliente_nombre, c.telefono, c.ciudad, c.colonia, c.calle,
-                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo
+                   tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo,
+                   s.nombre as sucursal_nombre, n.id as negocio_id, n.nombre as negocio_nombre, p.fecha_entrega
             from barrocontrol.pedido p
             join barrocontrol.cliente c on c.id = p.id_cliente
+            join barrocontrol.sucursal s on s.id = p.id_sucursal
+            join barrocontrol.negocio n on n.id = s.id_negocio
             """ + TOTALES + "where p.id = ?", (rs, i) -> cabecera(rs), pedidoId);
     }
 
@@ -228,7 +235,9 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         return new Vista(id, rs.getLong("id_sucursal"), rs.getString("folio"),
             rs.getString("descripcion"), rs.getString("tipo_entrega"), rs.getString("descripcion_envio"),
             rs.getString("estado"), rs.getTimestamp("fecha_creacion").toInstant(), cliente, productos, pagos,
-            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0);
+            rs.getBigDecimal("total"), rs.getBigDecimal("total_pagado"), saldo, saldo.signum() == 0,
+            rs.getString("sucursal_nombre"), rs.getLong("negocio_id"), rs.getString("negocio_nombre"),
+            rs.getTimestamp("fecha_entrega") == null ? null : rs.getTimestamp("fecha_entrega").toInstant());
     }
 
     private static final String CONTAR_PEDIDOS = """

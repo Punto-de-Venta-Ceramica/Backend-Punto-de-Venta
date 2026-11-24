@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.api.registrar;
 
+import java.time.Instant;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido.MetodoPago;
 import com.iaml.puntoventaapi.pedidos.domain.ClientePedido;
 import com.iaml.puntoventaapi.pedidos.domain.TextoPedido;
@@ -30,7 +31,8 @@ public record RegistrarPedidoRequest(
         @Size(max = 50, message = "El tipo de entrega no debe superar 50 caracteres.") String tipoEntrega,
         @Size(max = 2000, message = "La descripción de envío no debe superar 2000 caracteres.")
         @Pattern(regexp = "^[^\\p{Cc}]*$", message = "La descripción de envío contiene caracteres no válidos.") String descripcionEnvio,
-        @NotNull(message = "Indica la cantidad pagada y el método de pago.") @Valid PagoInicial pagoInicial) {
+        @NotNull(message = "Indica la cantidad pagada y el método de pago.") @Valid PagoInicial pagoInicial,
+        @NotNull(message = "La fecha de entrega es obligatoria.") Instant fechaEntrega) {
 
     public RegistrarPedidoRequest {
         descripcion = TextoPedido.normalizar(descripcion);
@@ -79,6 +81,6 @@ public record RegistrarPedidoRequest(
             new RegistrarPedidoCommand.ProductoSolicitado(producto.productoId(), producto.cantidad(),
                 !Boolean.FALSE.equals(producto.aplicarDescuento()))).toList();
         return new RegistrarPedidoCommand(sucursalId, usuarioId, descripcion, datosCliente, lineas,
-            tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago());
+            tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago(), fechaEntrega);
     }
 }

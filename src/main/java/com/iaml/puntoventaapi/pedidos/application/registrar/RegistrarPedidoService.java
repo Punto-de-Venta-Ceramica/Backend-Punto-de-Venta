@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.application.registrar;
 
+import java.time.Instant;
 import com.iaml.puntoventaapi.pedidos.domain.DetallePedido;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido;
 import com.iaml.puntoventaapi.pedidos.domain.Pedido;
@@ -48,7 +49,9 @@ public class RegistrarPedidoService {
                 || comando.cliente() == null || comando.productos() == null || comando.productos().isEmpty()
                 || comando.productos().size() > 100
                 || comando.montoInicial() == null || comando.montoInicial().signum() < 0
-                || comando.montoInicial().scale() > 2 || comando.metodoPago() == null) {
+                || comando.montoInicial().scale() > 2 || comando.metodoPago() == null
+                // El cliente manda el fin del día elegido: hoy sigue siendo válido.
+                || comando.fechaEntrega() == null || comando.fechaEntrega().isBefore(Instant.now())) {
             throw new IllegalArgumentException("Los datos del pedido no son válidos.");
         }
         pedidos.comprobarAcceso(comando.sucursalId(), comando.usuarioId());
@@ -68,7 +71,7 @@ public class RegistrarPedidoService {
         }
         long clienteId = clientes.guardar(comando.cliente());
         var datos = new PedidoRepositorioPort.DatosRegistro(comando.sucursalId(), comando.usuarioId(),
-            descripcion, comando.tipoEntrega().trim(), descripcionEnvio);
+            descripcion, comando.tipoEntrega().trim(), descripcionEnvio, comando.fechaEntrega());
         long pedidoId = pedidos.guardar(datos, clienteId, pedido);
         notificaciones.pedidoRegistrado(pedidoId, comando.sucursalId(), comando.usuarioId());
         return new Resultado(pedidoId, pedido.total(), pedido.totalPagado(), pedido.saldoPendiente(), pedido.pagado());

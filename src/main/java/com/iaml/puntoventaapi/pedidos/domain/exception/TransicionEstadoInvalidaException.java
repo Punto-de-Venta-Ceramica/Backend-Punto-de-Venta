@@ -18,16 +18,6 @@ public class TransicionEstadoInvalidaException extends IllegalStateException {
         return estadoActual;
     }
 
-    public static String etiqueta(EstadoPedido estado) {
-        return switch (estado) {
-            case ENCARGADO -> "Encargado";
-            case PRODUCCION -> "En producción";
-            case ENTREGADO -> "Entregado";
-            case TERMINADO -> "Terminado";
-            case CANCELADO -> "Cancelado";
-        };
-    }
-
     private static String mensaje(EstadoPedido actual) {
         return switch (actual) {
             case CANCELADO -> "El pedido está cancelado y ya no puede cambiar de estado.";

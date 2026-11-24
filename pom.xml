@@ -28,6 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!-- SonarQube: sin cobertura para lo que no tiene lógica (interfaces de puertos y contratos,
+		     repositorios de Spring Data, llaves compuestas y entidades JPA). -->
+		<sonar.coverage.exclusions>**/domain/port/**,**/*Contrato.java,**/*Repository.java,**/infrastructure/persistence/*Id.java,**/pedidos/infrastructure/persistence/Pedido.java,**/pedidos/infrastructure/persistence/PagoPedido.java,**/pedidos/infrastructure/persistence/DetallePedido.java,**/ventas/infrastructure/persistence/Venta.java,**/ventas/infrastructure/persistence/DetalleVenta.java</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -95,6 +98,22 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- PostgreSQL temporal en Docker para probar el SQL real. Sin Docker esos tests se omiten. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

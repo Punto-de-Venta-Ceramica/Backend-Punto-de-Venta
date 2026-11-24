@@ -1,12 +1,14 @@
 package com.iaml.puntoventaapi.pedidos.domain.port;
 
+import java.time.Instant;
 import com.iaml.puntoventaapi.pedidos.domain.Pedido;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido;
 import com.iaml.puntoventaapi.pedidos.domain.EstadoPedido;
 
 public interface PedidoRepositorioPort {
+    /** fechaEntrega: la acordada con el cliente; al entregarse se reemplaza por la real. */
     record DatosRegistro(long sucursalId, long usuarioId, String descripcion,
-                         String tipoEntrega, String descripcionEnvio) { }
+                         String tipoEntrega, String descripcionEnvio, Instant fechaEntrega) { }
     record DatosEdicion(String descripcion, String tipoEntrega, String descripcionEnvio) { }
     /** Rechaza sucursales ajenas o inaccesibles al usuario autenticado. */
     void comprobarAcceso(long sucursalId, long usuarioId);

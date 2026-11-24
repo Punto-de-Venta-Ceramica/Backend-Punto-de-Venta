@@ -79,7 +79,7 @@ public final class Pedido {
             case ENCARGADO -> nuevo == EstadoPedido.PRODUCCION;
             case PRODUCCION -> nuevo == EstadoPedido.ENTREGADO;
             case ENTREGADO -> nuevo == EstadoPedido.TERMINADO;
-            case TERMINADO, CANCELADO -> false;
+            default -> false; // TERMINADO; CANCELADO ya se descartó al inicio
         };
         if (!permitido) throw new TransicionEstadoInvalidaException(estado);
         estado = nuevo;

@@ -12,7 +12,8 @@ public interface ConsultaPedidosPort {
     record Detalle(long productoId, String nombre, int cantidad, BigDecimal precioUnitario,
                    BigDecimal porcentajeDescuento, BigDecimal subtotal, String imagenUrl) { }
     record Pago(long id, BigDecimal monto, String metodoPago, String tipoPago, Instant fecha) { }
-    record Vista(long id, long sucursalId, String folio, String descripcion,
+    /** negocioId, negocio y sucursal permiten abrir el detalle desde una notificación, sin conocer el contexto. */
+    record Vista(long id, long sucursalId, long negocioId, String negocio, String sucursal, String folio, String descripcion,
                  String tipoEntrega, String descripcionEnvio, String estado, Instant fechaCreacion,
                  Cliente cliente, List<Detalle> productos, List<Pago> pagos,
                  BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }

@@ -5,8 +5,14 @@ import java.util.regex.Pattern;
 /** Datos mínimos que HU-09 solicita al asociar un cliente al pedido. */
 public record ClientePedido(String nombre, String telefono, String ciudad, String colonia,
                             String calle) {
-    private static final Pattern NOMBRE_VALIDO = Pattern.compile(
-        "^[\\p{L}\\p{M}]+(?:[ '’-][\\p{L}\\p{M}]+)*$");
+    /**
+     * Letras (con acentos) y separadores sueltos entre palabras: sin separador al inicio, al final ni dos
+     * seguidos. Sin grupos repetidos, que en Java se evalúan de forma recursiva y desbordan la pila con
+     * textos largos (Sonar java:S5998).
+     */
+    public static final String NOMBRE_REGEX =
+        "^(?![ '’-])(?!.*[ '’-]{2})(?!.*[ '’-]$)[\\p{L}\\p{M} '’-]+$";
+    private static final Pattern NOMBRE_VALIDO = Pattern.compile(NOMBRE_REGEX);
     private static final Pattern TELEFONO_VALIDO = Pattern.compile("^[0-9]{10}$");
 
     public ClientePedido {

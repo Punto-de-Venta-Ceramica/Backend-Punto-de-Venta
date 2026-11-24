@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.api;
 
+import java.time.Instant;
 import static org.junit.jupiter.api.Assertions.*;
 import com.iaml.puntoventaapi.pedidos.api.registrar.RegistrarPedidoRequest;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido.MetodoPago;
@@ -14,7 +15,7 @@ class RegistrarPedidoRequestTest {
         var request = new RegistrarPedidoRequest(1L, null,
             new RegistrarPedidoRequest.Cliente("Ana", "1234567890", null, " ", null),
             List.of(new RegistrarPedidoRequest.Producto(1L, 0)), "LOCAL", null,
-            new RegistrarPedidoRequest.PagoInicial(new BigDecimal("-1"), MetodoPago.EFECTIVO));
+            new RegistrarPedidoRequest.PagoInicial(new BigDecimal("-1"), MetodoPago.EFECTIVO), null);
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             var campos = factory.getValidator().validate(request).stream()
                 .map(v -> v.getPropertyPath().toString()).toList();
@@ -23,6 +24,7 @@ class RegistrarPedidoRequestTest {
             assertFalse(campos.contains("cliente.calle"));
             assertTrue(campos.contains("productos[0].cantidad"));
             assertTrue(campos.contains("pagoInicial.monto"));
+            assertTrue(campos.contains("fechaEntrega"));
         }
     }
 
@@ -32,7 +34,8 @@ class RegistrarPedidoRequestTest {
             "  Ciudad   de México  ", "  5  de Mayo ", " Calle  12 #34 ");
         var request = new RegistrarPedidoRequest(1L, "  Pedido   especial ", cliente,
             List.of(new RegistrarPedidoRequest.Producto(1L, 1)), "LOCAL", "  Entregar   mañana ",
-            new RegistrarPedidoRequest.PagoInicial(BigDecimal.ZERO, MetodoPago.EFECTIVO));
+            new RegistrarPedidoRequest.PagoInicial(BigDecimal.ZERO, MetodoPago.EFECTIVO),
+            Instant.parse("2099-12-31T23:59:59Z"));
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             assertTrue(factory.getValidator().validate(request).isEmpty());
             assertEquals("María José", cliente.nombre());

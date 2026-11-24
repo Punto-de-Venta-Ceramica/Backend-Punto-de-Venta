@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.api.registrar;
 
+import java.time.Instant;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido.MetodoPago;
 import com.iaml.puntoventaapi.pedidos.domain.ClientePedido;
 import com.iaml.puntoventaapi.pedidos.domain.TextoPedido;
@@ -30,7 +31,8 @@ public record RegistrarPedidoRequest(
         @Size(max = 50, message = "El tipo de entrega no debe superar 50 caracteres.") String tipoEntrega,
         @Size(max = 2000, message = "La descripción de envío no debe superar 2000 caracteres.")
         @Pattern(regexp = "^[^\\p{Cc}]*$", message = "La descripción de envío contiene caracteres no válidos.") String descripcionEnvio,
-        @NotNull(message = "Indica la cantidad pagada y el método de pago.") @Valid PagoInicial pagoInicial) {
+        @NotNull(message = "Indica la cantidad pagada y el método de pago.") @Valid PagoInicial pagoInicial,
+        @NotNull(message = "La fecha de entrega es obligatoria.") Instant fechaEntrega) {
 
     public RegistrarPedidoRequest {
         descripcion = TextoPedido.normalizar(descripcion);
@@ -39,7 +41,7 @@ public record RegistrarPedidoRequest(
 
     public record Cliente(
             @NotBlank(message = "El nombre del cliente es obligatorio.") @Size(max = 150)
-            @Pattern(regexp = "^[\\p{L}\\p{M}]+(?:[ '’-][\\p{L}\\p{M}]+)*$", message = "Ingresa un nombre válido, sin números.") String nombre,
+            @Pattern(regexp = ClientePedido.NOMBRE_REGEX, message = "Ingresa un nombre válido, sin números.") String nombre,
             @NotBlank(message = "El teléfono del cliente es obligatorio.")
             @Pattern(regexp = "^(?:[0-9]{10})?$", message = "El teléfono debe contener exactamente 10 dígitos.") String telefono,
             @Size(max = 120, message = "La ciudad no debe superar 120 caracteres.")
@@ -79,6 +81,6 @@ public record RegistrarPedidoRequest(
             new RegistrarPedidoCommand.ProductoSolicitado(producto.productoId(), producto.cantidad(),
                 !Boolean.FALSE.equals(producto.aplicarDescuento()))).toList();
         return new RegistrarPedidoCommand(sucursalId, usuarioId, descripcion, datosCliente, lineas,
-            tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago());
+            tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago(), fechaEntrega);
     }
 }

@@ -15,7 +15,8 @@ public interface ConsultaPedidosPort {
     record Vista(long id, long sucursalId, String folio, String descripcion,
                  String tipoEntrega, String descripcionEnvio, String estado, Instant fechaCreacion,
                  Cliente cliente, List<Detalle> productos, List<Pago> pagos,
-                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }
+                 BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado,
+                 String sucursal, long negocioId, String negocio, Instant fechaEntrega) { }
 
     Vista consultar(long pedidoId, long usuarioId);
     /** Línea del listado: solo lo necesario para la tarjeta. */

@@ -40,7 +40,7 @@ class PedidosErroresApiTest {
     private static final String PEDIDO = """
         {"sucursalId":1,"cliente":{"nombre":"Marco","telefono":"5512345678"},
          "productos":[{"productoId":1,"cantidad":3}],"tipoEntrega":"LOCAL",
-         "pagoInicial":{"monto":30,"metodoPago":"EFECTIVO"}}
+         "fechaEntrega":"2099-12-31T23:59:59Z","pagoInicial":{"monto":30,"metodoPago":"EFECTIVO"}}
         """;
 
     static Stream<Arguments> erroresDeNegocio() {

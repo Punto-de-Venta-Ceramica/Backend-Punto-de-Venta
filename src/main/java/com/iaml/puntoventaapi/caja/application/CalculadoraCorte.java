@@ -97,7 +97,9 @@ public class CalculadoraCorte {
                 ventasEfectivo = ventasEfectivo.add(subtotal);
             }
 
-            String key = v.productoId() + "_" + v.precioUnitario();
+            // Artículo artesanal se vende con nombres distintos bajo un mismo id: el nombre entra en la clave. En el
+            // resto de productos el nombre es el mismo por id, así que agrupan igual que siempre.
+            String key = v.productoId() + "_" + v.precioUnitario() + "_" + v.productoNombre();
             productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(v.productoId(), v.productoNombre(), v.precioUnitario()))
                 .acumular(v.cantidad(), subtotal);
         }
@@ -155,7 +157,7 @@ public class CalculadoraCorte {
         // Incorporar productos de pedidos no cancelados
         if (productosPedido != null) {
             for (ItemPedidoProducto pp : productosPedido) {
-                String key = pp.productoId() + "_" + pp.precioUnitario();
+                String key = pp.productoId() + "_" + pp.precioUnitario() + "_" + pp.productoNombre();
                 BigDecimal subtotal = pp.subtotal() != null ? pp.subtotal().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
                 productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(pp.productoId(), pp.productoNombre(), pp.precioUnitario()))
                     .acumular(pp.cantidad(), subtotal);
@@ -240,7 +242,9 @@ public class CalculadoraCorte {
 
     private List<ItemVenta> consultarVentas(Long corteId) {
         String sql = """
-            select dv.id_producto, p.nombre, dv.cantidad, dv.precio_unitario, dv.subtotal, v.metodo_pago
+            select dv.id_producto,
+                   case when p.precio_variable then coalesce(dv.nombre_producto, p.nombre) else p.nombre end,
+                   dv.cantidad, dv.precio_unitario, dv.subtotal, v.metodo_pago
             from barrocontrol.venta v
             join barrocontrol.detalle_venta dv on dv.id_venta = v.id
             join barrocontrol.producto p on p.id = dv.id_producto

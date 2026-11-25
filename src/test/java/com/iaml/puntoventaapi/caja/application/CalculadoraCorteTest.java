@@ -258,5 +258,25 @@ class CalculadoraCorteTest {
         // Productos incluidos
         assertThat(resultado.productos()).hasSize(3);
     }
+
+    @Test
+    @DisplayName("Artículo artesanal con nombres distintos y el mismo precio no se mezcla; un producto normal sí agrupa")
+    void variosSeAgrupaPorNombre() {
+        var ventas = List.of(
+            new CalculadoraCorte.ItemVenta(7L, "Servilletas", 5, new BigDecimal("10.00"), new BigDecimal("50.00"), "EFECTIVO"),
+            new CalculadoraCorte.ItemVenta(7L, "Bolsas", 2, new BigDecimal("10.00"), new BigDecimal("20.00"), "EFECTIVO"),
+            new CalculadoraCorte.ItemVenta(7L, "Servilletas", 1, new BigDecimal("10.00"), new BigDecimal("10.00"), "TARJETA"),
+            new CalculadoraCorte.ItemVenta(1L, "Vaso", 1, new BigDecimal("30.00"), new BigDecimal("30.00"), "EFECTIVO"),
+            new CalculadoraCorte.ItemVenta(1L, "Vaso", 2, new BigDecimal("30.00"), new BigDecimal("60.00"), "EFECTIVO"));
+
+        var resultado = calculadora.procesarCalculo(BigDecimal.ZERO, ventas, List.of(), List.of(), List.of());
+
+        assertThat(resultado.productos()).extracting(ProductoVendidoDto::nombre, ProductoVendidoDto::cantidad)
+            .containsExactlyInAnyOrder(
+                org.assertj.core.api.Assertions.tuple("Servilletas", 6),
+                org.assertj.core.api.Assertions.tuple("Bolsas", 2),
+                org.assertj.core.api.Assertions.tuple("Vaso", 3));
+        assertThat(resultado.totalVentas()).isEqualByComparingTo("170.00");
+    }
 }
 

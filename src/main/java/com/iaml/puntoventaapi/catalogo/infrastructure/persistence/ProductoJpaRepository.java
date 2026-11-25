@@ -112,6 +112,21 @@ public interface ProductoJpaRepository extends JpaRepository<ProductoEntity, Lon
                                                  @Param("precioMaximo") BigDecimal precioMaximo,
                                                  Pageable pageable);
 
+    /** Sin filtros de activo en la cadena: el producto de cobro libre cuelga de un área y categoría dadas de baja. */
+    @Query("""
+        select p from ProductoEntity p join p.categoria c join c.area a
+        where a.negocio.id = :negocioId and p.precioVariable = true and p.activo = true
+        order by p.id
+        """)
+    List<ProductoEntity> productosLibresDelNegocio(@Param("negocioId") Long negocioId);
+
+    @Query("""
+        select p from ProductoEntity p join p.categoria c join c.area a
+        where a.negocio.id = :negocioId and p.id in :productoIds and p.precioVariable = true and p.activo = true
+        """)
+    List<ProductoEntity> productosLibresPorIds(@Param("negocioId") Long negocioId,
+                                               @Param("productoIds") Collection<Long> productoIds);
+
     @Query("select c.id, c.nombre, a.id, a.nombre from CategoriaEntity c join c.area a where c.id = :categoriaId")
     List<Object[]> clasificacionDeCategoria(@Param("categoriaId") Long categoriaId);
 

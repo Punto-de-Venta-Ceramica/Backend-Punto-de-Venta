@@ -4,11 +4,13 @@ import com.iaml.puntoventaapi.shared.domain.FiltroProductosVenta;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
 import com.iaml.puntoventaapi.ventas.api.dto.PrepararVentaRequest;
 import com.iaml.puntoventaapi.ventas.api.dto.PaginaProductosVentaResponse;
+import com.iaml.puntoventaapi.ventas.api.dto.ProductoLibreResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaResponse;
 import com.iaml.puntoventaapi.ventas.api.dto.VentaConfirmadaResponse;
 import com.iaml.puntoventaapi.ventas.application.ConfirmarVentaService;
 import com.iaml.puntoventaapi.ventas.application.EsloganTicketService;
 import com.iaml.puntoventaapi.ventas.application.PrepararVentaService;
+import com.iaml.puntoventaapi.ventas.application.ProductoLibreVentaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
@@ -38,13 +40,16 @@ public class VentaController {
     private final ConfirmarVentaService confirmacion;
     private final EsloganTicketService eslogan;
     private final UsuarioActual usuarioActual;
+    private final ProductoLibreVentaService productoLibre;
 
     public VentaController(PrepararVentaService ventas, ConfirmarVentaService confirmacion,
-                           EsloganTicketService eslogan, UsuarioActual usuarioActual) {
+                           EsloganTicketService eslogan, UsuarioActual usuarioActual,
+                           ProductoLibreVentaService productoLibre) {
         this.ventas = ventas;
         this.confirmacion = confirmacion;
         this.eslogan = eslogan;
         this.usuarioActual = usuarioActual;
+        this.productoLibre = productoLibre;
     }
 
     @GetMapping("/productos")
@@ -59,6 +64,12 @@ public class VentaController {
             @RequestParam(defaultValue = "20") @Positive @Max(100) int size) {
         var filtros = new FiltroProductosVenta(buscar, areaId, categoriaId, precioMinimo, precioMaximo);
         return PaginaProductosVentaResponse.from(ventas.listarProductos(sucursalId, usuarioActual.id(), filtros, page, size));
+    }
+
+    /** Producto "Artículo artesanal" para cobrar algo que no está registrado, con precio y nombre capturados en la venta. */
+    @GetMapping("/producto-libre")
+    public ProductoLibreResponse productoLibre(@RequestParam @Positive Long sucursalId) {
+        return ProductoLibreResponse.from(productoLibre.obtener(sucursalId, usuarioActual.id()));
     }
 
     @PostMapping("/preparar")

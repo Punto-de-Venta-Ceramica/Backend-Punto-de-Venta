@@ -107,3 +107,8 @@ BEGIN
 END
 $$;
 ^^^
+
+-- Producto "Artículo artesanal" (cobro libre): el precio y el nombre se capturan en cada venta.
+ALTER TABLE barrocontrol.producto
+    ADD COLUMN IF NOT EXISTS precio_variable boolean NOT NULL DEFAULT false;
+^^^

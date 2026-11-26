@@ -83,7 +83,7 @@ public class ConfirmarVentaService {
             Map<Long, Integer> cantidades = venta.detalles().stream()
                 .collect(Collectors.toMap(DetalleVenta::productoId, DetalleVenta::cantidad));
             Set<Long> descuentosSolicitados = solicitud.productos().stream()
-                .filter(ProductoSolicitado::aplicarDescuento)
+                .filter(p -> p.aplicarDescuento() || p.descuentoManual() != null)
                 .map(ProductoSolicitado::productoId)
                 .collect(Collectors.toSet());
             Set<Long> descuentosAplicados = venta.detalles().stream()
@@ -94,7 +94,8 @@ public class ConfirmarVentaService {
                     || !mismoMonto(solicitud.montoRecibido(), venta.montoRecibido())
                     || !solicitud.cantidadesPorProducto().equals(cantidades)
                     || !descuentosSolicitados.equals(descuentosAplicados)
-                    || !mismosDatosLibres(solicitud, venta.detalles())) {
+                    || !mismosDatosLibres(solicitud, venta.detalles())
+                    || !mismosDescuentosManuales(solicitud, venta.detalles())) {
                 throw new ConflictoConfirmacionVentaException("La clave de operación ya se usó para otra venta.");
             }
             return anterior;
@@ -113,6 +114,16 @@ public class ConfirmarVentaService {
                     && (p.precioUnitario() == null || guardado.precioUnitario().compareTo(p.precioUnitario()) == 0)
                     && (p.nombre() == null || p.nombre().equals(guardado.nombreProducto()));
             });
+    }
+
+    /** Un reintento con otro porcentaje manual es otra venta. */
+    private static boolean mismosDescuentosManuales(SolicitudVenta solicitud, java.util.List<DetalleVenta> guardados) {
+        Map<Long, DetalleVenta> porProducto = guardados.stream()
+            .collect(Collectors.toMap(DetalleVenta::productoId, detalle -> detalle));
+        return solicitud.productos().stream()
+            .filter(p -> p.descuentoManual() != null)
+            .allMatch(p -> porProducto.containsKey(p.productoId())
+                && porProducto.get(p.productoId()).porcentajeDescuento().compareTo(p.descuentoManual()) == 0);
     }
 
     /** Se evalúa después de comparar el método: tarjeta no lleva monto y efectivo siempre lo lleva. */

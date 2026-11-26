@@ -100,6 +100,10 @@ public class PrepararVentaService {
         if (seleccion.cantidad() > existencia) {
             throw new ExistenciaVentaInsuficienteException(seleccion.productoId(), seleccion.cantidad(), existencia);
         }
+        if (seleccion.descuentoManual() != null) {
+            return new DetalleVenta(producto.productoId(), producto.nombre(), seleccion.cantidad(),
+                producto.precioUnitario(), seleccion.descuentoManual());
+        }
         BigDecimal porcentaje = producto.porcentajeDescuento();
         if (seleccion.aplicarDescuento() && porcentaje.signum() <= 0) {
             throw new DescuentoVentaNoDisponibleException(producto.productoId());
@@ -108,7 +112,7 @@ public class PrepararVentaService {
             producto.precioUnitario(), seleccion.aplicarDescuento() ? porcentaje : BigDecimal.ZERO);
     }
 
-    /** Producto "Artículo artesanal": el precio y el nombre vienen del cajero, no hay existencia ni descuento. */
+    /** Producto "Artículo artesanal": precio, nombre y descuento (solo manual) vienen del cajero; no hay existencia. */
     private DetalleVenta detalleLibre(ProductoSolicitado seleccion, ProductoCotizado producto) {
         if (seleccion.precioUnitario() == null) {
             throw new DatosVentaInvalidosException(Map.of("precioUnitario", "Indica el precio del artículo artesanal."));
@@ -117,11 +121,13 @@ public class PrepararVentaService {
             throw new DatosVentaInvalidosException(Map.of("precioUnitario",
                 "El precio del artículo artesanal no puede superar $999,999.99."));
         }
-        if (seleccion.aplicarDescuento()) {
-            throw new DatosVentaInvalidosException(Map.of("productos", "El artículo artesanal no admite descuentos."));
+        if (seleccion.aplicarDescuento() && seleccion.descuentoManual() == null) {
+            throw new DatosVentaInvalidosException(Map.of("productos",
+                "El artículo artesanal no tiene descuento de catálogo; indica el porcentaje."));
         }
         String nombre = seleccion.nombre() == null ? producto.nombre() : seleccion.nombre();
+        BigDecimal descuento = seleccion.descuentoManual() == null ? BigDecimal.ZERO : seleccion.descuentoManual();
         return new DetalleVenta(producto.productoId(), nombre, seleccion.cantidad(),
-            seleccion.precioUnitario(), BigDecimal.ZERO, true);
+            seleccion.precioUnitario(), descuento, true);
     }
 }

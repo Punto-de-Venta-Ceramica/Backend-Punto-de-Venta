@@ -13,8 +13,14 @@ public record RegistrarPedidoCommand(long sucursalId, long usuarioId,
     /**
      * aplicarDescuento: si se usa el descuento vigente del producto (por jerarquía:
      * producto, categoría, área). El vendedor puede decidir no aplicarlo.
+     * descuentoManual: porcentaje (1 a 100) capturado por el vendedor; si viene, reemplaza al del catálogo.
      */
-    public record ProductoSolicitado(long productoId, int cantidad, boolean aplicarDescuento) {
+    public record ProductoSolicitado(long productoId, int cantidad, boolean aplicarDescuento,
+                                     BigDecimal descuentoManual) {
+        public ProductoSolicitado(long productoId, int cantidad, boolean aplicarDescuento) {
+            this(productoId, cantidad, aplicarDescuento, null);
+        }
+
         public ProductoSolicitado(long productoId, int cantidad) {
             this(productoId, cantidad, true);
         }

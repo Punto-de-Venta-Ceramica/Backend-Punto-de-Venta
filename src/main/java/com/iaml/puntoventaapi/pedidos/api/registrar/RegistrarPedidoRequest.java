@@ -6,6 +6,7 @@ import com.iaml.puntoventaapi.pedidos.domain.ClientePedido;
 import com.iaml.puntoventaapi.pedidos.domain.TextoPedido;
 import com.iaml.puntoventaapi.pedidos.application.registrar.RegistrarPedidoCommand;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -58,13 +59,19 @@ public record RegistrarPedidoRequest(
         }
     }
 
-    /** aplicarDescuento: opcional; si se omite se aplica el descuento vigente del producto. */
+    /**
+     * aplicarDescuento: opcional; si se omite se aplica el descuento vigente del producto.
+     * descuentoManual: opcional; porcentaje que reemplaza al del catálogo, aunque el producto no tenga.
+     */
     public record Producto(
             @NotNull(message = "El producto es obligatorio.") @Positive Long productoId,
             @NotNull(message = "La cantidad es obligatoria.") @Positive(message = "La cantidad debe ser mayor a cero.") Integer cantidad,
-            Boolean aplicarDescuento) {
+            Boolean aplicarDescuento,
+            @DecimalMin(value = "1", message = "El descuento debe ser de al menos 1 %.")
+            @DecimalMax(value = "100", message = "El descuento no puede superar 100 %.")
+            @Digits(integer = 3, fraction = 2, message = "El descuento admite máximo 2 decimales.") BigDecimal descuentoManual) {
         public Producto(Long productoId, Integer cantidad) {
-            this(productoId, cantidad, null);
+            this(productoId, cantidad, null, null);
         }
     }
 
@@ -79,7 +86,7 @@ public record RegistrarPedidoRequest(
             cliente.colonia(), cliente.calle());
         var lineas = productos.stream().map(producto ->
             new RegistrarPedidoCommand.ProductoSolicitado(producto.productoId(), producto.cantidad(),
-                !Boolean.FALSE.equals(producto.aplicarDescuento()))).toList();
+                !Boolean.FALSE.equals(producto.aplicarDescuento()), producto.descuentoManual())).toList();
         return new RegistrarPedidoCommand(sucursalId, usuarioId, descripcion, datosCliente, lineas,
             tipoEntrega, descripcionEnvio, pagoInicial.monto(), pagoInicial.metodoPago(), fechaEntrega);
     }

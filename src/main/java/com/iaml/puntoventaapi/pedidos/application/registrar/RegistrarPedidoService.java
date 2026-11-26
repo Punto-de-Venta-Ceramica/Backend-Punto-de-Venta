@@ -61,6 +61,14 @@ public class RegistrarPedidoService {
             }
             var producto = catalogo.consultar(comando.sucursalId(), comando.usuarioId(), item.productoId());
             if (producto == null) throw new ProductoPedidoNoDisponibleException();
+            var manual = item.descuentoManual();
+            if (manual != null) {
+                if (manual.compareTo(BigDecimal.ONE) < 0) {
+                    throw new IllegalArgumentException("El descuento debe ser de al menos 1 %.");
+                }
+                // DetallePedido valida el tope de 100 % y los 2 decimales.
+                return new DetallePedido(item.productoId(), item.cantidad(), producto.precio(), manual);
+            }
             // Sin aplicar el descuento, la línea queda a precio de lista (0 %).
             return DetallePedido.desdeCatalogo(item.productoId(), item.cantidad(), producto.precio(),
                 item.aplicarDescuento() ? producto.escalones() : List.of());

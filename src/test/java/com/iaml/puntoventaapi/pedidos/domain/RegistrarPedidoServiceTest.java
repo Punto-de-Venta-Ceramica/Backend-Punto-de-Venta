@@ -94,4 +94,46 @@ class RegistrarPedidoServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.registrar(comando));
         assertEquals(0, escrituras.get());
     }
+
+    private static RegistrarPedidoService servicioQueEspera(String total, List<EscalonDescuento> escalones) {
+        var repo = new RepoRegistro() {
+            public void comprobarAcceso(long sucursal, long usuario) { }
+            public long guardar(DatosRegistro datos, long cliente, Pedido pedido) {
+                assertEquals(new BigDecimal(total), pedido.total());
+                return 9;
+            }
+        };
+        return new RegistrarPedidoService(repo, (s, u, p) -> new CatalogoPort.Producto(new BigDecimal("100.00"), escalones),
+            cliente -> 5, new NotificacionPort() {
+                public void pedidoRegistrado(long pedido, long sucursal, long usuario) { }
+                public void pedidoEntregado(long pedidoId) { }
+            });
+    }
+
+    private static RegistrarPedidoCommand conManual(String porcentaje) {
+        var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
+        return new RegistrarPedidoCommand(2, 1, null, cliente,
+            List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2, true, new BigDecimal(porcentaje))), "LOCAL", null,
+            BigDecimal.ZERO, PagoPedido.MetodoPago.EFECTIVO, Instant.parse("2099-12-31T23:59:59Z"));
+    }
+
+    @Test
+    void elDescuentoManualSeAplicaSinDescuentoDeCatalogo() {
+        // 2 × 100 al 25 % manual.
+        assertEquals(new BigDecimal("150.00"), servicioQueEspera("150.00", List.of()).registrar(conManual("25")).total());
+    }
+
+    @Test
+    void elDescuentoManualReemplazaAlDelCatalogo() {
+        var escalones = List.of(new EscalonDescuento(2, null, new BigDecimal("10.00")));
+        assertEquals(new BigDecimal("140.00"), servicioQueEspera("140.00", escalones).registrar(conManual("30")).total());
+    }
+
+    @Test
+    void rechazaDescuentoManualFueraDeRango() {
+        for (String porcentaje : new String[] {"0.50", "100.01", "10.001"}) {
+            assertThrows(IllegalArgumentException.class,
+                () -> servicioQueEspera("0", List.of()).registrar(conManual(porcentaje)));
+        }
+    }
 }

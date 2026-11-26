@@ -1,6 +1,7 @@
 package com.iaml.puntoventaapi.ventas.api.dto;
 
 import com.iaml.puntoventaapi.ventas.domain.ProductoSolicitado;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
@@ -17,9 +18,13 @@ public record ProductoSolicitadoRequest(
         Boolean aplicarDescuento,
         @DecimalMin(value = "0.01", message = "El precio debe ser mayor que cero.")
         @Digits(integer = 12, fraction = 2, message = "El precio admite máximo 2 decimales.") BigDecimal precioUnitario,
-        @Size(max = ProductoSolicitado.NOMBRE_MAX, message = "El nombre admite máximo 150 caracteres.") String nombre) {
+        @Size(max = ProductoSolicitado.NOMBRE_MAX, message = "El nombre admite máximo 150 caracteres.") String nombre,
+        @DecimalMin(value = "1", message = "El descuento debe ser de al menos 1 %.")
+        @DecimalMax(value = "100", message = "El descuento no puede superar 100 %.")
+        @Digits(integer = 3, fraction = 2, message = "El descuento admite máximo 2 decimales.") BigDecimal descuentoManual) {
 
     public ProductoSolicitado toDomain() {
-        return new ProductoSolicitado(productoId, cantidad, Boolean.TRUE.equals(aplicarDescuento), precioUnitario, nombre);
+        return new ProductoSolicitado(productoId, cantidad, Boolean.TRUE.equals(aplicarDescuento), precioUnitario,
+            nombre, descuentoManual);
     }
 }

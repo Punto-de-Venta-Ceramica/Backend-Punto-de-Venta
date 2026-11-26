@@ -7,6 +7,7 @@ public record ResumenCorteCajaDto(
     Long id,
     Long cajaId,
     Long sucursalId,
+    String sucursalNombre,
     Long usuarioId,
     String usuarioNombre,
     Instant fechaHoraApertura,

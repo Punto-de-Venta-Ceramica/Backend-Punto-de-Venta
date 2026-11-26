@@ -27,8 +27,9 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class ReporteService {
-    private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Mexico_City");
+    private static final ZoneId ZONA_HORARIA = ReporteMovimientos.ZONA_HORARIA;
 
     private final SucursalContrato sucursales;
     private final ReporteConsultaPort consulta;
@@ -38,8 +39,12 @@ public class ReporteService {
         this.consulta = consulta;
     }
 
-    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public ReporteMovimientos consultar(long sucursalId, long propietarioId, Periodo periodo, LocalDate fecha) {
+        return consultar(sucursalId, propietarioId, periodo, fecha, false);
+    }
+
+    public ReporteMovimientos consultar(long sucursalId, long propietarioId, Periodo periodo, LocalDate fecha,
+                                        boolean incluirAbiertos) {
         if (sucursales.negocioAutorizado(sucursalId, propietarioId).isEmpty()) {
             throw new AccessDeniedException("La sucursal no está disponible para este usuario.");
         }
@@ -49,7 +54,7 @@ public class ReporteService {
         Instant desde = inicioDelDia(rango.inicio());
         Instant hasta = inicioDelDia(rango.finExclusivo());
         var cortes = consulta.buscarCortes(sucursalId, desde, hasta);
-        var movimientos = consulta.buscarMovimientos(sucursalId, desde, hasta);
+        var movimientos = consulta.buscarMovimientos(sucursalId, desde, hasta, incluirAbiertos);
         var movimientosPorDia = movimientos.stream().collect(groupingBy(m -> fechaLocal(m.fechaHora())));
 
         var semanas = rango.inicio().datesUntil(rango.finExclusivo())

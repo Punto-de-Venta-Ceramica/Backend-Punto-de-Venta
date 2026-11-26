@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class PrepararVentaService {
 
+    private static final BigDecimal PRECIO_LIBRE_MAXIMO = new BigDecimal("999999.99");
+
     private final SucursalPort sucursales;
     private final CatalogoPort catalogo;
     private final InventarioPort inventario;
@@ -83,6 +85,13 @@ public class PrepararVentaService {
     private DetalleVenta prepararDetalle(ProductoSolicitado seleccion, Map<Long, ProductoCotizado> productos,
                                          Map<Long, Integer> existencias) {
         ProductoCotizado producto = productos.get(seleccion.productoId());
+        if (producto != null && producto.precioVariable()) {
+            return detalleLibre(seleccion, producto);
+        }
+        if (seleccion.precioUnitario() != null || seleccion.nombre() != null) {
+            throw new DatosVentaInvalidosException(Map.of("productos",
+                "Solo el artículo artesanal admite precio o nombre propios."));
+        }
         Integer existencia = existencias.get(seleccion.productoId());
         if (producto == null || existencia == null) {
             throw new RecursoVentaNoEncontradoException(
@@ -97,5 +106,22 @@ public class PrepararVentaService {
         }
         return new DetalleVenta(producto.productoId(), producto.nombre(), seleccion.cantidad(),
             producto.precioUnitario(), seleccion.aplicarDescuento() ? porcentaje : BigDecimal.ZERO);
+    }
+
+    /** Producto "Artículo artesanal": el precio y el nombre vienen del cajero, no hay existencia ni descuento. */
+    private DetalleVenta detalleLibre(ProductoSolicitado seleccion, ProductoCotizado producto) {
+        if (seleccion.precioUnitario() == null) {
+            throw new DatosVentaInvalidosException(Map.of("precioUnitario", "Indica el precio del artículo artesanal."));
+        }
+        if (seleccion.precioUnitario().compareTo(PRECIO_LIBRE_MAXIMO) > 0) {
+            throw new DatosVentaInvalidosException(Map.of("precioUnitario",
+                "El precio del artículo artesanal no puede superar $999,999.99."));
+        }
+        if (seleccion.aplicarDescuento()) {
+            throw new DatosVentaInvalidosException(Map.of("productos", "El artículo artesanal no admite descuentos."));
+        }
+        String nombre = seleccion.nombre() == null ? producto.nombre() : seleccion.nombre();
+        return new DetalleVenta(producto.productoId(), nombre, seleccion.cantidad(),
+            seleccion.precioUnitario(), BigDecimal.ZERO, true);
     }
 }

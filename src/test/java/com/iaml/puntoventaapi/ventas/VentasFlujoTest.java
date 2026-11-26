@@ -6,9 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.iaml.puntoventaapi.FlujoApiDePrueba;
+import com.iaml.puntoventaapi.caja.application.CalculadoraCorte;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -17,6 +20,8 @@ import org.springframework.test.web.servlet.ResultActions;
 
 /** HU-08: venta de punta a punta (catálogo, existencia, corte de caja y ticket) en PostgreSQL. */
 class VentasFlujoTest extends FlujoApiDePrueba {
+
+    @Autowired private CalculadoraCorte calculadoraCorte;
 
     private String venta(String metodo, String monto, String productos) {
         return """
@@ -185,5 +190,116 @@ class VentasFlujoTest extends FlujoApiDePrueba {
         SecurityContextHolder.getContext().setAuthentication(
             new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_EMPLEADO"))));
         postJson("/api/ventas/preparar", carrito()).andExpect(status().isUnauthorized());
+    }
+
+    /** Línea de "Artículo artesanal": precio y nombre los pone el cajero. */
+    private String libre(long producto, int cantidad, String precio, String nombre) {
+        return "{\"productoId\":%d,\"cantidad\":%d,\"aplicarDescuento\":false,\"precioUnitario\":%s,\"nombre\":%s}"
+            .formatted(producto, cantidad, precio, nombre == null ? "null" : "\"" + nombre + "\"");
+    }
+
+    private long productoLibre() throws Exception {
+        return leerId(getJson("/api/ventas/producto-libre?sucursalId={s}", sucursal).andExpect(status().isOk()),
+            "$.productoId");
+    }
+
+    @Test
+    void variosSeCreaUnaVezPorNegocioYNoApareceEnElCatalogo() throws Exception {
+        comoEmpleado();
+        long varios = productoLibre();
+        assertThat(productoLibre()).isEqualTo(varios);
+        getJson("/api/ventas/producto-libre?sucursalId={s}", sucursal)
+            .andExpect(jsonPath("$.nombre").value("Artículo artesanal"));
+        getJson("/api/ventas/producto-libre?sucursalId={s}", sucursalAjena).andExpect(status().isNotFound());
+
+        assertThat(jdbc.queryForObject("select count(*) from barrocontrol.producto where precio_variable", Integer.class))
+            .isEqualTo(1);
+        // Cuelga de un área y una categoría dadas de baja: ninguna consulta del catálogo lo ve.
+        assertThat(jdbc.queryForObject("""
+            select count(*) from barrocontrol.producto p
+            join barrocontrol.categoria c on c.id = p.id_categoria
+            join barrocontrol.area a on a.id = c.id_area
+            where p.precio_variable and not c.activo and not a.activo and a.id_negocio = ?
+            """, Integer.class, negocio)).isEqualTo(1);
+        getJson("/api/ventas/productos?sucursalId={s}", sucursal)
+            .andExpect(jsonPath("$.totalElementos").value(2));
+    }
+
+    @Test
+    void cobraSoloVariosConPrecioYNombreSinTocarElInventario() throws Exception {
+        long corte = abrirCorte(sucursal, empleado);
+        comoEmpleado();
+        long varios = productoLibre();
+        String json = venta("TARJETA", "null", libre(varios, 5, "10.00", "Servilletas"));
+
+        postJson("/api/ventas/preparar", json)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.detalles[0].nombreProducto").value("Servilletas"))
+            .andExpect(jsonPath("$.total").value(50.00));
+        confirmar(json, UUID.randomUUID()).andExpect(status().isCreated()).andExpect(jsonPath("$.total").value(50.00));
+
+        assertThat(jdbc.queryForObject("select nombre_producto from barrocontrol.detalle_venta where id_producto = ?",
+            String.class, varios)).isEqualTo("Servilletas");
+        assertThat(jdbc.queryForObject("select sum(existencia) from barrocontrol.inventario", Integer.class)).isEqualTo(15);
+        // El corte muestra el nombre que se cobró y suma el importe.
+        var resultado = calculadoraCorte.calcular(corte, BigDecimal.ZERO);
+        assertThat(resultado.productos()).anySatisfy(p -> {
+            assertThat(p.nombre()).isEqualTo("Servilletas");
+            assertThat(p.cantidad()).isEqualTo(5);
+        });
+        assertThat(resultado.totalVentas()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void laVentaMixtaDescuentaSoloLoQueTieneInventario() throws Exception {
+        abrirCorte(sucursal, empleado);
+        comoEmpleado();
+        long varios = productoLibre();
+        confirmar(venta("EFECTIVO", "500", linea(maceta, 2, false) + "," + libre(varios, 1, "25.50", null)),
+            UUID.randomUUID())
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.total").value(125.50));
+        assertThat(jdbc.queryForObject("select existencia from barrocontrol.inventario where id_producto = ?",
+            Integer.class, maceta)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select nombre_producto from barrocontrol.detalle_venta where id_producto = ?",
+            String.class, varios)).isEqualTo("Artículo artesanal");
+    }
+
+    @Test
+    void rechazaPrecioNombreOMalUsoDeVarios() throws Exception {
+        comoEmpleado();
+        long varios = productoLibre();
+        // Un producto normal nunca acepta precio ni nombre del cliente.
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", libre(maceta, 1, "1.00", null)))
+            .andExpect(status().isBadRequest());
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", libre(maceta, 1, "null", "Otro")))
+            .andExpect(status().isBadRequest());
+        // Artículo artesanal sin precio, con descuento o con un precio inválido.
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", linea(varios, 1, false)))
+            .andExpect(status().isBadRequest());
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", linea(varios, 1, true)))
+            .andExpect(status().isBadRequest());
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", libre(varios, 1, "0", null)))
+            .andExpect(status().isBadRequest());
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", libre(varios, 1, "10.005", null)))
+            .andExpect(status().isBadRequest());
+        postJson("/api/ventas/preparar", venta("TARJETA", "null", libre(varios, 1, "1000000.00", null)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void elReintentoDeVariosConOtroPrecioONombreEsOtraVenta() throws Exception {
+        abrirCorte(sucursal, empleado);
+        comoEmpleado();
+        long varios = productoLibre();
+        UUID clave = UUID.randomUUID();
+        String original = venta("TARJETA", "null", libre(varios, 5, "10.00", "Servilletas"));
+        long ventaId = leerId(confirmar(original, clave).andExpect(status().isCreated()), "$.ventaId");
+
+        confirmar(original, clave).andExpect(status().isCreated()).andExpect(jsonPath("$.ventaId").value(ventaId));
+        confirmar(venta("TARJETA", "null", libre(varios, 5, "12.00", "Servilletas")), clave)
+            .andExpect(status().isConflict());
+        confirmar(venta("TARJETA", "null", libre(varios, 5, "10.00", "Bolsas")), clave)
+            .andExpect(status().isConflict());
     }
 }

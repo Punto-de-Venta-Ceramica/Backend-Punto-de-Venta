@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.domain;
 
+import java.time.Instant;
 import static org.junit.jupiter.api.Assertions.*;
 import com.iaml.puntoventaapi.pedidos.application.registrar.RegistrarPedidoCommand;
 import com.iaml.puntoventaapi.pedidos.application.registrar.RegistrarPedidoService;
@@ -43,7 +44,7 @@ class RegistrarPedidoServiceTest {
         var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2)), "LOCAL", null,
-            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO);
+            new BigDecimal("50.00"), PagoPedido.MetodoPago.EFECTIVO, Instant.parse("2099-12-31T23:59:59Z"));
         var resultado = service.registrar(comando);
         assertEquals(new BigDecimal("130.00"), resultado.saldoPendiente());
         assertEquals(2, escrituras.get());
@@ -69,7 +70,7 @@ class RegistrarPedidoServiceTest {
         var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 2, false)), "LOCAL", null,
-            BigDecimal.ZERO, PagoPedido.MetodoPago.EFECTIVO);
+            BigDecimal.ZERO, PagoPedido.MetodoPago.EFECTIVO, Instant.parse("2099-12-31T23:59:59Z"));
         assertEquals(new BigDecimal("200.00"), service.registrar(comando).saldoPendiente());
     }
 
@@ -89,7 +90,7 @@ class RegistrarPedidoServiceTest {
         var cliente = new ClientePedido("Ana", "5512345678", "Puebla", "Centro", "Calle 1");
         var comando = new RegistrarPedidoCommand(2, 1, null, cliente,
             List.of(new RegistrarPedidoCommand.ProductoSolicitado(3, 1)), "LOCAL", null,
-            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA);
+            new BigDecimal("101.00"), PagoPedido.MetodoPago.TARJETA, Instant.parse("2099-12-31T23:59:59Z"));
         assertThrows(IllegalArgumentException.class, () -> service.registrar(comando));
         assertEquals(0, escrituras.get());
     }

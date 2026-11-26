@@ -39,6 +39,12 @@ public class ProductoEntity extends EntidadConId {
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
 
+    // Producto "Artículo artesanal" de cobro libre (uno por negocio): el precio y el nombre se capturan en cada venta.
+    // Cuelga de un área y categoría dadas de baja, así que ninguna consulta del catálogo lo muestra.
+    @ColumnDefault("false")
+    @Column(name = "precio_variable", nullable = false)
+    private boolean precioVariable = false;
+
     @Column(name = "imagen_url", columnDefinition = "text")
     private String imagenUrl;
 

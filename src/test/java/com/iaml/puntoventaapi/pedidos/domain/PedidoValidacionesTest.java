@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.pedidos.domain;
 
+import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -38,6 +39,7 @@ class PedidoValidacionesTest {
 
     private static final BigDecimal CIEN = new BigDecimal("100");
     private static final String LARGO = "x".repeat(2001);
+    private static final Instant FUTURO = Instant.parse("2099-12-31T23:59:59Z");
     private static final ClientePedido CLIENTE = new ClientePedido("Ana", "5512345678", null, null, null);
 
     @Test
@@ -119,7 +121,8 @@ class PedidoValidacionesTest {
     private static RegistrarPedidoCommand comando(long sucursal, long usuario, String descripcion, ClientePedido cliente,
                                                   List<ProductoSolicitado> productos, String entrega, String envio,
                                                   BigDecimal monto, MetodoPago metodo) {
-        return new RegistrarPedidoCommand(sucursal, usuario, descripcion, cliente, productos, entrega, envio, monto, metodo);
+        return new RegistrarPedidoCommand(sucursal, usuario, descripcion, cliente, productos, entrega, envio, monto, metodo,
+            FUTURO);
     }
 
     static Stream<RegistrarPedidoCommand> registrosInvalidos() {
@@ -147,7 +150,10 @@ class PedidoValidacionesTest {
             comando(1, 1, null, CLIENTE, uno, "LOCAL", null, CIEN, null),
             comando(1, 1, null, CLIENTE, conNulo, "LOCAL", null, BigDecimal.ZERO, ef),
             comando(1, 1, null, CLIENTE, List.of(new ProductoSolicitado(0, 1)), "LOCAL", null, BigDecimal.ZERO, ef),
-            comando(1, 1, null, CLIENTE, List.of(new ProductoSolicitado(1, 0)), "LOCAL", null, BigDecimal.ZERO, ef));
+            comando(1, 1, null, CLIENTE, List.of(new ProductoSolicitado(1, 0)), "LOCAL", null, BigDecimal.ZERO, ef),
+            new RegistrarPedidoCommand(1, 1, null, CLIENTE, uno, "LOCAL", null, CIEN, ef, null),
+            new RegistrarPedidoCommand(1, 1, null, CLIENTE, uno, "LOCAL", null, CIEN, ef,
+                Instant.now().minusSeconds(60)));
     }
 
     @ParameterizedTest

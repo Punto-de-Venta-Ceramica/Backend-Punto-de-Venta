@@ -64,7 +64,13 @@ public class ConfirmarVentaService {
         var corte = corteBloqueado.orElseThrow(() ->
             new ConflictoConfirmacionVentaException("Abre un corte de caja para confirmar la venta."));
         var venta = preparacion.calcular(solicitud, negocioId, usuarioId);
-        inventario.descontarParaVenta(solicitud.sucursalId(), solicitud.cantidadesPorProducto());
+        // Artículo artesanal no tiene inventario; si la venta solo lo lleva, no hay nada que descontar.
+        Map<Long, Integer> aDescontar = new java.util.LinkedHashMap<>(solicitud.cantidadesPorProducto());
+        venta.detalles().stream().filter(DetalleVenta::precioVariable)
+            .forEach(detalle -> aDescontar.remove(detalle.productoId()));
+        if (!aDescontar.isEmpty()) {
+            inventario.descontarParaVenta(solicitud.sucursalId(), aDescontar);
+        }
         return ventas.guardar(venta, corte, claveOperacion);
     }
 
@@ -87,11 +93,26 @@ public class ConfirmarVentaService {
             if (!usuarioId.equals(venta.usuarioId()) || solicitud.metodoPago() != venta.metodoPago()
                     || !mismoMonto(solicitud.montoRecibido(), venta.montoRecibido())
                     || !solicitud.cantidadesPorProducto().equals(cantidades)
-                    || !descuentosSolicitados.equals(descuentosAplicados)) {
+                    || !descuentosSolicitados.equals(descuentosAplicados)
+                    || !mismosDatosLibres(solicitud, venta.detalles())) {
                 throw new ConflictoConfirmacionVentaException("La clave de operación ya se usó para otra venta.");
             }
             return anterior;
         });
+    }
+
+    /** Un reintento de Artículo artesanal con otro precio o nombre es otra venta, no la misma. */
+    private static boolean mismosDatosLibres(SolicitudVenta solicitud, java.util.List<DetalleVenta> guardados) {
+        Map<Long, DetalleVenta> porProducto = guardados.stream()
+            .collect(Collectors.toMap(DetalleVenta::productoId, detalle -> detalle));
+        return solicitud.productos().stream()
+            .filter(p -> p.precioUnitario() != null || p.nombre() != null)
+            .allMatch(p -> {
+                DetalleVenta guardado = porProducto.get(p.productoId());
+                return guardado != null
+                    && (p.precioUnitario() == null || guardado.precioUnitario().compareTo(p.precioUnitario()) == 0)
+                    && (p.nombre() == null || p.nombre().equals(guardado.nombreProducto()));
+            });
     }
 
     /** Se evalúa después de comparar el método: tarjeta no lleva monto y efectivo siempre lo lleva. */

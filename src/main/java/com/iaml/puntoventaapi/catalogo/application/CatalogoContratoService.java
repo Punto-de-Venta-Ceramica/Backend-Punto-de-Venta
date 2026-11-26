@@ -74,6 +74,11 @@ public class CatalogoContratoService implements CatalogoContrato {
             resultado.put(productoId,
                 new ProductoParaVenta(productoId, producto.getNombre(), producto.getPrecio(), porcentaje));
         }
+        // El producto de cobro libre cuelga de clasificaciones dadas de baja, por eso se busca aparte.
+        for (var libre : productos.productosLibresPorIds(negocioId, cantidadesPorProducto.keySet())) {
+            resultado.put(libre.getId(),
+                new ProductoParaVenta(libre.getId(), libre.getNombre(), BigDecimal.ZERO, BigDecimal.ZERO, true));
+        }
         return Map.copyOf(resultado);
     }
 }

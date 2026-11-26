@@ -2,12 +2,12 @@ package com.iaml.puntoventaapi.notificaciones.api;
 
 import com.iaml.puntoventaapi.notificaciones.application.NotificacionService;
 import com.iaml.puntoventaapi.shared.security.UsuarioActual;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,9 +21,10 @@ public class NotificacionController {
         this.usuarioActual = usuarioActual;
     }
 
+    /** Paginado (20 por página, ?page=0), del más reciente al más antiguo. */
     @GetMapping
-    public List<NotificacionService.Aviso> listar() {
-        return notificaciones.listar(usuarioActual.id());
+    public NotificacionService.PaginaAvisos listar(@RequestParam(defaultValue = "0") int page) {
+        return notificaciones.listar(usuarioActual.id(), page);
     }
 
     @GetMapping("/no-leidas/conteo")

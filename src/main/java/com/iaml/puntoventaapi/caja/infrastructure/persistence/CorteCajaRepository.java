@@ -32,6 +32,10 @@ public interface CorteCajaRepository extends JpaRepository<CorteCaja, Long> {
 
     Page<CorteCaja> findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long sucursalId, Pageable pageable);
 
+    Page<CorteCaja> findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long sucursalId, Long usuarioId, Pageable pageable);
+
+    Page<CorteCaja> findByUsuario_IdAndCaja_Sucursal_IdInAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long usuarioId, java.util.Collection<Long> sucursalIds, Pageable pageable);
+
     Page<CorteCaja> findByCaja_Sucursal_Negocio_IdOrderByFechaHoraAperturaDesc(Long negocioId, Pageable pageable);
 
     Page<CorteCaja> findByCaja_Sucursal_Negocio_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long negocioId, Pageable pageable);

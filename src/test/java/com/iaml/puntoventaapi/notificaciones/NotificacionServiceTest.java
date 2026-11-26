@@ -10,15 +10,16 @@ import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.parser.PartTree;
 
 class NotificacionServiceTest {
     @Test
-    void priorizaNoLeidasAntesDeAplicarElLimite() {
-        var consulta = new PartTree("findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc", Notificacion.class);
-        assertEquals(100, consulta.getMaxResults());
-        assertEquals(Sort.Direction.ASC, consulta.getSort().getOrderFor("leida").getDirection());
+    void ordenaDelMasRecienteAlMasAntiguo() {
+        var consulta = new PartTree("findByUsuario_IdOrderByFechaDescIdDesc", Notificacion.class);
+        assertNull(consulta.getSort().getOrderFor("leida"));
         assertEquals(Sort.Direction.DESC, consulta.getSort().getOrderFor("fecha").getDirection());
         assertEquals(Sort.Direction.DESC, consulta.getSort().getOrderFor("id").getDirection());
     }
@@ -32,12 +33,28 @@ class NotificacionServiceTest {
         verify(repo).countByUsuario_IdAndLeidaFalse(7L);
     }
     @Test
-    void soloConsultaAvisosDelUsuarioSolicitado() {
+    void soloConsultaAvisosDelUsuarioSolicitadoDeVeinteEnVeinte() {
         var repo = mock(NotificacionRepository.class);
         var service = new NotificacionService(repo, mock(EntityManager.class));
-        when(repo.findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc(7L)).thenReturn(List.of());
-        assertTrue(service.listar(7L).isEmpty());
-        verify(repo).findTop100ByUsuario_IdOrderByLeidaAscFechaDescIdDesc(7L);
+        var pedido = PageRequest.of(1, 20);
+        when(repo.findByUsuario_IdOrderByFechaDescIdDesc(7L, pedido))
+            .thenReturn(new PageImpl<>(List.of(), pedido, 25));
+        var pagina = service.listar(7L, 1);
+        assertTrue(pagina.contenido().isEmpty());
+        assertEquals(1, pagina.pagina());
+        assertEquals(25L, pagina.totalElementos());
+        assertTrue(pagina.ultima());
+        verify(repo).findByUsuario_IdOrderByFechaDescIdDesc(7L, pedido);
+    }
+
+    @Test
+    void unaPaginaNegativaSeTrataComoLaPrimera() {
+        var repo = mock(NotificacionRepository.class);
+        var service = new NotificacionService(repo, mock(EntityManager.class));
+        var primera = PageRequest.of(0, 20);
+        when(repo.findByUsuario_IdOrderByFechaDescIdDesc(7L, primera))
+            .thenReturn(new PageImpl<>(List.of(), primera, 100));
+        assertFalse(service.listar(7L, -3).ultima());
     }
 
     @Test

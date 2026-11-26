@@ -19,7 +19,7 @@ class PedidosFlujoTest extends FlujoApiDePrueba {
             {"sucursalId":%d,"descripcion":"  Para   regalo ","cliente":{"nombre":"Ana López","telefono":"5512345678",
              "ciudad":"Puebla","colonia":"Centro","calle":"5 de Mayo 10"},
              "productos":[%s],"tipoEntrega":"DOMICILIO","descripcionEnvio":"Tocar el timbre",
-             "pagoInicial":{"monto":%s,"metodoPago":"EFECTIVO"}}
+             "fechaEntrega":"2099-12-31T23:59:59Z","pagoInicial":{"monto":%s,"metodoPago":"EFECTIVO"}}
             """.formatted(sucursalId, productos, monto);
     }
 
@@ -75,7 +75,14 @@ class PedidosFlujoTest extends FlujoApiDePrueba {
             .andExpect(jsonPath("$.productos.length()").value(2))
             .andExpect(jsonPath("$.productos[0].imagenUrl").value(startsWith("https://res.cloudinary.com/")))
             .andExpect(jsonPath("$.pagos[0].tipoPago").value("ANTICIPO"))
-            .andExpect(jsonPath("$.estado").value("ENCARGADO"));
+            .andExpect(jsonPath("$.estado").value("ENCARGADO"))
+            .andExpect(jsonPath("$.sucursal").value("Centro"))
+            .andExpect(jsonPath("$.negocioId").value(negocio))
+            .andExpect(jsonPath("$.negocio").value("Cerámica"))
+            .andExpect(jsonPath("$.fechaEntrega").value(startsWith("2099-12-31")));
+        // Pedidos registrados antes de capturar la fecha de entrega.
+        jdbc.update("update barrocontrol.pedido set fecha_entrega = null where id = ?", id);
+        getJson("/api/pedidos/{id}", id).andExpect(jsonPath("$.fechaEntrega").doesNotExist());
         como(ajeno, "PROPIETARIO");
         getJson("/api/pedidos/{id}", id).andExpect(status().isNotFound());
         getJson("/api/pedidos/{id}", 999_999).andExpect(status().isNotFound());
@@ -173,7 +180,13 @@ class PedidosFlujoTest extends FlujoApiDePrueba {
         estado(id, "PRODUCCION").andExpect(status().isNoContent());
         estado(id, "ENTREGADO").andExpect(status().isNoContent());
         assertThat(notificaciones(empleado)).isEqualTo(1);
+        // Al entregarse, la fecha acordada se reemplaza por la real y ya no cambia.
+        var entregado = jdbc.queryForObject("select fecha_entrega from barrocontrol.pedido where id = ?",
+            java.sql.Timestamp.class, id);
+        assertThat(entregado.toInstant()).isBefore(java.time.Instant.parse("2099-01-01T00:00:00Z"));
         estado(id, "ENTREGADO").andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("select fecha_entrega from barrocontrol.pedido where id = ?",
+            java.sql.Timestamp.class, id)).isEqualTo(entregado);
         assertThat(notificaciones(empleado)).isEqualTo(1);
         comoEmpleado();
         estado(id, "TERMINADO").andExpect(status().isNoContent());

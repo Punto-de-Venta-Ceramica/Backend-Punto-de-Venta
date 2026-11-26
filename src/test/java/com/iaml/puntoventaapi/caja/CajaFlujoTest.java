@@ -23,7 +23,7 @@ class CajaFlujoTest extends FlujoApiDePrueba {
         String json = """
             {"sucursalId":%d,"cliente":{"nombre":"Ana","telefono":"5512345678"},
              "productos":[{"productoId":%d,"cantidad":3},{"productoId":%d,"cantidad":1}],"tipoEntrega":"LOCAL",
-             "pagoInicial":{"monto":%s,"metodoPago":"EFECTIVO"}}
+             "fechaEntrega":"2099-12-31T23:59:59Z","pagoInicial":{"monto":%s,"metodoPago":"EFECTIVO"}}
             """.formatted(sucursal, jarron, maceta, anticipo);
         return leerId(postJson("/api/pedidos", json).andExpect(status().isCreated()), "$.id");
     }

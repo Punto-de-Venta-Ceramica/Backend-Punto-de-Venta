@@ -6,11 +6,15 @@ import static java.util.stream.Collectors.groupingBy;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 
 public record ReporteMovimientos(Sucursal sucursal, Periodo periodo, LocalDate desde, LocalDate hasta,
         String zonaHoraria, List<Semana> semanas, Resumen resumen, List<VentasEmpleado> ventasPorEmpleado) {
+
+    public static final ZoneId ZONA_HORARIA = ZoneId.of("America/Mexico_City");
 
     public record Sucursal(long id, String nombre, String negocio) {}
 
@@ -28,7 +32,14 @@ public record ReporteMovimientos(Sucursal sucursal, Periodo periodo, LocalDate d
     }
 
     public record Movimiento(long id, long corteId, Instant fechaHora, TipoMovimiento tipo, MedioPago medioPago,
-            String referencia, Vendedor vendedor, BigDecimal importe, List<Producto> productos) {}
+            String referencia, Vendedor vendedor, BigDecimal importe, List<Producto> productos,
+            Vendedor creadorPedido) {
+        private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
+
+        public String getHoraLocal() {
+            return fechaHora.atZone(ZONA_HORARIA).format(HORA);
+        }
+    }
 
     public record Corte(long id, String abiertoPor, Instant apertura, Instant cierre, BigDecimal fondoInicial) {}
 

@@ -109,7 +109,7 @@ class PedidoValidacionesTest {
             () -> pagos.registrar(0, 1, pago), () -> pagos.registrar(1, 0, pago),
             () -> estados.cambiar(0, 1, EstadoPedido.TERMINADO), () -> estados.cambiar(1, 0, EstadoPedido.TERMINADO),
             () -> consultas.consultar(0, 1), () -> consultas.consultar(1, 0),
-            () -> consultas.listar(0, 1, null, 0), () -> consultas.listar(1, 0, null, 0),
+            () -> consultas.listar(0, 1, null, null, 0), () -> consultas.listar(1, 0, null, null, 0),
             () -> edicion.editar(0, 1, CLIENTE, datos), () -> edicion.editar(1, 0, CLIENTE, datos),
             () -> edicion.editar(1, 1, CLIENTE, new DatosEdicion(null, null, null)),
             () -> edicion.editar(1, 1, CLIENTE, new DatosEdicion(null, " ", null)),

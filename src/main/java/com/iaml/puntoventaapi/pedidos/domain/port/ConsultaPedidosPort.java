@@ -27,6 +27,11 @@ public interface ConsultaPedidosPort {
                    String cliente, List<ResumenProducto> productos,
                    BigDecimal total, BigDecimal totalPagado, BigDecimal saldoPendiente, boolean pagado) { }
 
-    /** estado null = todos. pagina empieza en 0; el orden es siempre del más reciente al más antiguo. */
-    Pagina<Resumen> listar(long sucursalId, long usuarioId, EstadoPedido estado, int pagina, int tamanio);
+    /**
+     * estado null = todos. busqueda null = sin buscar; si no, coincide por nombre del cliente (parcial, sin
+     * distinguir mayúsculas ni acentos), teléfono (dígitos parciales) o folio (exacto). Ambos filtros se combinan.
+     * pagina empieza en 0; el orden es siempre del más reciente al más antiguo.
+     */
+    Pagina<Resumen> listar(long sucursalId, long usuarioId, EstadoPedido estado, String busqueda, int pagina,
+                           int tamanio);
 }

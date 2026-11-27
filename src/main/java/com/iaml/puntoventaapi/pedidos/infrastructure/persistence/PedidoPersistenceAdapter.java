@@ -1,6 +1,8 @@
 package com.iaml.puntoventaapi.pedidos.infrastructure.persistence;
 
 import java.sql.Timestamp;
+import java.text.Normalizer;
+import java.util.Locale;
 import com.iaml.puntoventaapi.pedidos.domain.EstadoPedido;
 import com.iaml.puntoventaapi.pedidos.domain.CorteCajaInvalidoException;
 import com.iaml.puntoventaapi.pedidos.domain.PagoPedido;
@@ -240,21 +242,52 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
             rs.getTimestamp("fecha_entrega") == null ? null : rs.getTimestamp("fecha_entrega").toInstant());
     }
 
+    /**
+     * Filtros del listado, iguales para el conteo y la página (así "Mostrando X de Y" cuadra). Cada parámetro
+     * se pasa una vez en f: estado, folio, patrón del nombre y dígitos del teléfono; null = sin ese filtro.
+     */
+    private static final String FILTROS_LISTADO = """
+        cross join (select cast(? as varchar) as estado, cast(? as varchar) as folio,
+                           cast(? as varchar) as nombre, cast(? as varchar) as digitos) f
+        where p.id_sucursal = ? and (f.estado is null or p.estado = f.estado)
+          and (f.folio is null
+               or upper(p.folio) = upper(f.folio)
+               or lower(translate(c.nombre, 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun')) like '%' || f.nombre || '%'
+               or (f.digitos is not null
+                   and regexp_replace(coalesce(c.telefono, ''), '\\D', '', 'g') like '%' || f.digitos || '%'))
+        """;
+
     private static final String CONTAR_PEDIDOS = """
         select count(*) from barrocontrol.pedido p
-        where p.id_sucursal = ? and (cast(? as varchar) is null or p.estado = ?)
-        """;
+        join barrocontrol.cliente c on c.id = p.id_cliente
+        """ + FILTROS_LISTADO;
 
     private static final String PAGINA_PEDIDOS = """
         select p.id, p.id_sucursal, p.tipo_entrega, p.estado, p.fecha_creacion, c.nombre,
                tot.total, pag.total_pagado, tot.total - pag.total_pagado as saldo
         from barrocontrol.pedido p
         join barrocontrol.cliente c on c.id = p.id_cliente
-        """ + TOTALES + """
-        where p.id_sucursal = ? and (cast(? as varchar) is null or p.estado = ?)
+        """ + TOTALES + FILTROS_LISTADO + """
         order by p.fecha_creacion desc, p.id desc
         limit ? offset ?
         """;
+
+    /** Parámetros de FILTROS_LISTADO, en su orden. busqueda ya viene recortada o null. */
+    static Object[] filtrosListado(long sucursalId, EstadoPedido estado, String busqueda) {
+        String nombre = null;
+        String digitos = null;
+        if (busqueda != null) {
+            // Sin acentos ni mayúsculas, como el nombre en la consulta; %, _ y \ se buscan literales.
+            nombre = Normalizer.normalize(busqueda, Normalizer.Form.NFD).replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT).replaceAll("([\\\\%_])", "\\\\$1");
+            // Solo si parece teléfono: "Ana" o "PED-000123" no deben coincidir con cualquier número.
+            if (busqueda.matches("[\\d\\s()+.-]+")) {
+                digitos = busqueda.replaceAll("\\D", "");
+                if (digitos.isEmpty()) digitos = null;
+            }
+        }
+        return new Object[] {estado == null ? null : estado.name(), busqueda, nombre, digitos, sucursalId};
+    }
 
     private static final String PRODUCTOS_DE_PEDIDOS = """
         select d.id_pedido, pr.nombre, d.cantidad
@@ -267,12 +300,12 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
                                String cliente, BigDecimal total, BigDecimal totalPagado, BigDecimal saldo) { }
 
     @Override
-    public Pagina<Resumen> listar(long sucursalId, long usuarioId, EstadoPedido estado, int pagina, int tamanio) {
+    public Pagina<Resumen> listar(long sucursalId, long usuarioId, EstadoPedido estado, String busqueda,
+                                  int pagina, int tamanio) {
         comprobarAcceso(sucursalId, usuarioId);
-        // Consultas fijas: el filtro opcional de estado va como parámetro (null = todos).
-        String filtro = estado == null ? null : estado.name();
-        long totalElementos = Objects.requireNonNull(
-            jdbc.queryForObject(CONTAR_PEDIDOS, Long.class, sucursalId, filtro, filtro));
+        // Consultas fijas: los filtros opcionales van como parámetros (null = sin filtro).
+        Object[] filtros = filtrosListado(sucursalId, estado, busqueda);
+        long totalElementos = Objects.requireNonNull(jdbc.queryForObject(CONTAR_PEDIDOS, Long.class, filtros));
         long desplazamiento = (long) pagina * tamanio;
         if (desplazamiento >= totalElementos) {
             return new Pagina<>(List.of(), pagina, tamanio, totalElementos);
@@ -280,7 +313,7 @@ public class PedidoPersistenceAdapter implements PedidoRepositorioPort, Consulta
         var filas = jdbc.query(PAGINA_PEDIDOS, (rs, i) -> new FilaResumen(rs.getLong(1), rs.getLong(2),
             rs.getString(3), rs.getString(4), rs.getTimestamp(5).toInstant(), rs.getString(6),
             rs.getBigDecimal(7), rs.getBigDecimal(8), rs.getBigDecimal(9)),
-            sucursalId, filtro, filtro, tamanio, desplazamiento);
+            filtros[0], filtros[1], filtros[2], filtros[3], filtros[4], tamanio, desplazamiento);
         // Los productos de las filas de esta página, en una sola consulta.
         Long[] ids = filas.stream().map(FilaResumen::id).toArray(Long[]::new);
         var productos = new LinkedHashMap<Long, List<ResumenProducto>>();

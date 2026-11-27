@@ -16,7 +16,7 @@ class CajaFlujoTest extends FlujoApiDePrueba {
     }
 
     private ResultActions cerrar(long corteId) throws Exception {
-        return postJson("/api/cortes-caja/{id}/cerrar", "{\"totalReal\":900}", corteId);
+        return postJson("/api/cortes-caja/{id}/cerrar", "{\"totalReal\":630}", corteId);
     }
 
     private long pedido(String anticipo) throws Exception {
@@ -72,7 +72,7 @@ class CajaFlujoTest extends FlujoApiDePrueba {
             .andExpect(jsonPath("$.totalNeto").value(690.00))
             .andExpect(jsonPath("$.totalEfectivo").value(620.00))
             .andExpect(jsonPath("$.totalTarjeta").value(270.00))
-            .andExpect(jsonPath("$.totalEstimado").value(890.00))
+            .andExpect(jsonPath("$.totalEstimado").value(620.00))
             .andExpect(jsonPath("$.diferencia").value(10.00))
             .andExpect(jsonPath("$.cancelacionesPedidos.detalles.length()").value(2))
             .andExpect(jsonPath("$.productos[0].nombre").value("Jarrón"))
@@ -81,7 +81,7 @@ class CajaFlujoTest extends FlujoApiDePrueba {
         cerrar(corte).andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORTE_CAJA_YA_CERRADO"));
         cerrar(999_999).andExpect(status().isNotFound()).andExpect(jsonPath("$.codigo").value("CORTE_CAJA_NO_ENCONTRADO"));
 
-        getJson("/api/cortes-caja/{id}", corte).andExpect(status().isOk()).andExpect(jsonPath("$.totalReal").value(900.00));
+        getJson("/api/cortes-caja/{id}", corte).andExpect(status().isOk()).andExpect(jsonPath("$.totalReal").value(630.00));
         getJson("/api/cortes-caja/{id}", 999_999).andExpect(status().isNotFound());
         getJson("/api/cortes-caja?sucursalId={s}", sucursal).andExpect(jsonPath("$.content[0].id").value(corte));
         getJson("/api/cortes-caja").andExpect(jsonPath("$.content[0].diferencia").value(10.00));

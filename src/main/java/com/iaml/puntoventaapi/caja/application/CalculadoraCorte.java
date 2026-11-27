@@ -222,7 +222,8 @@ public class CalculadoraCorte {
         BigDecimal totalNeto = subtotalNetoEfectivo.add(subtotalNetoTarjeta);
         BigDecimal totalEfectivo = totalEsperadoEfectivo;
         BigDecimal totalTarjeta = totalEsperadoTarjeta;
-        BigDecimal totalEstimado = totalEfectivo.add(totalTarjeta);
+        // El estimado en caja para el arqueo considera únicamente el efectivo físico (sin mezclar tarjeta).
+        BigDecimal totalEstimado = totalEfectivo;
 
         return new ResultadoCalculo(
             totalVentas,

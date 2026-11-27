@@ -92,7 +92,7 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().totalVentas()).isEqualByComparingTo("240.00");
         assertThat(resultado.totalEfectivo()).isEqualByComparingTo("650.00"); // 200 + 450
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("240.00");
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("890.00");
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("650.00"); // Solo efectivo en caja
 
         // Agrupación de productos: Jarrón (2+1=3) y Plato (3)
         assertThat(resultado.productos()).hasSize(2);
@@ -152,8 +152,8 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().subtotalNeto()).isEqualByComparingTo("350.00");
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("350.00");
 
-        // Total estimado: 1200 + 350 = 1550.00
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1550.00");
+        // Total estimado en caja (solo efectivo, sin tarjeta): 1200.00
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1200.00");
     }
 
     @Test
@@ -252,8 +252,8 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().subtotalNeto()).isEqualByComparingTo("440.00");
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("440.00");
 
-        // Total Estimado: 950.00 + 440.00 = 1390.00
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1390.00");
+        // Total Estimado en caja (solo efectivo, sin tarjeta): 950.00
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("950.00");
 
         // Productos incluidos
         assertThat(resultado.productos()).hasSize(3);

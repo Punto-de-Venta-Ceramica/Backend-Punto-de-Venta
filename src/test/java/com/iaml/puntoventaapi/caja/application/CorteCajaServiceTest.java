@@ -291,4 +291,70 @@ class CorteCajaServiceTest {
             .isInstanceOf(AccessDeniedException.class)
             .hasMessageContaining("Únicamente el usuario que abrió el corte de caja puede cerrarlo");
     }
+
+    @Test
+    @DisplayName("Al cerrar corte la diferencia/faltante solo contempla efectivo y no mezcla tarjeta")
+    void diferenciaAlCerrarSoloContemplaEfectivoSinTarjeta() {
+        when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
+
+        CorteCaja corteAbierto = new CorteCaja();
+        ReflectionTestUtils.setField(corteAbierto, "id", 810L);
+        corteAbierto.setCaja(caja);
+        corteAbierto.setUsuario(empleado);
+        corteAbierto.setMontoInicial(new BigDecimal("200.00"));
+        corteAbierto.setFechaHoraApertura(Instant.now().minusSeconds(3600));
+
+        when(corteCajaRepository.buscarConBloqueo(810L)).thenReturn(Optional.of(corteAbierto));
+        when(corteCajaRepository.save(any(CorteCaja.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(calculadoraCorte.calcular(eq(810L), any())).thenReturn(new CalculadoraCorte.ResultadoCalculo(
+            new BigDecimal("690.00"),
+            BigDecimal.ZERO.setScale(2),
+            BigDecimal.ZERO.setScale(2),
+            BigDecimal.ZERO.setScale(2),
+            new BigDecimal("690.00"),
+            new DesgloseMetodoPagoDto(new BigDecimal("450.00"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("450.00"), new BigDecimal("200.00"), new BigDecimal("650.00")),
+            new DesgloseMetodoPagoDto(new BigDecimal("240.00"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("240.00"), BigDecimal.ZERO, new BigDecimal("240.00")),
+            new SeccionCancelacionesDto(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of()),
+            new BigDecimal("650.00"),
+            new BigDecimal("240.00"),
+            new BigDecimal("650.00"),
+            List.of()
+        ));
+
+        // El empleado cuenta 630 de efectivo (faltan 20 respecto a los 650 de efectivo; los 240 de tarjeta no cuentan como faltante)
+        CorteCajaResponse response = service.cerrarCorte(810L, new CerrarCorteRequest(new BigDecimal("630.00")), 1L);
+
+        assertThat(response.totalEfectivo()).isEqualByComparingTo("650.00");
+        assertThat(response.totalTarjeta()).isEqualByComparingTo("240.00");
+        assertThat(response.totalEstimado()).isEqualByComparingTo("650.00");
+        assertThat(response.diferencia()).isEqualByComparingTo("-20.00");
+        assertThat(corteAbierto.getTotalEstimado()).isEqualByComparingTo("650.00");
+    }
+
+    @Test
+    @DisplayName("El historial calcula la diferencia solo contra el efectivo esperado aunque el registro previo tuviera totalEstimado mezclado")
+    void historialCalculaDiferenciaSoloConEfectivo() {
+        when(usuarioJpaRepository.findById(1L)).thenReturn(Optional.of(empleado));
+
+        CorteCaja c = new CorteCaja();
+        ReflectionTestUtils.setField(c, "id", 820L);
+        c.setCaja(caja);
+        c.setUsuario(empleado);
+        c.setFechaHoraApertura(Instant.now().minusSeconds(3600));
+        c.setFechaHoraCierre(Instant.now());
+        c.setMontoInicial(new BigDecimal("200.00"));
+        c.setTotalEfectivo(new BigDecimal("650.00"));
+        c.setTotalTarjeta(new BigDecimal("240.00"));
+        c.setTotalEstimado(new BigDecimal("890.00")); // Registro antiguo con efectivo + tarjeta
+        c.setTotalReal(new BigDecimal("650.00"));
+
+        when(corteCajaRepository.findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(eq(10L), eq(1L), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(c)));
+
+        Page<ResumenCorteCajaDto> page = service.listarHistorial(null, 1L, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).totalEstimado()).isEqualByComparingTo("650.00");
+        assertThat(page.getContent().get(0).diferencia()).isEqualByComparingTo("0.00");
+    }
 }

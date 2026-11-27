@@ -75,9 +75,16 @@ class CajaFlujoTest extends FlujoApiDePrueba {
             .andExpect(jsonPath("$.totalEstimado").value(620.00))
             .andExpect(jsonPath("$.diferencia").value(10.00))
             .andExpect(jsonPath("$.cancelacionesPedidos.detalles.length()").value(2))
+            .andExpect(jsonPath("$.productos.length()").value(5))
             .andExpect(jsonPath("$.productos[0].nombre").value("Jarrón"))
-            .andExpect(jsonPath("$.productos[0].cantidad").value(6))
-            .andExpect(jsonPath("$.productos[1].cantidad").value(3));
+            .andExpect(jsonPath("$.productos[0].cantidad").value(3))
+            .andExpect(jsonPath("$.productos[0].metodoPago").value("EFECTIVO"))
+            .andExpect(jsonPath("$.productos[1].nombre").value("Jarrón"))
+            .andExpect(jsonPath("$.productos[1].metodoPago").doesNotExist())
+            .andExpect(jsonPath("$.productos[3].metodoPago").value("TARJETA"))
+            // Liquidado, cancelado con devolución y el cancelado viejo: todos tuvieron movimiento en el turno.
+            .andExpect(jsonPath("$.pedidos.length()").value(3))
+            .andExpect(jsonPath("$.pedidos[?(@.folio == 'PED-VIEJO')].cancelado").value(true));
         cerrar(corte).andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORTE_CAJA_YA_CERRADO"));
         cerrar(999_999).andExpect(status().isNotFound()).andExpect(jsonPath("$.codigo").value("CORTE_CAJA_NO_ENCONTRADO"));
 

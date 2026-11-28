@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class CalculadoraCorte {
@@ -387,19 +388,24 @@ public class CalculadoraCorte {
     public static List<PedidoCorteDto> armarPedidos(
         List<FilaPedido> pedidos, List<FilaPago> pagos, List<FilaProducto> productos
     ) {
+        // Se agrupa una vez por pedido (conserva el orden de llegada) en lugar de filtrar las listas por cada pedido.
+        Map<Long, List<PedidoCorteDto.Pago>> pagosPorPedido = pagos.stream().collect(Collectors.groupingBy(
+            FilaPago::pedidoId, Collectors.mapping(
+                x -> new PedidoCorteDto.Pago(x.tipoPago(), x.metodoPago(), dinero(x.monto()), x.fechaHora()),
+                Collectors.toList())));
+        Map<Long, List<PedidoCorteDto.Producto>> productosPorPedido = productos.stream().collect(Collectors.groupingBy(
+            FilaProducto::pedidoId, Collectors.mapping(
+                x -> new PedidoCorteDto.Producto(x.nombre(), x.cantidad(), dinero(x.precioUnitario()),
+                    dinero(x.subtotal())),
+                Collectors.toList())));
         return pedidos.stream().map(p -> {
             BigDecimal total = dinero(p.total());
             BigDecimal pagado = dinero(p.pagado());
             // Cancelado no debe nada: se devolvió lo pagado.
             BigDecimal saldo = p.cancelado() ? BigDecimal.ZERO.setScale(2) : total.subtract(pagado).max(BigDecimal.ZERO);
             return new PedidoCorteDto(p.id(), p.folio(), total, pagado, saldo, p.cancelado(),
-                pagos.stream().filter(x -> x.pedidoId().equals(p.id()))
-                    .map(x -> new PedidoCorteDto.Pago(x.tipoPago(), x.metodoPago(), dinero(x.monto()), x.fechaHora()))
-                    .toList(),
-                productos.stream().filter(x -> x.pedidoId().equals(p.id()))
-                    .map(x -> new PedidoCorteDto.Producto(x.nombre(), x.cantidad(), dinero(x.precioUnitario()),
-                        dinero(x.subtotal())))
-                    .toList());
+                List.copyOf(pagosPorPedido.getOrDefault(p.id(), List.of())),
+                List.copyOf(productosPorPedido.getOrDefault(p.id(), List.of())));
         }).toList();
     }
 

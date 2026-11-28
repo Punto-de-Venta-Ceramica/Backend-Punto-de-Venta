@@ -2,6 +2,7 @@ package com.iaml.puntoventaapi.caja.infrastructure.persistence;
 
 import com.iaml.puntoventaapi.caja.domain.CorteCaja;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,14 +31,19 @@ public interface CorteCajaRepository extends JpaRepository<CorteCaja, Long> {
 
     Page<CorteCaja> findByCaja_Sucursal_IdOrderByFechaHoraAperturaDesc(Long sucursalId, Pageable pageable);
 
+    // Historial: caja, sucursal y usuario en la misma consulta (solo relaciones a uno, la paginación sigue en SQL).
+    @EntityGraph(attributePaths = {"caja", "caja.sucursal", "usuario"})
     Page<CorteCaja> findByCaja_Sucursal_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long sucursalId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"caja", "caja.sucursal", "usuario"})
     Page<CorteCaja> findByCaja_Sucursal_IdAndUsuario_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long sucursalId, Long usuarioId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"caja", "caja.sucursal", "usuario"})
     Page<CorteCaja> findByUsuario_IdAndCaja_Sucursal_IdInAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long usuarioId, java.util.Collection<Long> sucursalIds, Pageable pageable);
 
     Page<CorteCaja> findByCaja_Sucursal_Negocio_IdOrderByFechaHoraAperturaDesc(Long negocioId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"caja", "caja.sucursal", "usuario"})
     Page<CorteCaja> findByCaja_Sucursal_Negocio_IdAndFechaHoraCierreIsNotNullOrderByFechaHoraAperturaDesc(Long negocioId, Pageable pageable);
 
     boolean existsByCaja_Sucursal_IdAndFechaHoraCierreIsNull(Long sucursalId);

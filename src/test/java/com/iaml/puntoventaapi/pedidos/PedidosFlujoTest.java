@@ -149,6 +149,38 @@ class PedidosFlujoTest extends FlujoApiDePrueba {
     }
 
     @Test
+    void buscaPorClienteTelefonoOFolioEnCualquierEstado() throws Exception {
+        abrirCorte(sucursal, empleado);
+        comoEmpleado();
+        long primero = registrarConAnticipo();
+        registrarConAnticipo();
+        comoPropietario();
+        estado(primero, "PRODUCCION").andExpect(status().isNoContent());
+        String folio = jdbc.queryForObject("select folio from barrocontrol.pedido where id = ?", String.class, primero);
+        // Nombre parcial, sin mayúsculas ni acentos ("Ana López"); sin estado trae los de todos los estados.
+        getJson("/api/pedidos?sucursalId={s}&q={q}", sucursal, "lopez")
+            .andExpect(jsonPath("$.totalElementos").value(2))
+            .andExpect(jsonPath("$.contenido.length()").value(2));
+        // Con estado se combinan.
+        getJson("/api/pedidos?sucursalId={s}&estado=PRODUCCION&q={q}", sucursal, "ANA")
+            .andExpect(jsonPath("$.totalElementos").value(1))
+            .andExpect(jsonPath("$.contenido[0].id").value(primero))
+            .andExpect(jsonPath("$.contenido[0].estado").value("PRODUCCION"));
+        // Teléfono parcial (5512345678).
+        getJson("/api/pedidos?sucursalId={s}&q={q}", sucursal, "234 56")
+            .andExpect(jsonPath("$.totalElementos").value(2));
+        // Folio exacto; un trozo del folio no coincide.
+        getJson("/api/pedidos?sucursalId={s}&q={q}", sucursal, folio.toLowerCase())
+            .andExpect(jsonPath("$.totalElementos").value(1))
+            .andExpect(jsonPath("$.contenido[0].id").value(primero));
+        getJson("/api/pedidos?sucursalId={s}&q={q}", sucursal, folio.substring(0, folio.length() - 1))
+            .andExpect(jsonPath("$.totalElementos").value(0))
+            .andExpect(jsonPath("$.contenido.length()").value(0));
+        getJson("/api/pedidos?sucursalId={s}&q={q}", sucursal, "Beto")
+            .andExpect(jsonPath("$.totalElementos").value(0));
+    }
+
+    @Test
     void registraPagosHastaLiquidar() throws Exception {
         long corte = abrirCorte(sucursal, empleado);
         comoEmpleado();

@@ -28,5 +28,6 @@ public record CorteCajaResponse(
     BigDecimal totalEstimado,
     BigDecimal totalReal,
     BigDecimal diferencia,
-    List<ProductoVendidoDto> productos
+    List<ProductoVendidoDto> productos,
+    List<PedidoCorteDto> pedidos
 ) {}

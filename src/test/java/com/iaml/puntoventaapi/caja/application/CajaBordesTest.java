@@ -40,10 +40,11 @@ class CajaBordesTest {
         assertThat(resultado.totalCancelaciones()).isEqualByComparingTo("70");
         assertThat(resultado.totalEfectivo()).isEqualByComparingTo("0");
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("0");
-        assertThat(resultado.productos()).singleElement().satisfies(p -> {
-            assertThat(p.cantidad()).isEqualTo(3);
-            assertThat(p.precioUnitario()).isEqualByComparingTo("0");
-        });
+        // La venta y el pedido quedan en renglones separados; el del pedido no lleva método.
+        assertThat(resultado.productos()).extracting(p -> p.cantidad(), p -> p.metodoPago())
+            .containsExactly(org.assertj.core.groups.Tuple.tuple(1, "EFECTIVO"),
+                org.assertj.core.groups.Tuple.tuple(2, null));
+        assertThat(resultado.productos()).allSatisfy(p -> assertThat(p.precioUnitario()).isEqualByComparingTo("0"));
     }
 
     @Test

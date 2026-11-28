@@ -1,5 +1,6 @@
 package com.iaml.puntoventaapi.caja.application;
 
+import com.iaml.puntoventaapi.caja.api.dto.PedidoCorteDto;
 import com.iaml.puntoventaapi.caja.api.dto.ProductoVendidoDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -92,7 +93,7 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().totalVentas()).isEqualByComparingTo("240.00");
         assertThat(resultado.totalEfectivo()).isEqualByComparingTo("650.00"); // 200 + 450
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("240.00");
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("890.00");
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("650.00"); // Solo efectivo en caja
 
         // Agrupación de productos: Jarrón (2+1=3) y Plato (3)
         assertThat(resultado.productos()).hasSize(2);
@@ -152,8 +153,8 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().subtotalNeto()).isEqualByComparingTo("350.00");
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("350.00");
 
-        // Total estimado: 1200 + 350 = 1550.00
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1550.00");
+        // Total estimado en caja (solo efectivo, sin tarjeta): 1200.00
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1200.00");
     }
 
     @Test
@@ -252,8 +253,8 @@ class CalculadoraCorteTest {
         assertThat(resultado.ventasTarjeta().subtotalNeto()).isEqualByComparingTo("440.00");
         assertThat(resultado.totalTarjeta()).isEqualByComparingTo("440.00");
 
-        // Total Estimado: 950.00 + 440.00 = 1390.00
-        assertThat(resultado.totalEstimado()).isEqualByComparingTo("1390.00");
+        // Total Estimado en caja (solo efectivo, sin tarjeta): 950.00
+        assertThat(resultado.totalEstimado()).isEqualByComparingTo("950.00");
 
         // Productos incluidos
         assertThat(resultado.productos()).hasSize(3);
@@ -271,12 +272,41 @@ class CalculadoraCorteTest {
 
         var resultado = calculadora.procesarCalculo(BigDecimal.ZERO, ventas, List.of(), List.of(), List.of());
 
-        assertThat(resultado.productos()).extracting(ProductoVendidoDto::nombre, ProductoVendidoDto::cantidad)
-            .containsExactlyInAnyOrder(
-                org.assertj.core.api.Assertions.tuple("Servilletas", 6),
-                org.assertj.core.api.Assertions.tuple("Bolsas", 2),
-                org.assertj.core.api.Assertions.tuple("Vaso", 3));
+        // Mismo producto cobrado con métodos distintos queda en renglones separados.
+        assertThat(resultado.productos())
+            .extracting(ProductoVendidoDto::nombre, ProductoVendidoDto::cantidad, ProductoVendidoDto::metodoPago)
+            .containsExactly(
+                org.assertj.core.api.Assertions.tuple("Bolsas", 2, "EFECTIVO"),
+                org.assertj.core.api.Assertions.tuple("Servilletas", 5, "EFECTIVO"),
+                org.assertj.core.api.Assertions.tuple("Servilletas", 1, "TARJETA"),
+                org.assertj.core.api.Assertions.tuple("Vaso", 3, "EFECTIVO"));
         assertThat(resultado.totalVentas()).isEqualByComparingTo("170.00");
     }
-}
 
+    @Test
+    @DisplayName("Pedidos del corte: saldo a ese momento, solo los pagos del turno y cancelados sin saldo")
+    void armaPedidosDelCorte() {
+        var hoy = java.time.Instant.parse("2026-11-26T15:00:00Z");
+        var pedidos = CalculadoraCorte.armarPedidos(
+            List.of(
+                new CalculadoraCorte.FilaPedido(1L, "P-001", new BigDecimal("175"), new BigDecimal("150"), false),
+                new CalculadoraCorte.FilaPedido(2L, "P-002", new BigDecimal("100"), new BigDecimal("100"), false),
+                new CalculadoraCorte.FilaPedido(3L, "P-003", new BigDecimal("80"), new BigDecimal("50"), true)),
+            List.of(
+                new CalculadoraCorte.FilaPago(1L, "ANTICIPO", "EFECTIVO", new BigDecimal("150"), hoy),
+                new CalculadoraCorte.FilaPago(2L, "LIQUIDACION", "TARJETA", new BigDecimal("25"), hoy),
+                new CalculadoraCorte.FilaPago(3L, "DEVOLUCION", "EFECTIVO", new BigDecimal("50"), hoy)),
+            List.of(new CalculadoraCorte.FilaProducto(1L, "Tequilero", 5, new BigDecimal("35"), new BigDecimal("175"))));
+
+        assertThat(pedidos).extracting(PedidoCorteDto::folio).containsExactly("P-001", "P-002", "P-003");
+        var anticipo = pedidos.get(0);
+        assertThat(anticipo.total()).isEqualByComparingTo("175");
+        assertThat(anticipo.saldo()).isEqualByComparingTo("25");
+        assertThat(anticipo.productos()).singleElement().satisfies(p -> assertThat(p.cantidad()).isEqualTo(5));
+        assertThat(anticipo.pagos()).singleElement().satisfies(p -> assertThat(p.tipoPago()).isEqualTo("ANTICIPO"));
+        assertThat(pedidos.get(1).saldo()).isEqualByComparingTo("0");
+        assertThat(pedidos.get(1).pagos()).singleElement().satisfies(p -> assertThat(p.monto()).isEqualByComparingTo("25"));
+        assertThat(pedidos.get(2).cancelado()).isTrue();
+        assertThat(pedidos.get(2).saldo()).isEqualByComparingTo("0");
+    }
+}

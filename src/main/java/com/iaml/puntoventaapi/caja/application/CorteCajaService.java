@@ -103,7 +103,8 @@ public class CorteCajaService {
 
         corte.setTotalEfectivo(calculo.totalEfectivo());
         corte.setTotalTarjeta(calculo.totalTarjeta());
-        corte.setTotalEstimado(calculo.totalEstimado());
+        // El arqueo y faltante/sobrante en caja solo contemplan el efectivo (no tarjeta).
+        corte.setTotalEstimado(calculo.totalEfectivo());
         corte.setTotalReal(request.totalReal());
         corte.setFechaHoraCierre(Instant.now());
 
@@ -182,8 +183,9 @@ public class CorteCajaService {
 
         return cortes.map(c -> {
             boolean cerrado = c.getFechaHoraCierre() != null;
+            BigDecimal efectivoEsperado = c.getTotalEfectivo() != null ? c.getTotalEfectivo() : c.getTotalEstimado();
             BigDecimal diferencia = c.getTotalReal() != null
-                ? c.getTotalReal().subtract(c.getTotalEstimado())
+                ? c.getTotalReal().subtract(efectivoEsperado)
                 : null;
             return new ResumenCorteCajaDto(
                 c.getId(),
@@ -197,7 +199,7 @@ public class CorteCajaService {
                 cerrado,
                 c.getMontoInicial(),
                 c.getTotalEstimado(),
-                c.getTotalEstimado(),
+                efectivoEsperado,
                 c.getTotalReal(),
                 diferencia
             );
@@ -267,7 +269,7 @@ public class CorteCajaService {
     private CorteCajaResponse construirRespuesta(CorteCaja corte, CalculadoraCorte.ResultadoCalculo calculo) {
         boolean cerrado = corte.getFechaHoraCierre() != null;
         BigDecimal diferencia = corte.getTotalReal() != null
-            ? corte.getTotalReal().subtract(corte.getTotalEstimado())
+            ? corte.getTotalReal().subtract(calculo.totalEfectivo())
             : null;
 
         return new CorteCajaResponse(
@@ -294,7 +296,8 @@ public class CorteCajaService {
             calculo.totalEstimado(),
             corte.getTotalReal(),
             diferencia,
-            calculo.productos()
+            calculo.productos(),
+            calculadoraCorte.pedidos(corte.getId())
         );
     }
 }

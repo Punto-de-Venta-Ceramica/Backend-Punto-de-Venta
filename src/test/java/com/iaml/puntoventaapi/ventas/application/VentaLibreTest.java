@@ -145,4 +145,50 @@ class VentaLibreTest {
         assertThatThrownBy(() -> varios(1, "0", null)).isInstanceOf(DatosVentaInvalidosException.class);
         assertThatThrownBy(() -> varios(1, "1.001", null)).isInstanceOf(DatosVentaInvalidosException.class);
     }
+
+    private static ProductoSolicitado conManual(long producto, String precio, String porcentaje) {
+        return new ProductoSolicitado(producto, 2, false, precio == null ? null : new BigDecimal(precio), null,
+            new BigDecimal(porcentaje));
+    }
+
+    @Test
+    void elDescuentoManualSeAplicaAProductosSinDescuentoYAlArtesanal() {
+        // Vaso: 2 × 10 sin descuento de catálogo, 25 % manual → 15.00. Artesanal: 2 × 50 al 10 % → 90.00.
+        var venta = preparacion.preparar(comando(conManual(NORMAL, null, "25"), conManual(VARIOS, "50.00", "10")), 9L);
+
+        assertThat(venta.detalles().get(0).subtotal()).isEqualByComparingTo("15.00");
+        assertThat(venta.detalles().get(1).subtotal()).isEqualByComparingTo("90.00");
+    }
+
+    @Test
+    void elDescuentoManualReemplazaAlDelCatalogo() {
+        when(catalogo.cotizarProductos(any(), any())).thenReturn(Map.of(
+            NORMAL, new ProductoCotizado(NORMAL, "Vaso", BigDecimal.TEN, new BigDecimal("5.00"))));
+
+        var venta = preparacion.preparar(comando(conManual(NORMAL, null, "100")), 9L);
+
+        assertThat(venta.detalles().get(0).porcentajeDescuento()).isEqualByComparingTo("100");
+        assertThat(venta.total()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void rechazaDescuentoManualFueraDeRango() {
+        for (String porcentaje : new String[] {"0.99", "100.01", "10.001", "-5"}) {
+            assertThatThrownBy(() -> conManual(NORMAL, null, porcentaje))
+                .isInstanceOf(DatosVentaInvalidosException.class);
+        }
+    }
+
+    @Test
+    void elReintentoConOtroDescuentoManualEsOtraVenta() {
+        UUID clave = UUID.randomUUID();
+        var guardada = new Venta(9L, 5L, 1L, MetodoPago.TARJETA,
+            List.of(new DetalleVenta(NORMAL, "Vaso", 2, BigDecimal.TEN, new BigDecimal("25"))), null);
+        var anterior = new VentaConfirmada(40L, "VTA-000040", 3L, 4L, Instant.now(), guardada);
+        when(ventas.buscarPorOperacion(1L, clave)).thenReturn(Optional.of(anterior));
+
+        assertThat(confirmacion.confirmar(comando(conManual(NORMAL, null, "25")), 9L, clave)).isSameAs(anterior);
+        assertThatThrownBy(() -> confirmacion.confirmar(comando(conManual(NORMAL, null, "30")), 9L, clave))
+            .isInstanceOf(ConflictoConfirmacionVentaException.class);
+    }
 }

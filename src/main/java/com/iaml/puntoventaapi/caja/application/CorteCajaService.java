@@ -296,7 +296,8 @@ public class CorteCajaService {
             calculo.totalEstimado(),
             corte.getTotalReal(),
             diferencia,
-            calculo.productos()
+            calculo.productos(),
+            calculadoraCorte.pedidos(corte.getId())
         );
     }
 }

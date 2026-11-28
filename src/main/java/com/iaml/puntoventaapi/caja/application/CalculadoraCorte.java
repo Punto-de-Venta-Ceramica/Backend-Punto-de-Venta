@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class CalculadoraCorte {
@@ -91,7 +92,8 @@ public class CalculadoraCorte {
 
         for (ItemVenta v : ventas) {
             BigDecimal subtotal = v.subtotal() != null ? v.subtotal().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
-            if ("TARJETA".equalsIgnoreCase(v.metodoPago())) {
+            String metodo = "TARJETA".equalsIgnoreCase(v.metodoPago()) ? "TARJETA" : "EFECTIVO";
+            if (metodo.equals("TARJETA")) {
                 ventasTarjeta = ventasTarjeta.add(subtotal);
             } else {
                 ventasEfectivo = ventasEfectivo.add(subtotal);
@@ -99,8 +101,9 @@ public class CalculadoraCorte {
 
             // Artículo artesanal se vende con nombres distintos bajo un mismo id: el nombre entra en la clave. En el
             // resto de productos el nombre es el mismo por id, así que agrupan igual que siempre.
-            String key = v.productoId() + "_" + v.precioUnitario() + "_" + v.productoNombre();
-            productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(v.productoId(), v.productoNombre(), v.precioUnitario()))
+            // El método de pago también separa renglones para mostrar qué se cobró en efectivo y qué con tarjeta.
+            String key = v.productoId() + "_" + v.precioUnitario() + "_" + v.productoNombre() + "_" + metodo;
+            productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(v.productoId(), v.productoNombre(), v.precioUnitario(), metodo))
                 .acumular(v.cantidad(), subtotal);
         }
 
@@ -157,16 +160,18 @@ public class CalculadoraCorte {
         // Incorporar productos de pedidos no cancelados
         if (productosPedido != null) {
             for (ItemPedidoProducto pp : productosPedido) {
-                String key = pp.productoId() + "_" + pp.precioUnitario() + "_" + pp.productoNombre();
+                // Los pedidos van aparte: su cobro está en anticipos y liquidaciones, no en las ventas por método.
+                String key = pp.productoId() + "_" + pp.precioUnitario() + "_" + pp.productoNombre() + "_PEDIDO";
                 BigDecimal subtotal = pp.subtotal() != null ? pp.subtotal().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
-                productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(pp.productoId(), pp.productoNombre(), pp.precioUnitario()))
+                productosMap.computeIfAbsent(key, k -> new AcumuladorProducto(pp.productoId(), pp.productoNombre(), pp.precioUnitario(), null))
                     .acumular(pp.cantidad(), subtotal);
             }
         }
 
         List<ProductoVendidoDto> productos = productosMap.values().stream()
             .map(AcumuladorProducto::toDto)
-            .sorted(Comparator.comparing(ProductoVendidoDto::nombre, String.CASE_INSENSITIVE_ORDER))
+            .sorted(Comparator.comparing(ProductoVendidoDto::nombre, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(ProductoVendidoDto::metodoPago, Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
 
         BigDecimal totalAnticipos = anticiposEfectivo.add(anticiposTarjeta);
@@ -337,15 +342,88 @@ public class CalculadoraCorte {
         ), corteId);
     }
 
+    public record FilaPedido(Long id, String folio, BigDecimal total, BigDecimal pagado, boolean cancelado) {}
+
+    public record FilaPago(Long pedidoId, String tipoPago, String metodoPago, BigDecimal monto, Instant fechaHora) {}
+
+    public record FilaProducto(Long pedidoId, String nombre, int cantidad, BigDecimal precioUnitario, BigDecimal subtotal) {}
+
+    /** Pedidos con algún pago, liquidación o devolución en este corte, con sus productos y lo que faltaba entonces. */
+    public List<PedidoCorteDto> pedidos(Long corteId) {
+        List<FilaPedido> pedidos = jdbc.query("""
+            select p.id, p.folio,
+                   (select coalesce(sum(dp.subtotal), 0) from barrocontrol.detalle_pedido dp where dp.id_pedido = p.id),
+                   -- Lo pagado hasta el último movimiento de este corte, no lo de cortes posteriores.
+                   (select coalesce(sum(x.monto), 0) from barrocontrol.pago_pedido x
+                     where x.id_pedido = p.id and x.tipo_pago <> 'DEVOLUCION'
+                       and x.id <= (select max(y.id) from barrocontrol.pago_pedido y
+                                    where y.id_pedido = p.id and y.id_corte_caja = ?)),
+                   exists (select 1 from barrocontrol.pago_pedido d
+                           where d.id_pedido = p.id and d.id_corte_caja = ? and d.tipo_pago = 'DEVOLUCION')
+                   or (p.estado = 'CANCELADO'
+                       and not exists (select 1 from barrocontrol.pago_pedido d
+                                       where d.id_pedido = p.id and d.tipo_pago = 'DEVOLUCION'))
+            from barrocontrol.pedido p
+            where p.id in (select id_pedido from barrocontrol.pago_pedido where id_corte_caja = ?)
+            order by p.folio
+            """, (rs, i) -> new FilaPedido(rs.getLong(1), rs.getString(2), rs.getBigDecimal(3), rs.getBigDecimal(4),
+                rs.getBoolean(5)), corteId, corteId, corteId);
+        List<FilaPago> pagos = jdbc.query("""
+            select id_pedido, tipo_pago, metodo_pago, monto, fecha_hora
+            from barrocontrol.pago_pedido where id_corte_caja = ?
+            order by fecha_hora, id
+            """, (rs, i) -> new FilaPago(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getBigDecimal(4),
+                rs.getTimestamp(5).toInstant()), corteId);
+        List<FilaProducto> productos = jdbc.query("""
+            select dp.id_pedido, p.nombre, dp.cantidad, dp.precio_unitario, dp.subtotal
+            from barrocontrol.detalle_pedido dp
+            join barrocontrol.producto p on p.id = dp.id_producto
+            where dp.id_pedido in (select id_pedido from barrocontrol.pago_pedido where id_corte_caja = ?)
+            order by p.nombre
+            """, (rs, i) -> new FilaProducto(rs.getLong(1), rs.getString(2), rs.getInt(3), rs.getBigDecimal(4),
+                rs.getBigDecimal(5)), corteId);
+        return armarPedidos(pedidos, pagos, productos);
+    }
+
+    public static List<PedidoCorteDto> armarPedidos(
+        List<FilaPedido> pedidos, List<FilaPago> pagos, List<FilaProducto> productos
+    ) {
+        // Se agrupa una vez por pedido (conserva el orden de llegada) en lugar de filtrar las listas por cada pedido.
+        Map<Long, List<PedidoCorteDto.Pago>> pagosPorPedido = pagos.stream().collect(Collectors.groupingBy(
+            FilaPago::pedidoId, Collectors.mapping(
+                x -> new PedidoCorteDto.Pago(x.tipoPago(), x.metodoPago(), dinero(x.monto()), x.fechaHora()),
+                Collectors.toList())));
+        Map<Long, List<PedidoCorteDto.Producto>> productosPorPedido = productos.stream().collect(Collectors.groupingBy(
+            FilaProducto::pedidoId, Collectors.mapping(
+                x -> new PedidoCorteDto.Producto(x.nombre(), x.cantidad(), dinero(x.precioUnitario()),
+                    dinero(x.subtotal())),
+                Collectors.toList())));
+        return pedidos.stream().map(p -> {
+            BigDecimal total = dinero(p.total());
+            BigDecimal pagado = dinero(p.pagado());
+            // Cancelado no debe nada: se devolvió lo pagado.
+            BigDecimal saldo = p.cancelado() ? BigDecimal.ZERO.setScale(2) : total.subtract(pagado).max(BigDecimal.ZERO);
+            return new PedidoCorteDto(p.id(), p.folio(), total, pagado, saldo, p.cancelado(),
+                List.copyOf(pagosPorPedido.getOrDefault(p.id(), List.of())),
+                List.copyOf(productosPorPedido.getOrDefault(p.id(), List.of())));
+        }).toList();
+    }
+
+    private static BigDecimal dinero(BigDecimal valor) {
+        return valor != null ? valor.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+    }
+
     private static class AcumuladorProducto {
         private final Long idProducto;
         private final String nombre;
         private final BigDecimal precioUnitario;
+        private final String metodoPago;
         private int cantidad;
         private BigDecimal subtotal;
 
-        public AcumuladorProducto(Long idProducto, String nombre, BigDecimal precioUnitario) {
+        public AcumuladorProducto(Long idProducto, String nombre, BigDecimal precioUnitario, String metodoPago) {
             this.idProducto = idProducto;
+            this.metodoPago = metodoPago;
             this.nombre = nombre;
             this.precioUnitario = precioUnitario != null ? precioUnitario.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
             this.cantidad = 0;
@@ -359,7 +437,7 @@ public class CalculadoraCorte {
         }
 
         public ProductoVendidoDto toDto() {
-            return new ProductoVendidoDto(idProducto, nombre, cantidad, precioUnitario, subtotal);
+            return new ProductoVendidoDto(idProducto, nombre, cantidad, precioUnitario, subtotal, metodoPago);
         }
     }
 }

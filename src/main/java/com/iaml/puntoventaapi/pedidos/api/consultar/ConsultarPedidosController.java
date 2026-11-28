@@ -23,14 +23,16 @@ public class ConsultarPedidosController {
     }
     /**
      * Listado paginado (20 por página, ?page=0), del más reciente al más antiguo. ?estado= filtra por estado;
-     * sin él devuelve todos. No incluye el folio: está en GET /api/pedidos/{id}.
+     * sin él devuelve todos. ?q= busca por nombre o teléfono del cliente (parcial) o folio (exacto), y se
+     * combina con ?estado=. No incluye el folio: está en GET /api/pedidos/{id}.
      */
     @GetMapping
     public PaginaPedidosResponse<ConsultaPedidosPort.Resumen> listar(
             @RequestParam long sucursalId,
             @RequestParam(required = false) EstadoPedido estado,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page) {
-        return PaginaPedidosResponse.from(pedidos.listar(sucursalId, usuario.id(), estado, page));
+        return PaginaPedidosResponse.from(pedidos.listar(sucursalId, usuario.id(), estado, q, page));
     }
     @GetMapping("/{id}")
     public ConsultaPedidosPort.Vista consultar(@PathVariable long id) {

@@ -68,7 +68,7 @@ public class ReporteQueryRepository implements ReporteConsultaPort {
               and (cc.fecha_hora_cierre >= :desde or (:incluirAbiertos and cc.fecha_hora_cierre is null))
         )
         select v.id, v.id_corte_caja, v.fecha_hora, 'VENTA' as tipo, upper(trim(v.metodo_pago)) as medio,
-               concat('#', v.id) as referencia, u.id as vendedor_id,
+               v.folio as referencia, u.id as vendedor_id,
                concat_ws(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as vendedor,
                null::numeric as monto,
                d.id_producto as producto_id, coalesce(d.nombre_producto, p.nombre) as producto,

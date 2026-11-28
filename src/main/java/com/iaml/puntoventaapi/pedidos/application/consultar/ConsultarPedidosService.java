@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ConsultarPedidosService {
     /** Pedidos por página del listado. */
     public static final int TAMANIO_PAGINA = 20;
+    /** Nombre del cliente: hasta 150 caracteres. */
+    static final int MAXIMO_BUSQUEDA = 150;
 
     private final ConsultaPedidosPort pedidos;
     public ConsultarPedidosService(ConsultaPedidosPort pedidos) { this.pedidos = pedidos; }
@@ -22,10 +24,14 @@ public class ConsultarPedidosService {
 
     @Transactional(readOnly = true)
     public Pagina<ConsultaPedidosPort.Resumen> listar(long sucursalId, long usuarioId, EstadoPedido estado,
-                                                      int pagina) {
+                                                      String busqueda, int pagina) {
         if (sucursalId <= 0 || usuarioId <= 0 || pagina < 0) {
             throw new IllegalArgumentException("Sucursal, usuario o página inválidos.");
         }
-        return pedidos.listar(sucursalId, usuarioId, estado, pagina, TAMANIO_PAGINA);
+        String texto = busqueda == null || busqueda.isBlank() ? null : busqueda.strip();
+        if (texto != null && texto.length() > MAXIMO_BUSQUEDA) {
+            throw new IllegalArgumentException("La búsqueda es demasiado larga.");
+        }
+        return pedidos.listar(sucursalId, usuarioId, estado, texto, pagina, TAMANIO_PAGINA);
     }
 }

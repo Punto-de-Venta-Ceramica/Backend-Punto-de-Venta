@@ -87,7 +87,8 @@ class CorteCajaControllerTest {
             new BigDecimal("1950.00"),
             cerrado ? new BigDecimal("1950.00") : null,
             cerrado ? BigDecimal.ZERO.setScale(2) : null,
-            List.of(new ProductoVendidoDto(5L, "Jarrón Barro", 4, new BigDecimal("300.00"), new BigDecimal("1200.00")))
+            List.of(new ProductoVendidoDto(5L, "Jarrón Barro", 4, new BigDecimal("300.00"), new BigDecimal("1200.00"), "EFECTIVO")),
+            List.of()
         );
     }
 
